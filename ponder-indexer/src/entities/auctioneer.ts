@@ -70,3 +70,18 @@ export async function getAuctioneer(
   return result;
 }
 
+/**
+ * Update an existing Auctioneer
+ */
+export async function updateAuctioneer(
+  context: Context,
+  chainId: number,
+  address: Address,
+  updates: Partial<Omit<typeof schema.auctioneer.$inferSelect, "chainId" | "address">>,
+): Promise<void> {
+  await context.db.update(schema.auctioneer, {
+    chainId,
+    address: address.toLowerCase() as Address,
+  }).set(updates);
+}
+

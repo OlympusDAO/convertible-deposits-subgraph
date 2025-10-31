@@ -129,6 +129,72 @@ export const convertibleDepositPosition = onchainTable(
 );
 
 // ============================================================================
+// Event Entities
+// ============================================================================
+
+// Auctioneer Events
+export const convertibleDepositAuctioneerEnabled = onchainTable(
+  "convertible_deposit_auctioneer_enabled",
+  (t) => ({
+    chainId: t.integer().notNull(),
+    block: t.bigint().notNull(),
+    logIndex: t.integer().notNull(),
+    txHash: t.hex().notNull(),
+    timestamp: t.bigint().notNull(),
+    auctioneer: t.hex().notNull(), // Auctioneer address (FK)
+  }),
+  (table) => ({
+    pk: primaryKey({ columns: [table.chainId, table.block, table.logIndex] }),
+  })
+);
+
+export const convertibleDepositAuctioneerDisabled = onchainTable(
+  "convertible_deposit_auctioneer_disabled",
+  (t) => ({
+    chainId: t.integer().notNull(),
+    block: t.bigint().notNull(),
+    logIndex: t.integer().notNull(),
+    txHash: t.hex().notNull(),
+    timestamp: t.bigint().notNull(),
+    auctioneer: t.hex().notNull(), // Auctioneer address (FK)
+  }),
+  (table) => ({
+    pk: primaryKey({ columns: [table.chainId, table.block, table.logIndex] }),
+  })
+);
+
+// Facility Events
+export const convertibleDepositFacilityEnabled = onchainTable(
+  "convertible_deposit_facility_enabled",
+  (t) => ({
+    chainId: t.integer().notNull(),
+    block: t.bigint().notNull(),
+    logIndex: t.integer().notNull(),
+    txHash: t.hex().notNull(),
+    timestamp: t.bigint().notNull(),
+    facility: t.hex().notNull(), // Facility address (FK)
+  }),
+  (table) => ({
+    pk: primaryKey({ columns: [table.chainId, table.block, table.logIndex] }),
+  })
+);
+
+export const convertibleDepositFacilityDisabled = onchainTable(
+  "convertible_deposit_facility_disabled",
+  (t) => ({
+    chainId: t.integer().notNull(),
+    block: t.bigint().notNull(),
+    logIndex: t.integer().notNull(),
+    txHash: t.hex().notNull(),
+    timestamp: t.bigint().notNull(),
+    facility: t.hex().notNull(), // Facility address (FK)
+  }),
+  (table) => ({
+    pk: primaryKey({ columns: [table.chainId, table.block, table.logIndex] }),
+  })
+);
+
+// ============================================================================
 // Relations
 // ============================================================================
 
@@ -192,5 +258,46 @@ export const convertibleDepositPositionRelations = relations(
       ],
     }),
     // ReceiptToken relation will be added when we create that entity
+  })
+);
+
+// Event Relations
+export const convertibleDepositAuctioneerEnabledRelations = relations(
+  convertibleDepositAuctioneerEnabled,
+  ({ one }) => ({
+    auctioneer: one(auctioneer, {
+      fields: [convertibleDepositAuctioneerEnabled.chainId, convertibleDepositAuctioneerEnabled.auctioneer],
+      references: [auctioneer.chainId, auctioneer.address],
+    }),
+  })
+);
+
+export const convertibleDepositAuctioneerDisabledRelations = relations(
+  convertibleDepositAuctioneerDisabled,
+  ({ one }) => ({
+    auctioneer: one(auctioneer, {
+      fields: [convertibleDepositAuctioneerDisabled.chainId, convertibleDepositAuctioneerDisabled.auctioneer],
+      references: [auctioneer.chainId, auctioneer.address],
+    }),
+  })
+);
+
+export const convertibleDepositFacilityEnabledRelations = relations(
+  convertibleDepositFacilityEnabled,
+  ({ one }) => ({
+    facility: one(depositFacility, {
+      fields: [convertibleDepositFacilityEnabled.chainId, convertibleDepositFacilityEnabled.facility],
+      references: [depositFacility.chainId, depositFacility.address],
+    }),
+  })
+);
+
+export const convertibleDepositFacilityDisabledRelations = relations(
+  convertibleDepositFacilityDisabled,
+  ({ one }) => ({
+    facility: one(depositFacility, {
+      fields: [convertibleDepositFacilityDisabled.chainId, convertibleDepositFacilityDisabled.facility],
+      references: [depositFacility.chainId, depositFacility.address],
+    }),
   })
 );

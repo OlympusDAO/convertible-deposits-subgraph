@@ -55,3 +55,17 @@ export async function getDepositFacility(
   return result;
 }
 
+/**
+ * Update an existing DepositFacility
+ */
+export async function updateDepositFacility(
+  context: Context,
+  chainId: number,
+  address: Address,
+  updates: Partial<Omit<typeof schema.depositFacility.$inferSelect, "chainId" | "address">>,
+): Promise<void> {
+  await context.db.update(schema.depositFacility, {
+    chainId,
+    address: address.toLowerCase() as Address,
+  }).set(updates);
+}
