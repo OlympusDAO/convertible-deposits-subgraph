@@ -5,10 +5,13 @@ import type { Context } from "ponder:registry";
 import schema from "ponder:schema";
 import { and, desc, eq, lte } from "ponder";
 import type { Address } from "viem";
-import { fetchAuctioneerDayStateAndParameters } from "../contracts/auctioneer";
+import {
+  fetchAuctioneerCurrentTick,
+  fetchAuctioneerDayStateAndParameters,
+} from "../contracts/auctioneer";
 import { fetchFacilityClaimableYield } from "../contracts/depositFacility";
 import { toDecimal, toOhmDecimal } from "../utils/decimal";
-import { getAssetDecimals } from "./asset";
+import { getAssetDecimals, getDepositAssetPeriodDecimals } from "./asset";
 import { getAuctioneer } from "./auctioneer";
 
 /**
@@ -110,11 +113,6 @@ export async function getOrCreateAuctioneerSnapshot(
     throw new Error(`Failed to create auctioneer snapshot`);
   }
 
-  // TODO Create separate snapshots for each enabled deposit period
-  // Note: Since we can't query by enabled status, we'll need to track periods differently
-  // For now, we'll skip period snapshots creation in getOrCreateAuctioneerSnapshot
-  // and create them separately when needed
-
   return snapshot;
 }
 
@@ -177,7 +175,7 @@ export async function getOrCreateAuctioneerDepositPeriodSnapshot(
 }
 
 /**
- * Refresh auction state from contract and create snapshot
+ * Refresh auction state from contract and create snapshots for auctioneer and all deposit periods
  */
 export async function refreshAuctionState(
   context: Context,
@@ -185,14 +183,56 @@ export async function refreshAuctionState(
   blockNumber: bigint,
   timestamp: bigint,
   auctioneerAddress: Address,
-): Promise<typeof schema.auctioneerSnapshot.$inferSelect> {
-  return await getOrCreateAuctioneerSnapshot(
-    context,
-    chainId,
-    blockNumber,
-    timestamp,
-    auctioneerAddress,
-  );
+): Promise<void> {
+  // Create the main auctioneer snapshot
+  await getOrCreateAuctioneerSnapshot(context, chainId, blockNumber, timestamp, auctioneerAddress);
+
+  // Get all deposit periods for this auctioneer (enabled or not)
+  const depositPeriods = await context.db.sql
+    .select()
+    .from(schema.auctioneerDepositPeriod)
+    .where(
+      and(
+        eq(schema.auctioneerDepositPeriod.chainId, chainId),
+        eq(schema.auctioneerDepositPeriod.auctioneer, auctioneerAddress.toLowerCase() as Address),
+      ),
+    );
+
+  // Create period snapshots for all deposit periods
+  for (const depositPeriod of depositPeriods) {
+    // Fetch current tick data from contract for this period
+    const tickData = await fetchAuctioneerCurrentTick(
+      context.client,
+      auctioneerAddress,
+      depositPeriod.depositPeriod,
+    );
+
+    // Get asset decimals for decimal conversion
+    const assetDecimals = await getDepositAssetPeriodDecimals(
+      context,
+      chainId,
+      depositPeriod.depositAsset,
+    );
+
+    // Calculate decimals
+    const tickPriceDecimal = toDecimal(tickData.price, assetDecimals);
+    const tickCapacityDecimal = toOhmDecimal(tickData.capacity);
+
+    // Create period snapshot
+    await getOrCreateAuctioneerDepositPeriodSnapshot(
+      context,
+      chainId,
+      blockNumber,
+      timestamp,
+      auctioneerAddress,
+      depositPeriod.depositAsset,
+      depositPeriod.depositPeriod,
+      tickData.price,
+      tickPriceDecimal,
+      tickData.capacity,
+      tickCapacityDecimal,
+    );
+  }
 }
 
 /**

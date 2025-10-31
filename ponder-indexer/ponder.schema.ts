@@ -1812,6 +1812,9 @@ export const auctioneerDepositPeriodRelations = relations(
       ],
     }),
     bidEvents: many(convertibleDepositAuctioneerBid),
+    snapshots: many(auctioneerDepositPeriodSnapshot, {
+      relationName: "auctioneerDepositPeriodSnapshots",
+    }),
   }),
 );
 

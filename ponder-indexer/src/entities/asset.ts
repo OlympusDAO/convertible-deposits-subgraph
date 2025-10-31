@@ -167,7 +167,7 @@ export async function getOrCreateDepositAssetPeriod(
     chainId,
     depositAsset: depositAssetAddress.toLowerCase() as Address,
     depositPeriod,
-    enabled: true, // TODO: confirm if enabled by default
+    enabled: true,
   };
 
   await context.db.insert(schema.depositAssetPeriod).values(newPeriod);

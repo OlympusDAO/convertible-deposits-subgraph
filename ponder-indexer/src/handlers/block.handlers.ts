@@ -4,10 +4,7 @@
 import { ponder } from "ponder:registry";
 import schema from "ponder:schema";
 import { and, eq } from "ponder";
-import {
-  getOrCreateAuctioneerSnapshot,
-  getOrCreateDepositFacilityAssetSnapshot,
-} from "../entities/snapshot";
+import { getOrCreateDepositFacilityAssetSnapshot, refreshAuctionState } from "../entities/snapshot";
 
 ponder.on("Snapshot:block", async ({ event, context }) => {
   const chainId = Number(context.chain.id);
@@ -21,13 +18,7 @@ ponder.on("Snapshot:block", async ({ event, context }) => {
     .where(and(eq(schema.auctioneer.chainId, chainId), eq(schema.auctioneer.enabled, true)));
 
   for (const auctioneer of auctioneers) {
-    await getOrCreateAuctioneerSnapshot(
-      context,
-      chainId,
-      blockNumber,
-      timestamp,
-      auctioneer.address,
-    );
+    await refreshAuctionState(context, chainId, blockNumber, timestamp, auctioneer.address);
   }
 
   // Get all enabled facilities for this chain
