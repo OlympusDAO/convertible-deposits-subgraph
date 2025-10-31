@@ -8,4 +8,3 @@ export type { Context };
 
 // Ponder read-only client type - used for contract calls in indexing functions
 export type PonderClient = Context["client"];
-

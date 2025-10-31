@@ -2,8 +2,8 @@
 // In Ponder, we use direct contract calls instead of Effect API
 
 import type { Address } from "viem";
-import type { PonderClient } from "../types";
 import { ConvertibleDepositAuctioneerAbi } from "../../abis/ConvertibleDepositAuctioneer";
+import type { PonderClient } from "../types";
 
 /**
  * Fetch auctioneer current tick (price, capacity, lastUpdate)
@@ -78,7 +78,7 @@ export async function fetchAuctioneerConfigBatch(
     tickStepResult.status === "failure"
   ) {
     throw new Error(
-      `Failed to fetch auctioneer config batch for ${address}: ${versionResult.error || trackingPeriodResult.error || depositAssetResult.error || tickStepResult.error}`
+      `Failed to fetch auctioneer config batch for ${address}: ${versionResult.error || trackingPeriodResult.error || depositAssetResult.error || tickStepResult.error}`,
     );
   }
 
@@ -158,7 +158,7 @@ export async function fetchAuctioneerDayStateAndParameters(
 
   if (dayStateResult.status === "failure" || parametersResult.status === "failure") {
     throw new Error(
-      `Failed to fetch auctioneer day state and parameters for ${address}: ${dayStateResult.error || parametersResult.error}`
+      `Failed to fetch auctioneer day state and parameters for ${address}: ${dayStateResult.error || parametersResult.error}`,
     );
   }
 
@@ -202,4 +202,3 @@ export async function fetchAuctioneerEnabledPeriods(
 
   return [...result];
 }
-

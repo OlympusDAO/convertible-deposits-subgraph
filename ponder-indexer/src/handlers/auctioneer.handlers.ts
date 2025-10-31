@@ -1,19 +1,23 @@
 // Event handlers for ConvertibleDepositAuctioneer contract
 
 import { ponder } from "ponder:registry";
-import type { Address } from "viem";
 import schema from "ponder:schema";
+import type { Address } from "viem";
+import { fetchAuctioneerCurrentTick } from "../contracts/auctioneer";
+import {
+  getDepositAssetDecimals,
+  getDepositAssetPeriodDecimals,
+  getOrCreateDepositAsset,
+} from "../entities/asset";
 import {
   getOrCreateAuctioneer,
-  updateAuctioneer,
   getOrCreateAuctioneerDepositPeriod,
+  updateAuctioneer,
   updateAuctioneerDepositPeriod,
 } from "../entities/auctioneer";
 import { getOrCreateDepositFacility } from "../entities/depositFacility";
 import { getOrCreateDepositor } from "../entities/depositor";
 import { getOrCreatePosition } from "../entities/position";
-import { getDepositAssetPeriodDecimals, getOrCreateDepositAsset, getDepositAssetDecimals } from "../entities/asset";
-import { fetchAuctioneerCurrentTick } from "../contracts/auctioneer";
 import { toBpsDecimal, toDecimal, toOhmDecimal } from "../utils/decimal";
 
 ponder.on("ConvertibleDepositAuctioneer:Enabled", async ({ event, context }) => {
@@ -21,11 +25,7 @@ ponder.on("ConvertibleDepositAuctioneer:Enabled", async ({ event, context }) => 
   const auctioneerAddress = event.log.address as Address;
 
   // Get or create auctioneer
-  const auctioneer = await getOrCreateAuctioneer(
-    context,
-    chainId,
-    auctioneerAddress,
-  );
+  const _auctioneer = await getOrCreateAuctioneer(context, chainId, auctioneerAddress);
 
   // Record the Enabled event
   await context.db.insert(schema.convertibleDepositAuctioneerEnabled).values({
@@ -46,11 +46,7 @@ ponder.on("ConvertibleDepositAuctioneer:Disabled", async ({ event, context }) =>
   const auctioneerAddress = event.log.address as Address;
 
   // Get or create auctioneer
-  const auctioneer = await getOrCreateAuctioneer(
-    context,
-    chainId,
-    auctioneerAddress,
-  );
+  const _auctioneer = await getOrCreateAuctioneer(context, chainId, auctioneerAddress);
 
   // Record the Disabled event
   await context.db.insert(schema.convertibleDepositAuctioneerDisabled).values({
@@ -96,29 +92,34 @@ ponder.on("ConvertibleDepositAuctioneer:TickStepUpdated", async ({ event, contex
   });
 });
 
-ponder.on("ConvertibleDepositAuctioneer:AuctionTrackingPeriodUpdated", async ({ event, context }) => {
-  const chainId = Number(context.chain.id);
-  const auctioneerAddress = event.log.address as Address;
+ponder.on(
+  "ConvertibleDepositAuctioneer:AuctionTrackingPeriodUpdated",
+  async ({ event, context }) => {
+    const chainId = Number(context.chain.id);
+    const auctioneerAddress = event.log.address as Address;
 
-  // Get or create auctioneer
-  await getOrCreateAuctioneer(context, chainId, auctioneerAddress);
+    // Get or create auctioneer
+    await getOrCreateAuctioneer(context, chainId, auctioneerAddress);
 
-  // Record the AuctionTrackingPeriodUpdated event
-  await context.db.insert(schema.convertibleDepositAuctioneerAuctionTrackingPeriodUpdated).values({
-    chainId,
-    block: BigInt(event.block.number),
-    logIndex: event.log.logIndex,
-    txHash: event.transaction.hash,
-    timestamp: BigInt(event.block.timestamp),
-    auctioneer: auctioneerAddress.toLowerCase() as Address,
-    auctionTrackingPeriod: Number(event.args.newAuctionTrackingPeriod),
-  });
+    // Record the AuctionTrackingPeriodUpdated event
+    await context.db
+      .insert(schema.convertibleDepositAuctioneerAuctionTrackingPeriodUpdated)
+      .values({
+        chainId,
+        block: BigInt(event.block.number),
+        logIndex: event.log.logIndex,
+        txHash: event.transaction.hash,
+        timestamp: BigInt(event.block.timestamp),
+        auctioneer: auctioneerAddress.toLowerCase() as Address,
+        auctionTrackingPeriod: Number(event.args.newAuctionTrackingPeriod),
+      });
 
-  // Update auctioneer with new tracking period
-  await updateAuctioneer(context, chainId, auctioneerAddress, {
-    auctionTrackingPeriod: Number(event.args.newAuctionTrackingPeriod),
-  });
-});
+    // Update auctioneer with new tracking period
+    await updateAuctioneer(context, chainId, auctioneerAddress, {
+      auctionTrackingPeriod: Number(event.args.newAuctionTrackingPeriod),
+    });
+  },
+);
 
 ponder.on("ConvertibleDepositAuctioneer:DepositPeriodDisableQueued", async ({ event, context }) => {
   const chainId = Number(context.chain.id);
@@ -411,4 +412,3 @@ ponder.on("ConvertibleDepositAuctioneer:AuctionResult", async ({ event, context 
     periodIndex: Number(event.args.periodIndex),
   });
 });
-

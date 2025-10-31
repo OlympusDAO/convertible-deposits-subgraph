@@ -2,8 +2,8 @@
 // In Ponder, we use direct contract calls instead of Effect API
 
 import type { Address } from "viem";
-import type { PonderClient } from "../types";
 import { DepositPositionManagerAbi } from "../../abis/DepositPositionManager";
+import type { PonderClient } from "../types";
 
 const DEPOSIT_POSITION_MANAGER: Address = "0xb2c2Bab8023E7AEdc0fB13B10B24CA5Af5CdD16f";
 
@@ -22,10 +22,7 @@ export interface Position {
 /**
  * Fetch a single position from the DepositPositionManager contract
  */
-export async function fetchPosition(
-  client: PonderClient,
-  positionId: bigint,
-): Promise<Position> {
+export async function fetchPosition(client: PonderClient, positionId: bigint): Promise<Position> {
   const result = await client.readContract({
     address: DEPOSIT_POSITION_MANAGER,
     abi: DepositPositionManagerAbi,
@@ -115,4 +112,3 @@ export async function fetchPositions(
   }
   return positions;
 }
-

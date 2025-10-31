@@ -2,8 +2,8 @@
 // In Ponder, we use direct contract calls instead of Effect API
 
 import type { Address } from "viem";
-import type { PonderClient } from "../types";
 import { ConvertibleDepositFacilityAbi } from "../../abis/ConvertibleDepositFacility";
+import type { PonderClient } from "../types";
 
 /**
  * Fetch deposit manager address
@@ -75,4 +75,3 @@ export async function fetchFacilityClaimableYield(
 
   return result;
 }
-

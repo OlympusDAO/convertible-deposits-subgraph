@@ -1,9 +1,9 @@
 // Entity helpers for Auctioneer
 // In Ponder, we use context.db for database operations and context.client for contract calls
 
-import type { Address } from "viem";
-import schema from "ponder:schema";
 import type { Context } from "ponder:registry";
+import schema from "ponder:schema";
+import type { Address } from "viem";
 import { fetchAuctioneerConfigBatch } from "../contracts/auctioneer";
 import { toBpsDecimal } from "../utils/decimal";
 import { getOrCreateDepositAsset, getOrCreateDepositAssetPeriod } from "./asset";
@@ -79,10 +79,12 @@ export async function updateAuctioneer(
   address: Address,
   updates: Partial<Omit<typeof schema.auctioneer.$inferSelect, "chainId" | "address">>,
 ): Promise<void> {
-  await context.db.update(schema.auctioneer, {
-    chainId,
-    address: address.toLowerCase() as Address,
-  }).set(updates);
+  await context.db
+    .update(schema.auctioneer, {
+      chainId,
+      address: address.toLowerCase() as Address,
+    })
+    .set(updates);
 }
 
 /**
@@ -140,13 +142,19 @@ export async function updateAuctioneerDepositPeriod(
   auctioneerAddress: Address,
   depositAssetAddress: Address,
   depositPeriod: number,
-  updates: Partial<Omit<typeof schema.auctioneerDepositPeriod.$inferSelect, "chainId" | "auctioneer" | "depositAsset" | "depositPeriod">>,
+  updates: Partial<
+    Omit<
+      typeof schema.auctioneerDepositPeriod.$inferSelect,
+      "chainId" | "auctioneer" | "depositAsset" | "depositPeriod"
+    >
+  >,
 ): Promise<void> {
-  await context.db.update(schema.auctioneerDepositPeriod, {
-    chainId,
-    auctioneer: auctioneerAddress.toLowerCase() as Address,
-    depositAsset: depositAssetAddress.toLowerCase() as Address,
-    depositPeriod,
-  }).set(updates);
+  await context.db
+    .update(schema.auctioneerDepositPeriod, {
+      chainId,
+      auctioneer: auctioneerAddress.toLowerCase() as Address,
+      depositAsset: depositAssetAddress.toLowerCase() as Address,
+      depositPeriod,
+    })
+    .set(updates);
 }
-

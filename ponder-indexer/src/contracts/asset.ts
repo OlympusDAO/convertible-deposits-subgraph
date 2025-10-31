@@ -1,17 +1,14 @@
 // Contract call functions for Asset (ERC20)
 // In Ponder, we use direct contract calls instead of Effect API
 
-import { erc20Abi } from "viem";
 import type { Address } from "viem";
+import { erc20Abi } from "viem";
 import type { PonderClient } from "../types";
 
 /**
  * Fetch ERC20 asset decimals
  */
-export async function fetchAssetDecimals(
-  client: PonderClient,
-  address: Address,
-): Promise<number> {
+export async function fetchAssetDecimals(client: PonderClient, address: Address): Promise<number> {
   const result = await client.readContract({
     address,
     abi: erc20Abi,
@@ -24,10 +21,7 @@ export async function fetchAssetDecimals(
 /**
  * Fetch ERC20 asset name
  */
-export async function fetchAssetName(
-  client: PonderClient,
-  address: Address,
-): Promise<string> {
+export async function fetchAssetName(client: PonderClient, address: Address): Promise<string> {
   const result = await client.readContract({
     address,
     abi: erc20Abi,
@@ -40,10 +34,7 @@ export async function fetchAssetName(
 /**
  * Fetch ERC20 asset symbol
  */
-export async function fetchAssetSymbol(
-  client: PonderClient,
-  address: Address,
-): Promise<string> {
+export async function fetchAssetSymbol(client: PonderClient, address: Address): Promise<string> {
   const result = await client.readContract({
     address,
     abi: erc20Abi,
@@ -52,4 +43,3 @@ export async function fetchAssetSymbol(
 
   return result;
 }
-

@@ -1,36 +1,29 @@
 // Event handlers for ConvertibleDepositFacility contract
 
 import { ponder } from "ponder:registry";
-import type { Address } from "viem";
 import schema from "ponder:schema";
+import type { Address } from "viem";
+import { fetchPositions, fetchUserPositionIds } from "../contracts/position";
+import { getAssetDecimals } from "../entities/asset";
 import {
   getOrCreateDepositFacility,
-  updateDepositFacility,
-  getOrCreateDepositFacilityAssetPeriod,
   getOrCreateDepositFacilityAsset,
+  getOrCreateDepositFacilityAssetPeriod,
+  updateDepositFacility,
   updateDepositFacilityAsset,
   updateDepositFacilityAssetPeriod,
 } from "../entities/depositFacility";
-import { getAssetDecimals } from "../entities/asset";
 import { getOrCreateDepositor } from "../entities/depositor";
-import { getOrCreatePosition, updatePosition, getPosition } from "../entities/position";
-import { fetchUserPositionIds, fetchPositions } from "../contracts/position";
-import {
-  updateFacilityAssetDeposited,
-  updateFacilityAssetPendingRedemption,
-} from "../entities/snapshot";
-import { toDecimal, toOhmDecimal, toBpsDecimal } from "../utils/decimal";
+import { getOrCreatePosition, getPosition, updatePosition } from "../entities/position";
+import { updateFacilityAssetDeposited } from "../entities/snapshot";
+import { toBpsDecimal, toDecimal, toOhmDecimal } from "../utils/decimal";
 
 ponder.on("ConvertibleDepositFacility:Enabled", async ({ event, context }) => {
   const chainId = Number(context.chain.id);
   const facilityAddress = event.log.address as Address;
 
   // Get or create facility
-  await getOrCreateDepositFacility(
-    context,
-    chainId,
-    facilityAddress,
-  );
+  await getOrCreateDepositFacility(context, chainId, facilityAddress);
 
   // Record the Enabled event
   await context.db.insert(schema.convertibleDepositFacilityEnabled).values({
@@ -51,11 +44,7 @@ ponder.on("ConvertibleDepositFacility:Disabled", async ({ event, context }) => {
   const facilityAddress = event.log.address as Address;
 
   // Get or create facility
-  await getOrCreateDepositFacility(
-    context,
-    chainId,
-    facilityAddress,
-  );
+  await getOrCreateDepositFacility(context, chainId, facilityAddress);
 
   // Record the Disabled event
   await context.db.insert(schema.convertibleDepositFacilityDisabled).values({
@@ -450,10 +439,12 @@ ponder.on("ConvertibleDepositFacility:ConvertedDeposit", async ({ event, context
       throw new Error(`Position does not match facility asset period: ${contractPositionId}`);
     }
 
-    const depositConvertedAmount = recordPosition.remainingAmount - contractPosition.remainingDeposit;
+    const depositConvertedAmount =
+      recordPosition.remainingAmount - contractPosition.remainingDeposit;
 
     // Calculate the amount converted
-    const convertedAmount = (depositConvertedAmount * BigInt(1e9)) / contractPosition.conversionPrice;
+    const convertedAmount =
+      (depositConvertedAmount * BigInt(1e9)) / contractPosition.conversionPrice;
 
     // Create record for the converted deposit (use sequential logIndex for child events)
     await context.db.insert(schema.convertibleDepositFacilityConvertedDeposit).values({

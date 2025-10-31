@@ -1,18 +1,15 @@
 // Snapshot entity helpers
 // In Ponder, we query snapshots directly by timestamp instead of using LatestSnapshot
 
-import type { Address } from "viem";
-import schema from "ponder:schema";
 import type { Context } from "ponder:registry";
-import { eq, and, lte, desc } from "ponder";
-import {
-  fetchAuctioneerCurrentTick,
-  fetchAuctioneerDayStateAndParameters,
-} from "../contracts/auctioneer";
+import schema from "ponder:schema";
+import { and, desc, eq, lte } from "ponder";
+import type { Address } from "viem";
+import { fetchAuctioneerDayStateAndParameters } from "../contracts/auctioneer";
 import { fetchFacilityClaimableYield } from "../contracts/depositFacility";
-import { getAssetDecimals, getDepositAsset, getDepositAssetPeriod } from "./asset";
-import { getAuctioneer, getOrCreateAuctioneerDepositPeriod } from "./auctioneer";
 import { toDecimal, toOhmDecimal } from "../utils/decimal";
+import { getAssetDecimals } from "./asset";
+import { getAuctioneer } from "./auctioneer";
 
 /**
  * Get the most recent deposit facility asset snapshot for a given facility/asset before or at a specific block
@@ -31,9 +28,12 @@ async function getLatestDepositFacilityAssetSnapshot(
       and(
         eq(schema.depositFacilityAssetSnapshot.chainId, chainId),
         eq(schema.depositFacilityAssetSnapshot.facility, facilityAddress.toLowerCase() as Address),
-        eq(schema.depositFacilityAssetSnapshot.depositAsset, depositAssetAddress.toLowerCase() as Address),
+        eq(
+          schema.depositFacilityAssetSnapshot.depositAsset,
+          depositAssetAddress.toLowerCase() as Address,
+        ),
         lte(schema.depositFacilityAssetSnapshot.block, beforeBlock),
-      )
+      ),
     )
     .orderBy(desc(schema.depositFacilityAssetSnapshot.block))
     .limit(1);
@@ -128,7 +128,13 @@ export async function refreshAuctionState(
   timestamp: bigint,
   auctioneerAddress: Address,
 ): Promise<typeof schema.auctioneerSnapshot.$inferSelect> {
-  return await getOrCreateAuctioneerSnapshot(context, chainId, blockNumber, timestamp, auctioneerAddress);
+  return await getOrCreateAuctioneerSnapshot(
+    context,
+    chainId,
+    blockNumber,
+    timestamp,
+    auctioneerAddress,
+  );
 }
 
 /**
@@ -336,4 +342,3 @@ export async function updateFacilityAssetBorrowedAmount(
       borrowedAmountDecimal: toDecimal(updatedBorrowedAmount, assetDecimals),
     });
 }
-

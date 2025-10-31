@@ -1,9 +1,9 @@
 // Entity helpers for Depositor
 // In Ponder, we use context.db for database operations
 
-import type { Address } from "viem";
-import schema from "ponder:schema";
 import type { Context } from "ponder:registry";
+import schema from "ponder:schema";
+import type { Address } from "viem";
 
 /**
  * Get or create a Depositor
@@ -53,4 +53,3 @@ export async function getDepositor(
 
   return result;
 }
-

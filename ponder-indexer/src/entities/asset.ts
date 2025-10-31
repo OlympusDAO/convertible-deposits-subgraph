@@ -1,14 +1,10 @@
 // Entity helpers for Asset, DepositAsset, and DepositAssetPeriod
 // In Ponder, we use context.db for database operations and context.client for contract calls
 
-import type { Address } from "viem";
-import schema from "ponder:schema";
 import type { Context } from "ponder:registry";
-import {
-  fetchAssetDecimals,
-  fetchAssetName,
-  fetchAssetSymbol,
-} from "../contracts/asset";
+import schema from "ponder:schema";
+import type { Address } from "viem";
+import { fetchAssetDecimals, fetchAssetName, fetchAssetSymbol } from "../contracts/asset";
 
 /**
  * Get or create an Asset
@@ -196,7 +192,7 @@ export async function getDepositAssetPeriod(
 
   if (!result) {
     throw new Error(
-      `DepositAssetPeriod not found: ${chainId}:${depositAssetAddress}:${depositPeriod}`
+      `DepositAssetPeriod not found: ${chainId}:${depositAssetAddress}:${depositPeriod}`,
     );
   }
 
@@ -213,4 +209,3 @@ export async function getDepositAssetPeriodDecimals(
 ): Promise<number> {
   return await getAssetDecimals(context, chainId, depositAssetAddress);
 }
-

@@ -1,14 +1,14 @@
 // Entity helpers for ConvertibleDepositPosition
 // In Ponder, we use context.db for database operations and context.client for contract calls
 
-import type { Address } from "viem";
-import schema from "ponder:schema";
 import type { Context } from "ponder:registry";
+import schema from "ponder:schema";
+import type { Address } from "viem";
 import { fetchPosition } from "../contracts/position";
+import { toDecimal } from "../utils/decimal";
 import { getDepositAssetPeriod, getDepositAssetPeriodDecimals } from "./asset";
 import { getOrCreateDepositFacility } from "./depositFacility";
 import { getOrCreateDepositor } from "./depositor";
-import { toDecimal } from "../utils/decimal";
 
 const UINT256_MAX = BigInt(
   "115792089237316195423570985008687907853269984665640564039457584007913129639935",
@@ -42,17 +42,13 @@ export async function getOrCreatePosition(
   // Get or create related entities
   await getOrCreateDepositFacility(context, chainId, facilityAddress);
   await getOrCreateDepositor(context, chainId, depositorAddress);
-  const depositAssetPeriod = await getDepositAssetPeriod(
+  const _depositAssetPeriod = await getDepositAssetPeriod(
     context,
     chainId,
     depositAssetAddress,
     depositPeriod,
   );
-  const assetDecimals = await getDepositAssetPeriodDecimals(
-    context,
-    chainId,
-    depositAssetAddress,
-  );
+  const assetDecimals = await getDepositAssetPeriodDecimals(context, chainId, depositAssetAddress);
 
   // Fetch position data from contract
   const position = await fetchPosition(context.client, positionId);
@@ -118,12 +114,16 @@ export async function updatePosition(
   context: Context,
   chainId: number,
   positionId: bigint,
-  updates: Partial<Omit<typeof schema.convertibleDepositPosition.$inferSelect, "chainId" | "positionId">>,
+  updates: Partial<
+    Omit<typeof schema.convertibleDepositPosition.$inferSelect, "chainId" | "positionId">
+  >,
 ): Promise<void> {
-  await context.db.update(schema.convertibleDepositPosition, {
-    chainId,
-    positionId,
-  }).set(updates);
+  await context.db
+    .update(schema.convertibleDepositPosition, {
+      chainId,
+      positionId,
+    })
+    .set(updates);
 }
 
 /**
@@ -136,7 +136,7 @@ export async function updatePositionFromContract(
   positionId: bigint,
   assetDecimals: number,
 ): Promise<void> {
-  const position = await getPosition(context, chainId, positionId);
+  const _position = await getPosition(context, chainId, positionId);
 
   // Fetch updated position data from contract
   const contractPosition = await fetchPosition(context.client, positionId);
@@ -148,9 +148,10 @@ export async function updatePositionFromContract(
   };
 
   // In Ponder, insert with same primary key updates the record
-  await context.db.update(schema.convertibleDepositPosition, {
-    chainId,
-    positionId,
-  }).set(updatedPosition);
+  await context.db
+    .update(schema.convertibleDepositPosition, {
+      chainId,
+      positionId,
+    })
+    .set(updatedPosition);
 }
-

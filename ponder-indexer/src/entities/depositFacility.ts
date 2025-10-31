@@ -1,12 +1,15 @@
 // Entity helpers for DepositFacility
 // In Ponder, we use context.db for database operations and context.client for contract calls
 
-import type { Address } from "viem";
-import schema from "ponder:schema";
 import type { Context } from "ponder:registry";
-import { getAssetDecimals, getOrCreateDepositAsset, getOrCreateDepositAssetPeriod } from "./asset";
-import { fetchDepositFacilityAssetCommittedAmount, fetchDepositFacilityAssetPeriodReclaimRate } from "../contracts/depositFacility";
+import schema from "ponder:schema";
+import type { Address } from "viem";
+import {
+  fetchDepositFacilityAssetCommittedAmount,
+  fetchDepositFacilityAssetPeriodReclaimRate,
+} from "../contracts/depositFacility";
 import { toBpsDecimal, toDecimal } from "../utils/decimal";
+import { getAssetDecimals, getOrCreateDepositAsset, getOrCreateDepositAssetPeriod } from "./asset";
 
 /**
  * Get or create a DepositFacility
@@ -67,10 +70,12 @@ export async function updateDepositFacility(
   address: Address,
   updates: Partial<Omit<typeof schema.depositFacility.$inferSelect, "chainId" | "address">>,
 ): Promise<void> {
-  await context.db.update(schema.depositFacility, {
-    chainId,
-    address: address.toLowerCase() as Address,
-  }).set(updates);
+  await context.db
+    .update(schema.depositFacility, {
+      chainId,
+      address: address.toLowerCase() as Address,
+    })
+    .set(updates);
 }
 
 /**
@@ -180,13 +185,17 @@ export async function updateDepositFacilityAsset(
   chainId: number,
   facilityAddress: Address,
   depositAssetAddress: Address,
-  updates: Partial<Omit<typeof schema.depositFacilityAsset.$inferSelect, "chainId" | "facility" | "depositAsset">>,
+  updates: Partial<
+    Omit<typeof schema.depositFacilityAsset.$inferSelect, "chainId" | "facility" | "depositAsset">
+  >,
 ): Promise<void> {
-  await context.db.update(schema.depositFacilityAsset, {
-    chainId,
-    facility: facilityAddress.toLowerCase() as Address,
-    depositAsset: depositAssetAddress.toLowerCase() as Address,
-  }).set(updates);
+  await context.db
+    .update(schema.depositFacilityAsset, {
+      chainId,
+      facility: facilityAddress.toLowerCase() as Address,
+      depositAsset: depositAssetAddress.toLowerCase() as Address,
+    })
+    .set(updates);
 }
 
 /**
@@ -198,12 +207,19 @@ export async function updateDepositFacilityAssetPeriod(
   facilityAddress: Address,
   depositAssetAddress: Address,
   depositPeriod: number,
-  updates: Partial<Omit<typeof schema.depositFacilityAssetPeriod.$inferSelect, "chainId" | "facility" | "depositAsset" | "depositPeriod">>,
+  updates: Partial<
+    Omit<
+      typeof schema.depositFacilityAssetPeriod.$inferSelect,
+      "chainId" | "facility" | "depositAsset" | "depositPeriod"
+    >
+  >,
 ): Promise<void> {
-  await context.db.update(schema.depositFacilityAssetPeriod, {
-    chainId,
-    facility: facilityAddress.toLowerCase() as Address,
-    depositAsset: depositAssetAddress.toLowerCase() as Address,
-    depositPeriod,
-  }).set(updates);
+  await context.db
+    .update(schema.depositFacilityAssetPeriod, {
+      chainId,
+      facility: facilityAddress.toLowerCase() as Address,
+      depositAsset: depositAssetAddress.toLowerCase() as Address,
+      depositPeriod,
+    })
+    .set(updates);
 }
