@@ -9,6 +9,7 @@ import { toDecimal } from "../utils/decimal";
 import { getDepositAssetPeriod, getDepositAssetPeriodDecimals } from "./asset";
 import { getOrCreateDepositFacility } from "./depositFacility";
 import { getOrCreateDepositor } from "./depositor";
+import { getOrCreateReceiptToken } from "./receiptToken";
 
 const UINT256_MAX = BigInt(
   "115792089237316195423570985008687907853269984665640564039457584007913129639935",
@@ -50,6 +51,15 @@ export async function getOrCreatePosition(
   );
   const assetDecimals = await getDepositAssetPeriodDecimals(context, chainId, depositAssetAddress);
 
+  // Fetch receipt token data
+  const receiptToken = await getOrCreateReceiptToken(
+    context,
+    chainId,
+    facilityAddress,
+    depositAssetAddress,
+    depositPeriod,
+  );
+
   // Fetch position data from contract
   const position = await fetchPosition(context.client, positionId);
 
@@ -72,8 +82,8 @@ export async function getOrCreatePosition(
     depositor: depositorAddress.toLowerCase() as Address,
     depositAsset: depositAssetAddress.toLowerCase() as Address,
     depositPeriod,
-    receiptTokenManager: "0x0000000000000000000000000000000000000000" as Address, // TODO: fetch from contract
-    receiptTokenId: 0n, // TODO: fetch from contract
+    receiptTokenManager: receiptToken.receiptTokenManager,
+    receiptTokenId: receiptToken.receiptTokenId,
     initialAmount: position.remainingDeposit,
     initialAmountDecimal: toDecimal(position.remainingDeposit, assetDecimals),
     remainingAmount: position.remainingDeposit,
