@@ -1,5 +1,4 @@
 import { createConfig } from "ponder";
-import { http } from "viem";
 
 import { ConvertibleDepositAuctioneerAbi } from "./abis/ConvertibleDepositAuctioneer";
 import { ConvertibleDepositFacilityAbi } from "./abis/ConvertibleDepositFacility";
