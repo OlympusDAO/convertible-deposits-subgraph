@@ -3,6 +3,7 @@
 
 import type { Address } from "viem";
 import { ConvertibleDepositFacilityAbi } from "../../abis/ConvertibleDepositFacility";
+import { DepositManagerAbi } from "../../abis/DepositManager";
 import type { PonderClient } from "../types";
 
 /**
@@ -74,4 +75,84 @@ export async function fetchFacilityClaimableYield(
   });
 
   return result;
+}
+
+/**
+ * Fetch receipt token manager address from deposit manager
+ */
+export async function fetchReceiptTokenManager(
+  client: PonderClient,
+  depositManagerAddress: Address,
+): Promise<Address> {
+  const result = await client.readContract({
+    address: depositManagerAddress,
+    abi: DepositManagerAbi,
+    functionName: "getReceiptTokenManager",
+  });
+
+  return result;
+}
+
+/**
+ * Fetch receipt token ID from deposit manager
+ */
+export async function fetchReceiptTokenId(
+  client: PonderClient,
+  depositManagerAddress: Address,
+  assetAddress: Address,
+  depositPeriod: number,
+  facilityAddress: Address,
+): Promise<bigint> {
+  const result = await client.readContract({
+    address: depositManagerAddress,
+    abi: DepositManagerAbi,
+    functionName: "getReceiptTokenId",
+    args: [assetAddress, depositPeriod, facilityAddress],
+  });
+
+  return result;
+}
+
+/**
+ * Batch fetch receipt token manager and ID
+ */
+export async function fetchReceiptTokenData(
+  client: PonderClient,
+  depositManagerAddress: Address,
+  assetAddress: Address,
+  depositPeriod: number,
+  facilityAddress: Address,
+): Promise<{
+  receiptTokenManager: Address;
+  receiptTokenId: bigint;
+}> {
+  const results = await client.multicall({
+    contracts: [
+      {
+        address: depositManagerAddress,
+        abi: DepositManagerAbi,
+        functionName: "getReceiptTokenManager",
+      },
+      {
+        address: depositManagerAddress,
+        abi: DepositManagerAbi,
+        functionName: "getReceiptTokenId",
+        args: [assetAddress, depositPeriod, facilityAddress],
+      },
+    ],
+  });
+
+  const managerResult = results[0];
+  const idResult = results[1];
+
+  if (managerResult.status === "failure" || idResult.status === "failure") {
+    throw new Error(
+      `Failed to fetch receipt token data from ${depositManagerAddress}: ${managerResult.error || idResult.error}`,
+    );
+  }
+
+  return {
+    receiptTokenManager: managerResult.result,
+    receiptTokenId: idResult.result,
+  };
 }

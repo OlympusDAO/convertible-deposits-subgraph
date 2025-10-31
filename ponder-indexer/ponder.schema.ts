@@ -89,6 +89,95 @@ export const depositRedemptionVault = onchainTable(
   }),
 );
 
+export const receiptToken = onchainTable(
+  "receipt_token",
+  (t) => ({
+    chainId: t.integer().notNull(),
+    receiptTokenManager: t.hex().notNull(),
+    receiptTokenId: t.bigint().notNull(),
+    facility: t.hex().notNull(), // Facility address (FK)
+    depositAsset: t.hex().notNull(), // Asset address (FK to depositAssetPeriod)
+    depositPeriod: t.integer().notNull(), // Period months (FK to depositAssetPeriod)
+  }),
+  (table) => ({
+    pk: primaryKey({
+      columns: [table.chainId, table.receiptTokenManager, table.receiptTokenId],
+    }),
+  }),
+);
+
+export const depositRedemptionVaultAssetConfiguration = onchainTable(
+  "deposit_redemption_vault_asset_configuration",
+  (t) => ({
+    chainId: t.integer().notNull(),
+    redemptionVault: t.hex().notNull(), // Redemption vault address (FK)
+    facility: t.hex().notNull(), // Facility address (FK)
+    depositAsset: t.hex().notNull(), // Asset address (FK to depositAsset)
+    interestRate: t.bigint().notNull(),
+    interestRateDecimal: t.text().notNull(), // BigDecimal as text (BPS)
+    maxBorrowPercentage: t.bigint().notNull(),
+    maxBorrowPercentageDecimal: t.text().notNull(), // BigDecimal as text (BPS)
+  }),
+  (table) => ({
+    pk: primaryKey({
+      columns: [table.chainId, table.redemptionVault, table.facility, table.depositAsset],
+    }),
+  }),
+);
+
+export const redemption = onchainTable(
+  "redemption",
+  (t) => ({
+    chainId: t.integer().notNull(),
+    redemptionVault: t.hex().notNull(), // Redemption vault address (FK)
+    depositor: t.hex().notNull(), // Depositor address (FK)
+    redemptionId: t.integer().notNull(), // Redemption ID (unique per user per vault)
+    depositAsset: t.hex().notNull(), // Asset address (FK to depositAssetPeriod)
+    depositPeriod: t.integer().notNull(), // Period months (FK to depositAssetPeriod)
+    facility: t.hex().notNull(), // Facility address (FK)
+    receiptTokenManager: t.hex().notNull(), // ReceiptToken receiptTokenManager (FK)
+    receiptTokenId: t.bigint().notNull(), // ReceiptToken receiptTokenId (FK)
+    positionId: t.bigint(), // Position ID (optional, FK to convertibleDepositPosition)
+    amount: t.bigint().notNull(),
+    amountDecimal: t.text().notNull(), // BigDecimal as text
+    redeemableAt: t.bigint().notNull(),
+  }),
+  (table) => ({
+    pk: primaryKey({
+      columns: [table.chainId, table.redemptionVault, table.depositor, table.redemptionId],
+    }),
+  }),
+);
+
+export const redemptionLoan = onchainTable(
+  "redemption_loan",
+  (t) => ({
+    chainId: t.integer().notNull(),
+    redemptionVault: t.hex().notNull(), // Redemption vault address
+    depositor: t.hex().notNull(), // Depositor address (FK to redemption)
+    depositAsset: t.hex().notNull(), // Asset address (FK to redemption)
+    depositPeriod: t.integer().notNull(), // Period months (FK to redemption)
+    facility: t.hex().notNull(), // Facility address (FK to redemption)
+    receiptTokenManager: t.hex().notNull(), // ReceiptToken (FK to redemption)
+    receiptTokenId: t.bigint().notNull(), // ReceiptToken (FK to redemption)
+    redemptionId: t.integer().notNull(), // Redemption ID (part of redemption PK)
+    initialPrincipal: t.bigint().notNull(),
+    initialPrincipalDecimal: t.text().notNull(), // BigDecimal as text
+    principal: t.bigint().notNull(),
+    principalDecimal: t.text().notNull(), // BigDecimal as text
+    interest: t.bigint().notNull(),
+    interestDecimal: t.text().notNull(), // BigDecimal as text
+    createdAt: t.bigint().notNull(),
+    dueDate: t.bigint().notNull(),
+    status: t.text().notNull(), // "active", "repaid", "defaulted"
+  }),
+  (table) => ({
+    pk: primaryKey({
+      columns: [table.chainId, table.redemptionVault, table.depositor, table.redemptionId],
+    }),
+  }),
+);
+
 export const depositor = onchainTable(
   "depositor",
   (t) => ({
@@ -641,6 +730,270 @@ export const convertibleDepositFacilityClaimedYield = onchainTable(
   }),
 );
 
+// DepositRedemptionVault Events
+export const depositRedemptionVaultEnabled = onchainTable(
+  "deposit_redemption_vault_enabled",
+  (t) => ({
+    chainId: t.integer().notNull(),
+    block: t.bigint().notNull(),
+    logIndex: t.integer().notNull(),
+    txHash: t.hex().notNull(),
+    timestamp: t.bigint().notNull(),
+    redemptionVault: t.hex().notNull(), // Redemption vault address (FK)
+  }),
+  (table) => ({
+    pk: primaryKey({ columns: [table.chainId, table.block, table.logIndex] }),
+  }),
+);
+
+export const depositRedemptionVaultDisabled = onchainTable(
+  "deposit_redemption_vault_disabled",
+  (t) => ({
+    chainId: t.integer().notNull(),
+    block: t.bigint().notNull(),
+    logIndex: t.integer().notNull(),
+    txHash: t.hex().notNull(),
+    timestamp: t.bigint().notNull(),
+    redemptionVault: t.hex().notNull(), // Redemption vault address (FK)
+  }),
+  (table) => ({
+    pk: primaryKey({ columns: [table.chainId, table.block, table.logIndex] }),
+  }),
+);
+
+export const depositRedemptionVaultClaimDefaultRewardPercentageSet = onchainTable(
+  "deposit_redemption_vault_claim_default_reward_percentage_set",
+  (t) => ({
+    chainId: t.integer().notNull(),
+    block: t.bigint().notNull(),
+    logIndex: t.integer().notNull(),
+    txHash: t.hex().notNull(),
+    timestamp: t.bigint().notNull(),
+    redemptionVault: t.hex().notNull(), // Redemption vault address (FK)
+    percent: t.bigint().notNull(),
+    percentDecimal: t.text().notNull(), // BigDecimal as text (BPS)
+  }),
+  (table) => ({
+    pk: primaryKey({ columns: [table.chainId, table.block, table.logIndex] }),
+  }),
+);
+
+export const depositRedemptionVaultFacilityAuthorized = onchainTable(
+  "deposit_redemption_vault_facility_authorized",
+  (t) => ({
+    chainId: t.integer().notNull(),
+    block: t.bigint().notNull(),
+    logIndex: t.integer().notNull(),
+    txHash: t.hex().notNull(),
+    timestamp: t.bigint().notNull(),
+    redemptionVault: t.hex().notNull(), // Redemption vault address (FK)
+    facility: t.hex().notNull(), // Facility address (FK)
+  }),
+  (table) => ({
+    pk: primaryKey({ columns: [table.chainId, table.block, table.logIndex] }),
+  }),
+);
+
+export const depositRedemptionVaultFacilityDeauthorized = onchainTable(
+  "deposit_redemption_vault_facility_deauthorized",
+  (t) => ({
+    chainId: t.integer().notNull(),
+    block: t.bigint().notNull(),
+    logIndex: t.integer().notNull(),
+    txHash: t.hex().notNull(),
+    timestamp: t.bigint().notNull(),
+    redemptionVault: t.hex().notNull(), // Redemption vault address (FK)
+    facility: t.hex().notNull(), // Facility address (FK)
+  }),
+  (table) => ({
+    pk: primaryKey({ columns: [table.chainId, table.block, table.logIndex] }),
+  }),
+);
+
+export const depositRedemptionVaultAnnualInterestRateSet = onchainTable(
+  "deposit_redemption_vault_annual_interest_rate_set",
+  (t) => ({
+    chainId: t.integer().notNull(),
+    block: t.bigint().notNull(),
+    logIndex: t.integer().notNull(),
+    txHash: t.hex().notNull(),
+    timestamp: t.bigint().notNull(),
+    redemptionVault: t.hex().notNull(), // Redemption vault address (FK)
+    facility: t.hex().notNull(), // Facility address (FK)
+    depositAsset: t.hex().notNull(), // Asset address (FK)
+    rate: t.bigint().notNull(),
+    rateDecimal: t.text().notNull(), // BigDecimal as text (BPS)
+  }),
+  (table) => ({
+    pk: primaryKey({ columns: [table.chainId, table.block, table.logIndex] }),
+  }),
+);
+
+export const depositRedemptionVaultMaxBorrowPercentageSet = onchainTable(
+  "deposit_redemption_vault_max_borrow_percentage_set",
+  (t) => ({
+    chainId: t.integer().notNull(),
+    block: t.bigint().notNull(),
+    logIndex: t.integer().notNull(),
+    txHash: t.hex().notNull(),
+    timestamp: t.bigint().notNull(),
+    redemptionVault: t.hex().notNull(), // Redemption vault address (FK)
+    facility: t.hex().notNull(), // Facility address (FK)
+    depositAsset: t.hex().notNull(), // Asset address (FK)
+    percent: t.bigint().notNull(),
+    percentDecimal: t.text().notNull(), // BigDecimal as text (BPS)
+  }),
+  (table) => ({
+    pk: primaryKey({ columns: [table.chainId, table.block, table.logIndex] }),
+  }),
+);
+
+export const depositRedemptionVaultRedemptionStarted = onchainTable(
+  "deposit_redemption_vault_redemption_started",
+  (t) => ({
+    chainId: t.integer().notNull(),
+    block: t.bigint().notNull(),
+    logIndex: t.integer().notNull(),
+    txHash: t.hex().notNull(),
+    timestamp: t.bigint().notNull(),
+    redemptionVault: t.hex().notNull(), // Redemption vault address (FK)
+    depositor: t.hex().notNull(), // Depositor address (FK)
+    redemptionId: t.integer().notNull(), // Redemption ID (FK to redemption)
+    depositAsset: t.hex().notNull(), // Asset address (FK)
+    depositPeriod: t.integer().notNull(), // Period months (FK)
+    facility: t.hex().notNull(), // Facility address (FK)
+    amount: t.bigint().notNull(),
+    amountDecimal: t.text().notNull(), // BigDecimal as text
+  }),
+  (table) => ({
+    pk: primaryKey({ columns: [table.chainId, table.block, table.logIndex] }),
+  }),
+);
+
+export const depositRedemptionVaultRedemptionFinished = onchainTable(
+  "deposit_redemption_vault_redemption_finished",
+  (t) => ({
+    chainId: t.integer().notNull(),
+    block: t.bigint().notNull(),
+    logIndex: t.integer().notNull(),
+    txHash: t.hex().notNull(),
+    timestamp: t.bigint().notNull(),
+    redemptionVault: t.hex().notNull(), // Redemption vault address (FK)
+    depositor: t.hex().notNull(), // Depositor address (FK)
+    redemptionId: t.integer().notNull(), // Redemption ID (FK to redemption)
+    amount: t.bigint().notNull(),
+    amountDecimal: t.text().notNull(), // BigDecimal as text
+  }),
+  (table) => ({
+    pk: primaryKey({ columns: [table.chainId, table.block, table.logIndex] }),
+  }),
+);
+
+export const depositRedemptionVaultRedemptionCancelled = onchainTable(
+  "deposit_redemption_vault_redemption_cancelled",
+  (t) => ({
+    chainId: t.integer().notNull(),
+    block: t.bigint().notNull(),
+    logIndex: t.integer().notNull(),
+    txHash: t.hex().notNull(),
+    timestamp: t.bigint().notNull(),
+    redemptionVault: t.hex().notNull(), // Redemption vault address (FK)
+    depositor: t.hex().notNull(), // Depositor address (FK)
+    redemptionId: t.integer().notNull(), // Redemption ID (FK to redemption)
+    depositAsset: t.hex().notNull(), // Asset address (FK)
+    depositPeriod: t.integer().notNull(), // Period months (FK)
+    amount: t.bigint().notNull(),
+    amountDecimal: t.text().notNull(), // BigDecimal as text
+    remainingAmount: t.bigint().notNull(),
+    remainingAmountDecimal: t.text().notNull(), // BigDecimal as text
+  }),
+  (table) => ({
+    pk: primaryKey({ columns: [table.chainId, table.block, table.logIndex] }),
+  }),
+);
+
+export const depositRedemptionVaultLoanCreated = onchainTable(
+  "deposit_redemption_vault_loan_created",
+  (t) => ({
+    chainId: t.integer().notNull(),
+    block: t.bigint().notNull(),
+    logIndex: t.integer().notNull(),
+    txHash: t.hex().notNull(),
+    timestamp: t.bigint().notNull(),
+    redemptionVault: t.hex().notNull(), // Redemption vault address (FK)
+    depositor: t.hex().notNull(), // Depositor address (FK)
+    redemptionId: t.integer().notNull(), // Redemption ID (FK to redemption)
+    facility: t.hex().notNull(), // Facility address (FK)
+    amount: t.bigint().notNull(),
+    amountDecimal: t.text().notNull(), // BigDecimal as text
+  }),
+  (table) => ({
+    pk: primaryKey({ columns: [table.chainId, table.block, table.logIndex] }),
+  }),
+);
+
+export const depositRedemptionVaultLoanRepaid = onchainTable(
+  "deposit_redemption_vault_loan_repaid",
+  (t) => ({
+    chainId: t.integer().notNull(),
+    block: t.bigint().notNull(),
+    logIndex: t.integer().notNull(),
+    txHash: t.hex().notNull(),
+    timestamp: t.bigint().notNull(),
+    redemptionVault: t.hex().notNull(), // Redemption vault address (FK)
+    depositor: t.hex().notNull(), // Depositor address (FK)
+    redemptionId: t.integer().notNull(), // Redemption ID (FK to redemption)
+    principal: t.bigint().notNull(),
+    principalDecimal: t.text().notNull(), // BigDecimal as text
+    interest: t.bigint().notNull(),
+    interestDecimal: t.text().notNull(), // BigDecimal as text
+  }),
+  (table) => ({
+    pk: primaryKey({ columns: [table.chainId, table.block, table.logIndex] }),
+  }),
+);
+
+export const depositRedemptionVaultLoanDefaulted = onchainTable(
+  "deposit_redemption_vault_loan_defaulted",
+  (t) => ({
+    chainId: t.integer().notNull(),
+    block: t.bigint().notNull(),
+    logIndex: t.integer().notNull(),
+    txHash: t.hex().notNull(),
+    timestamp: t.bigint().notNull(),
+    redemptionVault: t.hex().notNull(), // Redemption vault address (FK)
+    depositor: t.hex().notNull(), // Depositor address (FK)
+    redemptionId: t.integer().notNull(), // Redemption ID (FK to redemption)
+    principal: t.bigint().notNull(),
+    principalDecimal: t.text().notNull(), // BigDecimal as text
+    interest: t.bigint().notNull(),
+    interestDecimal: t.text().notNull(), // BigDecimal as text
+    remainingCollateral: t.bigint().notNull(),
+    remainingCollateralDecimal: t.text().notNull(), // BigDecimal as text
+  }),
+  (table) => ({
+    pk: primaryKey({ columns: [table.chainId, table.block, table.logIndex] }),
+  }),
+);
+
+export const depositRedemptionVaultLoanExtended = onchainTable(
+  "deposit_redemption_vault_loan_extended",
+  (t) => ({
+    chainId: t.integer().notNull(),
+    block: t.bigint().notNull(),
+    logIndex: t.integer().notNull(),
+    txHash: t.hex().notNull(),
+    timestamp: t.bigint().notNull(),
+    redemptionVault: t.hex().notNull(), // Redemption vault address (FK)
+    depositor: t.hex().notNull(), // Depositor address (FK)
+    redemptionId: t.integer().notNull(), // Redemption ID (FK to redemption)
+    newDueDate: t.bigint().notNull(),
+  }),
+  (table) => ({
+    pk: primaryKey({ columns: [table.chainId, table.block, table.logIndex] }),
+  }),
+);
+
 // Snapshot entities for interval-based state tracking
 export const auctioneerSnapshot = onchainTable(
   "auctioneer_snapshot",
@@ -720,6 +1073,611 @@ export const depositFacilityAssetSnapshot = onchainTable(
   }),
   (table) => ({
     pk: primaryKey({ columns: [table.chainId, table.block, table.facility, table.depositAsset] }),
+  }),
+);
+
+// DepositRedemptionVault Core Entity Relations
+export const depositRedemptionVaultRelations = relations(depositRedemptionVault, ({ many }) => ({
+  assetConfigurations: many(depositRedemptionVaultAssetConfiguration),
+  redemptions: many(redemption),
+  enabledEvents: many(depositRedemptionVaultEnabled),
+  disabledEvents: many(depositRedemptionVaultDisabled),
+  claimDefaultRewardPercentageSetEvents: many(
+    depositRedemptionVaultClaimDefaultRewardPercentageSet,
+  ),
+  facilityAuthorizedEvents: many(depositRedemptionVaultFacilityAuthorized),
+  facilityDeauthorizedEvents: many(depositRedemptionVaultFacilityDeauthorized),
+}));
+
+export const receiptTokenRelations = relations(receiptToken, ({ one, many }) => ({
+  facility: one(depositFacility, {
+    fields: [receiptToken.chainId, receiptToken.facility],
+    references: [depositFacility.chainId, depositFacility.address],
+  }),
+  assetPeriod: one(depositAssetPeriod, {
+    fields: [receiptToken.chainId, receiptToken.depositAsset, receiptToken.depositPeriod],
+    references: [
+      depositAssetPeriod.chainId,
+      depositAssetPeriod.depositAsset,
+      depositAssetPeriod.depositPeriod,
+    ],
+  }),
+  positions: many(convertibleDepositPosition),
+  redemptions: many(redemption),
+}));
+
+export const depositRedemptionVaultAssetConfigurationRelations = relations(
+  depositRedemptionVaultAssetConfiguration,
+  ({ one, many }) => ({
+    redemptionVault: one(depositRedemptionVault, {
+      fields: [
+        depositRedemptionVaultAssetConfiguration.chainId,
+        depositRedemptionVaultAssetConfiguration.redemptionVault,
+      ],
+      references: [depositRedemptionVault.chainId, depositRedemptionVault.address],
+    }),
+    facility: one(depositFacility, {
+      fields: [
+        depositRedemptionVaultAssetConfiguration.chainId,
+        depositRedemptionVaultAssetConfiguration.facility,
+      ],
+      references: [depositFacility.chainId, depositFacility.address],
+    }),
+    depositAsset: one(depositAsset, {
+      fields: [
+        depositRedemptionVaultAssetConfiguration.chainId,
+        depositRedemptionVaultAssetConfiguration.depositAsset,
+      ],
+      references: [depositAsset.chainId, depositAsset.asset],
+    }),
+    annualInterestRateSetEvents: many(depositRedemptionVaultAnnualInterestRateSet),
+    maxBorrowPercentageSetEvents: many(depositRedemptionVaultMaxBorrowPercentageSet),
+  }),
+);
+
+export const redemptionRelations = relations(redemption, ({ one, many }) => ({
+  redemptionVault: one(depositRedemptionVault, {
+    fields: [redemption.chainId, redemption.redemptionVault],
+    references: [depositRedemptionVault.chainId, depositRedemptionVault.address],
+  }),
+  depositor: one(depositor, {
+    fields: [redemption.chainId, redemption.depositor],
+    references: [depositor.chainId, depositor.address],
+  }),
+  assetPeriod: one(depositAssetPeriod, {
+    fields: [redemption.chainId, redemption.depositAsset, redemption.depositPeriod],
+    references: [
+      depositAssetPeriod.chainId,
+      depositAssetPeriod.depositAsset,
+      depositAssetPeriod.depositPeriod,
+    ],
+  }),
+  facility: one(depositFacility, {
+    fields: [redemption.chainId, redemption.facility],
+    references: [depositFacility.chainId, depositFacility.address],
+  }),
+  receiptToken: one(receiptToken, {
+    fields: [redemption.chainId, redemption.receiptTokenManager, redemption.receiptTokenId],
+    references: [
+      receiptToken.chainId,
+      receiptToken.receiptTokenManager,
+      receiptToken.receiptTokenId,
+    ],
+  }),
+  // Position is optional (positionId can be null)
+  // When positionId is null, this relation will be null
+  position: one(convertibleDepositPosition, {
+    fields: [redemption.chainId, redemption.positionId],
+    references: [convertibleDepositPosition.chainId, convertibleDepositPosition.positionId],
+  }),
+  startedEvents: many(depositRedemptionVaultRedemptionStarted),
+  finishedEvents: many(depositRedemptionVaultRedemptionFinished),
+  cancelledEvents: many(depositRedemptionVaultRedemptionCancelled),
+  loans: many(redemptionLoan),
+}));
+
+export const redemptionLoanRelations = relations(redemptionLoan, ({ one, many }) => ({
+  redemption: one(redemption, {
+    fields: [
+      redemptionLoan.chainId,
+      redemptionLoan.redemptionVault,
+      redemptionLoan.depositor,
+      redemptionLoan.redemptionId,
+    ],
+    references: [
+      redemption.chainId,
+      redemption.redemptionVault,
+      redemption.depositor,
+      redemption.redemptionId,
+    ],
+  }),
+  createdEvents: many(depositRedemptionVaultLoanCreated),
+  repaidEvents: many(depositRedemptionVaultLoanRepaid),
+  defaultedEvents: many(depositRedemptionVaultLoanDefaulted),
+  extendedEvents: many(depositRedemptionVaultLoanExtended),
+}));
+
+// DepositRedemptionVault Event Relations
+export const depositRedemptionVaultEnabledRelations = relations(
+  depositRedemptionVaultEnabled,
+  ({ one }) => ({
+    redemptionVault: one(depositRedemptionVault, {
+      fields: [
+        depositRedemptionVaultEnabled.chainId,
+        depositRedemptionVaultEnabled.redemptionVault,
+      ],
+      references: [depositRedemptionVault.chainId, depositRedemptionVault.address],
+    }),
+  }),
+);
+
+export const depositRedemptionVaultDisabledRelations = relations(
+  depositRedemptionVaultDisabled,
+  ({ one }) => ({
+    redemptionVault: one(depositRedemptionVault, {
+      fields: [
+        depositRedemptionVaultDisabled.chainId,
+        depositRedemptionVaultDisabled.redemptionVault,
+      ],
+      references: [depositRedemptionVault.chainId, depositRedemptionVault.address],
+    }),
+  }),
+);
+
+export const depositRedemptionVaultClaimDefaultRewardPercentageSetRelations = relations(
+  depositRedemptionVaultClaimDefaultRewardPercentageSet,
+  ({ one }) => ({
+    redemptionVault: one(depositRedemptionVault, {
+      fields: [
+        depositRedemptionVaultClaimDefaultRewardPercentageSet.chainId,
+        depositRedemptionVaultClaimDefaultRewardPercentageSet.redemptionVault,
+      ],
+      references: [depositRedemptionVault.chainId, depositRedemptionVault.address],
+    }),
+  }),
+);
+
+export const depositRedemptionVaultFacilityAuthorizedRelations = relations(
+  depositRedemptionVaultFacilityAuthorized,
+  ({ one }) => ({
+    redemptionVault: one(depositRedemptionVault, {
+      fields: [
+        depositRedemptionVaultFacilityAuthorized.chainId,
+        depositRedemptionVaultFacilityAuthorized.redemptionVault,
+      ],
+      references: [depositRedemptionVault.chainId, depositRedemptionVault.address],
+    }),
+    facility: one(depositFacility, {
+      fields: [
+        depositRedemptionVaultFacilityAuthorized.chainId,
+        depositRedemptionVaultFacilityAuthorized.facility,
+      ],
+      references: [depositFacility.chainId, depositFacility.address],
+    }),
+  }),
+);
+
+export const depositRedemptionVaultFacilityDeauthorizedRelations = relations(
+  depositRedemptionVaultFacilityDeauthorized,
+  ({ one }) => ({
+    redemptionVault: one(depositRedemptionVault, {
+      fields: [
+        depositRedemptionVaultFacilityDeauthorized.chainId,
+        depositRedemptionVaultFacilityDeauthorized.redemptionVault,
+      ],
+      references: [depositRedemptionVault.chainId, depositRedemptionVault.address],
+    }),
+    facility: one(depositFacility, {
+      fields: [
+        depositRedemptionVaultFacilityDeauthorized.chainId,
+        depositRedemptionVaultFacilityDeauthorized.facility,
+      ],
+      references: [depositFacility.chainId, depositFacility.address],
+    }),
+  }),
+);
+
+export const depositRedemptionVaultAnnualInterestRateSetRelations = relations(
+  depositRedemptionVaultAnnualInterestRateSet,
+  ({ one }) => ({
+    redemptionVault: one(depositRedemptionVault, {
+      fields: [
+        depositRedemptionVaultAnnualInterestRateSet.chainId,
+        depositRedemptionVaultAnnualInterestRateSet.redemptionVault,
+      ],
+      references: [depositRedemptionVault.chainId, depositRedemptionVault.address],
+    }),
+    facility: one(depositFacility, {
+      fields: [
+        depositRedemptionVaultAnnualInterestRateSet.chainId,
+        depositRedemptionVaultAnnualInterestRateSet.facility,
+      ],
+      references: [depositFacility.chainId, depositFacility.address],
+    }),
+    depositAsset: one(depositAsset, {
+      fields: [
+        depositRedemptionVaultAnnualInterestRateSet.chainId,
+        depositRedemptionVaultAnnualInterestRateSet.depositAsset,
+      ],
+      references: [depositAsset.chainId, depositAsset.asset],
+    }),
+    assetConfiguration: one(depositRedemptionVaultAssetConfiguration, {
+      fields: [
+        depositRedemptionVaultAnnualInterestRateSet.chainId,
+        depositRedemptionVaultAnnualInterestRateSet.redemptionVault,
+        depositRedemptionVaultAnnualInterestRateSet.facility,
+        depositRedemptionVaultAnnualInterestRateSet.depositAsset,
+      ],
+      references: [
+        depositRedemptionVaultAssetConfiguration.chainId,
+        depositRedemptionVaultAssetConfiguration.redemptionVault,
+        depositRedemptionVaultAssetConfiguration.facility,
+        depositRedemptionVaultAssetConfiguration.depositAsset,
+      ],
+    }),
+  }),
+);
+
+export const depositRedemptionVaultMaxBorrowPercentageSetRelations = relations(
+  depositRedemptionVaultMaxBorrowPercentageSet,
+  ({ one }) => ({
+    redemptionVault: one(depositRedemptionVault, {
+      fields: [
+        depositRedemptionVaultMaxBorrowPercentageSet.chainId,
+        depositRedemptionVaultMaxBorrowPercentageSet.redemptionVault,
+      ],
+      references: [depositRedemptionVault.chainId, depositRedemptionVault.address],
+    }),
+    facility: one(depositFacility, {
+      fields: [
+        depositRedemptionVaultMaxBorrowPercentageSet.chainId,
+        depositRedemptionVaultMaxBorrowPercentageSet.facility,
+      ],
+      references: [depositFacility.chainId, depositFacility.address],
+    }),
+    depositAsset: one(depositAsset, {
+      fields: [
+        depositRedemptionVaultMaxBorrowPercentageSet.chainId,
+        depositRedemptionVaultMaxBorrowPercentageSet.depositAsset,
+      ],
+      references: [depositAsset.chainId, depositAsset.asset],
+    }),
+    assetConfiguration: one(depositRedemptionVaultAssetConfiguration, {
+      fields: [
+        depositRedemptionVaultMaxBorrowPercentageSet.chainId,
+        depositRedemptionVaultMaxBorrowPercentageSet.redemptionVault,
+        depositRedemptionVaultMaxBorrowPercentageSet.facility,
+        depositRedemptionVaultMaxBorrowPercentageSet.depositAsset,
+      ],
+      references: [
+        depositRedemptionVaultAssetConfiguration.chainId,
+        depositRedemptionVaultAssetConfiguration.redemptionVault,
+        depositRedemptionVaultAssetConfiguration.facility,
+        depositRedemptionVaultAssetConfiguration.depositAsset,
+      ],
+    }),
+  }),
+);
+
+export const depositRedemptionVaultRedemptionStartedRelations = relations(
+  depositRedemptionVaultRedemptionStarted,
+  ({ one }) => ({
+    redemptionVault: one(depositRedemptionVault, {
+      fields: [
+        depositRedemptionVaultRedemptionStarted.chainId,
+        depositRedemptionVaultRedemptionStarted.redemptionVault,
+      ],
+      references: [depositRedemptionVault.chainId, depositRedemptionVault.address],
+    }),
+    depositor: one(depositor, {
+      fields: [
+        depositRedemptionVaultRedemptionStarted.chainId,
+        depositRedemptionVaultRedemptionStarted.depositor,
+      ],
+      references: [depositor.chainId, depositor.address],
+    }),
+    redemption: one(redemption, {
+      fields: [
+        depositRedemptionVaultRedemptionStarted.chainId,
+        depositRedemptionVaultRedemptionStarted.redemptionVault,
+        depositRedemptionVaultRedemptionStarted.depositor,
+        depositRedemptionVaultRedemptionStarted.redemptionId,
+      ],
+      references: [
+        redemption.chainId,
+        redemption.redemptionVault,
+        redemption.depositor,
+        redemption.redemptionId,
+      ],
+    }),
+    facility: one(depositFacility, {
+      fields: [
+        depositRedemptionVaultRedemptionStarted.chainId,
+        depositRedemptionVaultRedemptionStarted.facility,
+      ],
+      references: [depositFacility.chainId, depositFacility.address],
+    }),
+    depositAsset: one(depositAsset, {
+      fields: [
+        depositRedemptionVaultRedemptionStarted.chainId,
+        depositRedemptionVaultRedemptionStarted.depositAsset,
+      ],
+      references: [depositAsset.chainId, depositAsset.asset],
+    }),
+  }),
+);
+
+export const depositRedemptionVaultRedemptionFinishedRelations = relations(
+  depositRedemptionVaultRedemptionFinished,
+  ({ one }) => ({
+    redemptionVault: one(depositRedemptionVault, {
+      fields: [
+        depositRedemptionVaultRedemptionFinished.chainId,
+        depositRedemptionVaultRedemptionFinished.redemptionVault,
+      ],
+      references: [depositRedemptionVault.chainId, depositRedemptionVault.address],
+    }),
+    depositor: one(depositor, {
+      fields: [
+        depositRedemptionVaultRedemptionFinished.chainId,
+        depositRedemptionVaultRedemptionFinished.depositor,
+      ],
+      references: [depositor.chainId, depositor.address],
+    }),
+    redemption: one(redemption, {
+      fields: [
+        depositRedemptionVaultRedemptionFinished.chainId,
+        depositRedemptionVaultRedemptionFinished.redemptionVault,
+        depositRedemptionVaultRedemptionFinished.depositor,
+        depositRedemptionVaultRedemptionFinished.redemptionId,
+      ],
+      references: [
+        redemption.chainId,
+        redemption.redemptionVault,
+        redemption.depositor,
+        redemption.redemptionId,
+      ],
+    }),
+  }),
+);
+
+export const depositRedemptionVaultRedemptionCancelledRelations = relations(
+  depositRedemptionVaultRedemptionCancelled,
+  ({ one }) => ({
+    redemptionVault: one(depositRedemptionVault, {
+      fields: [
+        depositRedemptionVaultRedemptionCancelled.chainId,
+        depositRedemptionVaultRedemptionCancelled.redemptionVault,
+      ],
+      references: [depositRedemptionVault.chainId, depositRedemptionVault.address],
+    }),
+    depositor: one(depositor, {
+      fields: [
+        depositRedemptionVaultRedemptionCancelled.chainId,
+        depositRedemptionVaultRedemptionCancelled.depositor,
+      ],
+      references: [depositor.chainId, depositor.address],
+    }),
+    redemption: one(redemption, {
+      fields: [
+        depositRedemptionVaultRedemptionCancelled.chainId,
+        depositRedemptionVaultRedemptionCancelled.redemptionVault,
+        depositRedemptionVaultRedemptionCancelled.depositor,
+        depositRedemptionVaultRedemptionCancelled.redemptionId,
+      ],
+      references: [
+        redemption.chainId,
+        redemption.redemptionVault,
+        redemption.depositor,
+        redemption.redemptionId,
+      ],
+    }),
+    depositAsset: one(depositAsset, {
+      fields: [
+        depositRedemptionVaultRedemptionCancelled.chainId,
+        depositRedemptionVaultRedemptionCancelled.depositAsset,
+      ],
+      references: [depositAsset.chainId, depositAsset.asset],
+    }),
+  }),
+);
+
+export const depositRedemptionVaultLoanCreatedRelations = relations(
+  depositRedemptionVaultLoanCreated,
+  ({ one }) => ({
+    redemptionVault: one(depositRedemptionVault, {
+      fields: [
+        depositRedemptionVaultLoanCreated.chainId,
+        depositRedemptionVaultLoanCreated.redemptionVault,
+      ],
+      references: [depositRedemptionVault.chainId, depositRedemptionVault.address],
+    }),
+    depositor: one(depositor, {
+      fields: [
+        depositRedemptionVaultLoanCreated.chainId,
+        depositRedemptionVaultLoanCreated.depositor,
+      ],
+      references: [depositor.chainId, depositor.address],
+    }),
+    redemption: one(redemption, {
+      fields: [
+        depositRedemptionVaultLoanCreated.chainId,
+        depositRedemptionVaultLoanCreated.redemptionVault,
+        depositRedemptionVaultLoanCreated.depositor,
+        depositRedemptionVaultLoanCreated.redemptionId,
+      ],
+      references: [
+        redemption.chainId,
+        redemption.redemptionVault,
+        redemption.depositor,
+        redemption.redemptionId,
+      ],
+    }),
+    redemptionLoan: one(redemptionLoan, {
+      fields: [
+        depositRedemptionVaultLoanCreated.chainId,
+        depositRedemptionVaultLoanCreated.redemptionVault,
+        depositRedemptionVaultLoanCreated.depositor,
+        depositRedemptionVaultLoanCreated.redemptionId,
+      ],
+      references: [
+        redemptionLoan.chainId,
+        redemptionLoan.redemptionVault,
+        redemptionLoan.depositor,
+        redemptionLoan.redemptionId,
+      ],
+    }),
+    facility: one(depositFacility, {
+      fields: [
+        depositRedemptionVaultLoanCreated.chainId,
+        depositRedemptionVaultLoanCreated.facility,
+      ],
+      references: [depositFacility.chainId, depositFacility.address],
+    }),
+  }),
+);
+
+export const depositRedemptionVaultLoanRepaidRelations = relations(
+  depositRedemptionVaultLoanRepaid,
+  ({ one }) => ({
+    redemptionVault: one(depositRedemptionVault, {
+      fields: [
+        depositRedemptionVaultLoanRepaid.chainId,
+        depositRedemptionVaultLoanRepaid.redemptionVault,
+      ],
+      references: [depositRedemptionVault.chainId, depositRedemptionVault.address],
+    }),
+    depositor: one(depositor, {
+      fields: [
+        depositRedemptionVaultLoanRepaid.chainId,
+        depositRedemptionVaultLoanRepaid.depositor,
+      ],
+      references: [depositor.chainId, depositor.address],
+    }),
+    redemption: one(redemption, {
+      fields: [
+        depositRedemptionVaultLoanRepaid.chainId,
+        depositRedemptionVaultLoanRepaid.redemptionVault,
+        depositRedemptionVaultLoanRepaid.depositor,
+        depositRedemptionVaultLoanRepaid.redemptionId,
+      ],
+      references: [
+        redemption.chainId,
+        redemption.redemptionVault,
+        redemption.depositor,
+        redemption.redemptionId,
+      ],
+    }),
+    redemptionLoan: one(redemptionLoan, {
+      fields: [
+        depositRedemptionVaultLoanRepaid.chainId,
+        depositRedemptionVaultLoanRepaid.redemptionVault,
+        depositRedemptionVaultLoanRepaid.depositor,
+        depositRedemptionVaultLoanRepaid.redemptionId,
+      ],
+      references: [
+        redemptionLoan.chainId,
+        redemptionLoan.redemptionVault,
+        redemptionLoan.depositor,
+        redemptionLoan.redemptionId,
+      ],
+    }),
+  }),
+);
+
+export const depositRedemptionVaultLoanDefaultedRelations = relations(
+  depositRedemptionVaultLoanDefaulted,
+  ({ one }) => ({
+    redemptionVault: one(depositRedemptionVault, {
+      fields: [
+        depositRedemptionVaultLoanDefaulted.chainId,
+        depositRedemptionVaultLoanDefaulted.redemptionVault,
+      ],
+      references: [depositRedemptionVault.chainId, depositRedemptionVault.address],
+    }),
+    depositor: one(depositor, {
+      fields: [
+        depositRedemptionVaultLoanDefaulted.chainId,
+        depositRedemptionVaultLoanDefaulted.depositor,
+      ],
+      references: [depositor.chainId, depositor.address],
+    }),
+    redemption: one(redemption, {
+      fields: [
+        depositRedemptionVaultLoanDefaulted.chainId,
+        depositRedemptionVaultLoanDefaulted.redemptionVault,
+        depositRedemptionVaultLoanDefaulted.depositor,
+        depositRedemptionVaultLoanDefaulted.redemptionId,
+      ],
+      references: [
+        redemption.chainId,
+        redemption.redemptionVault,
+        redemption.depositor,
+        redemption.redemptionId,
+      ],
+    }),
+    redemptionLoan: one(redemptionLoan, {
+      fields: [
+        depositRedemptionVaultLoanDefaulted.chainId,
+        depositRedemptionVaultLoanDefaulted.redemptionVault,
+        depositRedemptionVaultLoanDefaulted.depositor,
+        depositRedemptionVaultLoanDefaulted.redemptionId,
+      ],
+      references: [
+        redemptionLoan.chainId,
+        redemptionLoan.redemptionVault,
+        redemptionLoan.depositor,
+        redemptionLoan.redemptionId,
+      ],
+    }),
+  }),
+);
+
+export const depositRedemptionVaultLoanExtendedRelations = relations(
+  depositRedemptionVaultLoanExtended,
+  ({ one }) => ({
+    redemptionVault: one(depositRedemptionVault, {
+      fields: [
+        depositRedemptionVaultLoanExtended.chainId,
+        depositRedemptionVaultLoanExtended.redemptionVault,
+      ],
+      references: [depositRedemptionVault.chainId, depositRedemptionVault.address],
+    }),
+    depositor: one(depositor, {
+      fields: [
+        depositRedemptionVaultLoanExtended.chainId,
+        depositRedemptionVaultLoanExtended.depositor,
+      ],
+      references: [depositor.chainId, depositor.address],
+    }),
+    redemption: one(redemption, {
+      fields: [
+        depositRedemptionVaultLoanExtended.chainId,
+        depositRedemptionVaultLoanExtended.redemptionVault,
+        depositRedemptionVaultLoanExtended.depositor,
+        depositRedemptionVaultLoanExtended.redemptionId,
+      ],
+      references: [
+        redemption.chainId,
+        redemption.redemptionVault,
+        redemption.depositor,
+        redemption.redemptionId,
+      ],
+    }),
+    redemptionLoan: one(redemptionLoan, {
+      fields: [
+        depositRedemptionVaultLoanExtended.chainId,
+        depositRedemptionVaultLoanExtended.redemptionVault,
+        depositRedemptionVaultLoanExtended.depositor,
+        depositRedemptionVaultLoanExtended.redemptionId,
+      ],
+      references: [
+        redemptionLoan.chainId,
+        redemptionLoan.redemptionVault,
+        redemptionLoan.depositor,
+        redemptionLoan.redemptionId,
+      ],
+    }),
   }),
 );
 
@@ -818,6 +1776,8 @@ export const depositAssetPeriodRelations = relations(depositAssetPeriod, ({ one,
   }),
   positions: many(convertibleDepositPosition),
   auctioneerDepositPeriods: many(auctioneerDepositPeriod),
+  receiptTokens: many(receiptToken),
+  redemptions: many(redemption),
 }));
 
 export const auctioneerRelations = relations(auctioneer, ({ one, many }) => ({
@@ -933,6 +1893,14 @@ export const depositorRelations = relations(depositor, ({ many }) => ({
   reclaimedEvents: many(convertibleDepositFacilityReclaimed),
   bidEvents: many(convertibleDepositAuctioneerBid),
   convertedDepositEvents: many(convertibleDepositFacilityConvertedDeposit),
+  redemptions: many(redemption),
+  redemptionStartedEvents: many(depositRedemptionVaultRedemptionStarted),
+  redemptionFinishedEvents: many(depositRedemptionVaultRedemptionFinished),
+  redemptionCancelledEvents: many(depositRedemptionVaultRedemptionCancelled),
+  loanCreatedEvents: many(depositRedemptionVaultLoanCreated),
+  loanRepaidEvents: many(depositRedemptionVaultLoanRepaid),
+  loanDefaultedEvents: many(depositRedemptionVaultLoanDefaulted),
+  loanExtendedEvents: many(depositRedemptionVaultLoanExtended),
 }));
 
 export const convertibleDepositPositionRelations = relations(
@@ -958,10 +1926,23 @@ export const convertibleDepositPositionRelations = relations(
         depositAssetPeriod.depositPeriod,
       ],
     }),
+    receiptToken: one(receiptToken, {
+      fields: [
+        convertibleDepositPosition.chainId,
+        convertibleDepositPosition.receiptTokenManager,
+        convertibleDepositPosition.receiptTokenId,
+      ],
+      references: [
+        receiptToken.chainId,
+        receiptToken.receiptTokenManager,
+        receiptToken.receiptTokenId,
+      ],
+    }),
     createdDepositEvents: many(convertibleDepositFacilityCreatedDeposit),
     bidEvents: many(convertibleDepositAuctioneerBid),
     convertedDepositEvents: many(convertibleDepositFacilityConvertedDeposit),
-    // ReceiptToken relation will be added when we create that entity
+    // Note: redemptions relation is omitted because positionId is optional in redemption
+    // Use the reverse relation from redemption.position instead
   }),
 );
 

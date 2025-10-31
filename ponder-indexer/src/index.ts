@@ -7,6 +7,8 @@ import "./handlers/auctioneer.handlers";
 // Facility handlers
 import "./handlers/depositFacility.handlers";
 
-// Future handlers will be imported here:
-// import "./handlers/depositRedemptionVault.handlers";
+// Redemption vault handlers
+import "./handlers/redemptionVault.handlers";
+
+// TODO Future handlers will be imported here:
 // import "./handlers/block.handlers";
