@@ -4,6 +4,9 @@
 import type { Address } from "viem";
 import schema from "ponder:schema";
 import type { Context } from "ponder:registry";
+import { getAssetDecimals, getOrCreateDepositAsset, getOrCreateDepositAssetPeriod } from "./asset";
+import { fetchDepositFacilityAssetCommittedAmount, fetchDepositFacilityAssetPeriodReclaimRate } from "../contracts/depositFacility";
+import { toBpsDecimal, toDecimal } from "../utils/decimal";
 
 /**
  * Get or create a DepositFacility
@@ -67,5 +70,140 @@ export async function updateDepositFacility(
   await context.db.update(schema.depositFacility, {
     chainId,
     address: address.toLowerCase() as Address,
+  }).set(updates);
+}
+
+/**
+ * Get or create a DepositFacilityAsset
+ */
+export async function getOrCreateDepositFacilityAsset(
+  context: Context,
+  chainId: number,
+  facilityAddress: Address,
+  depositAssetAddress: Address,
+): Promise<typeof schema.depositFacilityAsset.$inferSelect> {
+  // Check if it exists
+  const existing = await context.db.find(schema.depositFacilityAsset, {
+    chainId,
+    facility: facilityAddress.toLowerCase() as Address,
+    depositAsset: depositAssetAddress.toLowerCase() as Address,
+  });
+
+  if (existing) {
+    return existing;
+  }
+
+  // Get or create facility and deposit asset
+  await getOrCreateDepositFacility(context, chainId, facilityAddress);
+  await getOrCreateDepositAsset(context, chainId, depositAssetAddress);
+
+  // Fetch committed amount from contract
+  const committedAmount = await fetchDepositFacilityAssetCommittedAmount(
+    context.client,
+    facilityAddress,
+    depositAssetAddress,
+  );
+
+  // Get decimals for decimal calculation
+  const assetDecimals = await getAssetDecimals(context, chainId, depositAssetAddress);
+
+  // Insert new facility asset
+  const newAsset = {
+    chainId,
+    facility: facilityAddress.toLowerCase() as Address,
+    depositAsset: depositAssetAddress.toLowerCase() as Address,
+    committedAmount,
+    committedAmountDecimal: toDecimal(committedAmount, assetDecimals),
+  };
+
+  await context.db.insert(schema.depositFacilityAsset).values(newAsset);
+
+  return newAsset;
+}
+
+/**
+ * Get or create a DepositFacilityAssetPeriod
+ */
+export async function getOrCreateDepositFacilityAssetPeriod(
+  context: Context,
+  chainId: number,
+  facilityAddress: Address,
+  depositAssetAddress: Address,
+  depositPeriod: number,
+): Promise<typeof schema.depositFacilityAssetPeriod.$inferSelect> {
+  // Check if it exists
+  const existing = await context.db.find(schema.depositFacilityAssetPeriod, {
+    chainId,
+    facility: facilityAddress.toLowerCase() as Address,
+    depositAsset: depositAssetAddress.toLowerCase() as Address,
+    depositPeriod,
+  });
+
+  if (existing) {
+    return existing;
+  }
+
+  // Get or create facility asset
+  await getOrCreateDepositFacilityAsset(context, chainId, facilityAddress, depositAssetAddress);
+
+  // Get or create deposit asset period
+  await getOrCreateDepositAssetPeriod(context, chainId, depositAssetAddress, depositPeriod);
+
+  // Fetch reclaim rate from contract
+  const reclaimRate = await fetchDepositFacilityAssetPeriodReclaimRate(
+    context.client,
+    facilityAddress,
+    depositAssetAddress,
+    depositPeriod,
+  );
+
+  // Insert new facility asset period
+  const newPeriod = {
+    chainId,
+    facility: facilityAddress.toLowerCase() as Address,
+    depositAsset: depositAssetAddress.toLowerCase() as Address,
+    depositPeriod,
+    reclaimRate: BigInt(reclaimRate),
+    reclaimRateDecimal: toBpsDecimal(reclaimRate),
+  };
+
+  await context.db.insert(schema.depositFacilityAssetPeriod).values(newPeriod);
+
+  return newPeriod;
+}
+
+/**
+ * Update an existing DepositFacilityAsset
+ */
+export async function updateDepositFacilityAsset(
+  context: Context,
+  chainId: number,
+  facilityAddress: Address,
+  depositAssetAddress: Address,
+  updates: Partial<Omit<typeof schema.depositFacilityAsset.$inferSelect, "chainId" | "facility" | "depositAsset">>,
+): Promise<void> {
+  await context.db.update(schema.depositFacilityAsset, {
+    chainId,
+    facility: facilityAddress.toLowerCase() as Address,
+    depositAsset: depositAssetAddress.toLowerCase() as Address,
+  }).set(updates);
+}
+
+/**
+ * Update an existing DepositFacilityAssetPeriod
+ */
+export async function updateDepositFacilityAssetPeriod(
+  context: Context,
+  chainId: number,
+  facilityAddress: Address,
+  depositAssetAddress: Address,
+  depositPeriod: number,
+  updates: Partial<Omit<typeof schema.depositFacilityAssetPeriod.$inferSelect, "chainId" | "facility" | "depositAsset" | "depositPeriod">>,
+): Promise<void> {
+  await context.db.update(schema.depositFacilityAssetPeriod, {
+    chainId,
+    facility: facilityAddress.toLowerCase() as Address,
+    depositAsset: depositAssetAddress.toLowerCase() as Address,
+    depositPeriod,
   }).set(updates);
 }

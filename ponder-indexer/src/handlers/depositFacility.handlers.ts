@@ -3,14 +3,17 @@
 import { ponder } from "ponder:registry";
 import type { Address } from "viem";
 import schema from "ponder:schema";
-import { getOrCreateDepositFacility, updateDepositFacility } from "../entities/depositFacility";
+import {
+  getOrCreateDepositFacility,
+  updateDepositFacility,
+} from "../entities/depositFacility";
 
 ponder.on("ConvertibleDepositFacility:Enabled", async ({ event, context }) => {
   const chainId = Number(context.chain.id);
   const facilityAddress = event.log.address as Address;
 
   // Get or create facility
-  const facility = await getOrCreateDepositFacility(
+  await getOrCreateDepositFacility(
     context,
     chainId,
     facilityAddress,
@@ -35,7 +38,7 @@ ponder.on("ConvertibleDepositFacility:Disabled", async ({ event, context }) => {
   const facilityAddress = event.log.address as Address;
 
   // Get or create facility
-  const facility = await getOrCreateDepositFacility(
+  await getOrCreateDepositFacility(
     context,
     chainId,
     facilityAddress,
@@ -53,5 +56,43 @@ ponder.on("ConvertibleDepositFacility:Disabled", async ({ event, context }) => {
 
   // Update facility status
   await updateDepositFacility(context, chainId, facilityAddress, { enabled: false });
+});
+
+ponder.on("ConvertibleDepositFacility:OperatorAuthorized", async ({ event, context }) => {
+  const chainId = Number(context.chain.id);
+  const facilityAddress = event.log.address as Address;
+
+  // Get or create facility
+  await getOrCreateDepositFacility(context, chainId, facilityAddress);
+
+  // Record event
+  await context.db.insert(schema.convertibleDepositFacilityOperatorAuthorized).values({
+    chainId,
+    block: BigInt(event.block.number),
+    logIndex: event.log.logIndex,
+    txHash: event.transaction.hash,
+    timestamp: BigInt(event.block.timestamp),
+    facility: facilityAddress.toLowerCase() as Address,
+    operator: (event.args.operator as Address).toLowerCase() as Address,
+  });
+});
+
+ponder.on("ConvertibleDepositFacility:OperatorDeauthorized", async ({ event, context }) => {
+  const chainId = Number(context.chain.id);
+  const facilityAddress = event.log.address as Address;
+
+  // Get or create facility
+  await getOrCreateDepositFacility(context, chainId, facilityAddress);
+
+  // Record event
+  await context.db.insert(schema.convertibleDepositFacilityOperatorDeauthorized).values({
+    chainId,
+    block: BigInt(event.block.number),
+    logIndex: event.log.logIndex,
+    txHash: event.transaction.hash,
+    timestamp: BigInt(event.block.timestamp),
+    facility: facilityAddress.toLowerCase() as Address,
+    operator: (event.args.operator as Address).toLowerCase() as Address,
+  });
 });
 

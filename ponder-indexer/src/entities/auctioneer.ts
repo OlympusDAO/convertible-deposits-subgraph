@@ -6,7 +6,7 @@ import schema from "ponder:schema";
 import type { Context } from "ponder:registry";
 import { fetchAuctioneerConfigBatch } from "../contracts/auctioneer";
 import { toBpsDecimal } from "../utils/decimal";
-import { getOrCreateDepositAsset } from "./asset";
+import { getOrCreateDepositAsset, getOrCreateDepositAssetPeriod } from "./asset";
 
 /**
  * Get or create an Auctioneer
@@ -82,6 +82,67 @@ export async function updateAuctioneer(
   await context.db.update(schema.auctioneer, {
     chainId,
     address: address.toLowerCase() as Address,
+  }).set(updates);
+}
+
+/**
+ * Get or create an AuctioneerDepositPeriod
+ */
+export async function getOrCreateAuctioneerDepositPeriod(
+  context: Context,
+  chainId: number,
+  auctioneerAddress: Address,
+  depositAssetAddress: Address,
+  depositPeriod: number,
+): Promise<typeof schema.auctioneerDepositPeriod.$inferSelect> {
+  // Check if it exists
+  const existing = await context.db.find(schema.auctioneerDepositPeriod, {
+    chainId,
+    auctioneer: auctioneerAddress.toLowerCase() as Address,
+    depositAsset: depositAssetAddress.toLowerCase() as Address,
+    depositPeriod,
+  });
+
+  if (existing) {
+    return existing;
+  }
+
+  // Get or create the auctioneer first
+  await getOrCreateAuctioneer(context, chainId, auctioneerAddress);
+
+  // Get or create the deposit asset period
+  await getOrCreateDepositAssetPeriod(context, chainId, depositAssetAddress, depositPeriod);
+
+  // Insert new auctioneer deposit period
+  const newPeriod = {
+    chainId,
+    auctioneer: auctioneerAddress.toLowerCase() as Address,
+    depositAsset: depositAssetAddress.toLowerCase() as Address,
+    depositPeriod,
+    enabled: false,
+  };
+
+  await context.db.insert(schema.auctioneerDepositPeriod).values(newPeriod);
+
+  return newPeriod;
+}
+
+/**
+ * Update an existing AuctioneerDepositPeriod
+ */
+export async function updateAuctioneerDepositPeriod(
+  context: Context,
+  chainId: number,
+  auctioneerAddress: Address,
+  depositAssetAddress: Address,
+  depositPeriod: number,
+  updates: Partial<Omit<typeof schema.auctioneerDepositPeriod.$inferSelect, "chainId" | "auctioneer" | "depositAsset" | "depositPeriod">>,
+): Promise<void> {
+  await context.db.update(schema.auctioneerDepositPeriod, {
+    chainId,
+    auctioneer: auctioneerAddress.toLowerCase() as Address,
+    depositAsset: depositAssetAddress.toLowerCase() as Address,
+    depositPeriod,
   }).set(updates);
 }
 
