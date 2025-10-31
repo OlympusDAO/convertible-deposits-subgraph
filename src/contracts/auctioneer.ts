@@ -1,257 +1,204 @@
-import { experimental_createEffect, S } from "envio";
-import { ConvertibleDepositAuctioneerAbi } from "../abi/ConvertibleDepositAuctioneer";
-import { getClient } from "../utils/client";
+// Contract call functions for ConvertibleDepositAuctioneer
+// In Ponder, we use direct contract calls instead of Effect API
+
+import type { Address } from "viem";
+import { ConvertibleDepositAuctioneerAbi } from "../../abis/ConvertibleDepositAuctioneer";
+import type { PonderClient } from "../types";
 
 /**
- * Fetch auctioneer version
+ * Fetch auctioneer current tick (price, capacity, lastUpdate)
  */
-export const fetchAuctioneerVersion = experimental_createEffect(
-  {
-    name: "fetchAuctioneerVersion",
-    input: {
-      chainId: S.number,
-      address: S.string,
-    },
-    output: S.schema({
-      major: S.number,
-      minor: S.number,
-    }),
-    cache: true,
-  },
-  async ({ input }) => {
-    const client = getClient(input.chainId);
-    const auctioneerAddress = input.address as `0x${string}`;
+export async function fetchAuctioneerCurrentTick(
+  client: PonderClient,
+  address: Address,
+  depositPeriod: number,
+): Promise<{ price: bigint; capacity: bigint; lastUpdate: number }> {
+  const result = await client.readContract({
+    address,
+    abi: ConvertibleDepositAuctioneerAbi,
+    functionName: "getCurrentTick",
+    args: [depositPeriod],
+  });
 
-    const result = await client.readContract({
-      address: auctioneerAddress,
-      abi: ConvertibleDepositAuctioneerAbi,
-      functionName: "VERSION",
-    });
-
-    return {
-      major: result[0],
-      minor: result[1],
-    };
-  },
-);
-
-export const fetchAuctioneerCurrentTick = experimental_createEffect(
-  {
-    name: "fetchAuctioneerCurrentTick",
-    input: {
-      chainId: S.number,
-      address: S.string,
-      depositPeriod: S.number,
-    },
-    output: S.schema({
-      price: S.bigint,
-      capacity: S.bigint,
-      lastUpdate: S.number,
-    }),
-    cache: false, // Don't cache as this changes frequently
-  },
-  async ({ input }) => {
-    const client = getClient(input.chainId);
-    const auctioneerAddress = input.address as `0x${string}`;
-
-    const result = await client.readContract({
-      address: auctioneerAddress,
-      abi: ConvertibleDepositAuctioneerAbi,
-      functionName: "getCurrentTick",
-      args: [input.depositPeriod],
-    });
-
-    return {
-      price: result.price,
-      capacity: result.capacity,
-      lastUpdate: result.lastUpdate,
-    };
-  },
-);
-
-export const fetchAuctioneerTrackingPeriod = experimental_createEffect(
-  {
-    name: "fetchAuctioneerTrackingPeriod",
-    input: {
-      chainId: S.number,
-      address: S.string,
-    },
-    output: S.number,
-    cache: true,
-  },
-  async ({ input }) => {
-    const client = getClient(input.chainId);
-    const auctioneerAddress = input.address as `0x${string}`;
-
-    const result = await client.readContract({
-      address: auctioneerAddress,
-      abi: ConvertibleDepositAuctioneerAbi,
-      functionName: "getAuctionTrackingPeriod",
-    });
-
-    return result;
-  },
-);
-
-export const fetchAuctioneerDepositAsset = experimental_createEffect(
-  {
-    name: "fetchAuctioneerDepositAsset",
-    input: {
-      chainId: S.number,
-      address: S.string,
-    },
-    output: S.string,
-    cache: true,
-  },
-  async ({ input }) => {
-    const client = getClient(input.chainId);
-    const auctioneerAddress = input.address as `0x${string}`;
-
-    const result = await client.readContract({
-      address: auctioneerAddress,
-      abi: ConvertibleDepositAuctioneerAbi,
-      functionName: "getDepositAsset",
-    });
-
-    return result;
-  },
-);
-
-export const fetchAuctioneerTickStep = experimental_createEffect(
-  {
-    name: "fetchAuctioneerTickStep",
-    input: {
-      chainId: S.number,
-      address: S.string,
-    },
-    output: S.number,
-    cache: true,
-  },
-  async ({ input }) => {
-    const client = getClient(input.chainId);
-    const auctioneerAddress = input.address as `0x${string}`;
-
-    const result = await client.readContract({
-      address: auctioneerAddress,
-      abi: ConvertibleDepositAuctioneerAbi,
-      functionName: "getTickStep",
-    });
-
-    return result;
-  },
-);
-
-export const fetchAuctioneerParameters = experimental_createEffect(
-  {
-    name: "fetchAuctioneerParameters",
-    input: {
-      chainId: S.number,
-      address: S.string,
-    },
-    output: S.schema({
-      target: S.bigint,
-      tickSize: S.bigint,
-      minPrice: S.bigint,
-    }),
-    cache: true,
-  },
-  async ({ input }) => {
-    const client = getClient(input.chainId);
-    const auctioneerAddress = input.address as `0x${string}`;
-
-    const result = await client.readContract({
-      address: auctioneerAddress,
-      abi: ConvertibleDepositAuctioneerAbi,
-      functionName: "getAuctionParameters",
-    });
-
-    return result;
-  },
-);
+  return {
+    price: result.price,
+    capacity: result.capacity,
+    lastUpdate: result.lastUpdate,
+  };
+}
 
 /**
- * Fetch auctioneer day state (getDayState)
+ * Batch fetch all auctioneer configuration data in a single multicall
+ * This is more efficient than making separate calls
  */
-export const fetchAuctioneerDayState = experimental_createEffect(
-  {
-    name: "fetchAuctioneerDayState",
-    input: {
-      chainId: S.number,
-      address: S.string,
+export async function fetchAuctioneerConfigBatch(
+  client: PonderClient,
+  address: Address,
+): Promise<{
+  version: { major: number; minor: number };
+  trackingPeriod: number;
+  depositAsset: Address;
+  tickStep: number;
+}> {
+  const results = await client.multicall({
+    contracts: [
+      {
+        address,
+        abi: ConvertibleDepositAuctioneerAbi,
+        functionName: "VERSION",
+      },
+      {
+        address,
+        abi: ConvertibleDepositAuctioneerAbi,
+        functionName: "getAuctionTrackingPeriod",
+      },
+      {
+        address,
+        abi: ConvertibleDepositAuctioneerAbi,
+        functionName: "getDepositAsset",
+      },
+      {
+        address,
+        abi: ConvertibleDepositAuctioneerAbi,
+        functionName: "getTickStep",
+      },
+    ],
+  });
+
+  // Extract results with proper typing
+  const versionResult = results[0];
+  const trackingPeriodResult = results[1];
+  const depositAssetResult = results[2];
+  const tickStepResult = results[3];
+
+  if (
+    versionResult.status === "failure" ||
+    trackingPeriodResult.status === "failure" ||
+    depositAssetResult.status === "failure" ||
+    tickStepResult.status === "failure"
+  ) {
+    throw new Error(
+      `Failed to fetch auctioneer config batch for ${address}: ${versionResult.error || trackingPeriodResult.error || depositAssetResult.error || tickStepResult.error}`,
+    );
+  }
+
+  return {
+    version: {
+      major: versionResult.result[0],
+      minor: versionResult.result[1],
     },
-    output: S.schema({
-      dayInitTimestamp: S.bigint,
-      convertible: S.bigint,
-    }),
-    cache: true,
-  },
-  async ({ input }) => {
-    const client = getClient(input.chainId);
-    const auctioneerAddress = input.address as `0x${string}`;
+    trackingPeriod: trackingPeriodResult.result,
+    depositAsset: depositAssetResult.result,
+    tickStep: tickStepResult.result,
+  };
+}
 
-    const result = await client.readContract({
-      address: auctioneerAddress,
-      abi: ConvertibleDepositAuctioneerAbi,
-      functionName: "getDayState",
-    });
+/**
+ * Fetch auctioneer parameters (target, tickSize, minPrice)
+ */
+export async function fetchAuctioneerParameters(
+  client: PonderClient,
+  address: Address,
+): Promise<{ target: bigint; tickSize: bigint; minPrice: bigint }> {
+  const result = await client.readContract({
+    address,
+    abi: ConvertibleDepositAuctioneerAbi,
+    functionName: "getAuctionParameters",
+  });
 
-    return {
-      dayInitTimestamp: BigInt(result.initTimestamp),
-      convertible: result.convertible,
-    };
-  },
-);
+  return result;
+}
+
+/**
+ * Fetch auctioneer day state (dayInitTimestamp, convertible)
+ */
+export async function fetchAuctioneerDayState(
+  client: PonderClient,
+  address: Address,
+): Promise<{ dayInitTimestamp: bigint; convertible: bigint }> {
+  const result = await client.readContract({
+    address,
+    abi: ConvertibleDepositAuctioneerAbi,
+    functionName: "getDayState",
+  });
+
+  return {
+    dayInitTimestamp: BigInt(result.initTimestamp),
+    convertible: result.convertible,
+  };
+}
+
+/**
+ * Batch fetch auctioneer day state and parameters in a single multicall
+ */
+export async function fetchAuctioneerDayStateAndParameters(
+  client: PonderClient,
+  address: Address,
+): Promise<{
+  dayState: { dayInitTimestamp: bigint; convertible: bigint };
+  parameters: { target: bigint; tickSize: bigint; minPrice: bigint };
+}> {
+  const results = await client.multicall({
+    contracts: [
+      {
+        address,
+        abi: ConvertibleDepositAuctioneerAbi,
+        functionName: "getDayState",
+      },
+      {
+        address,
+        abi: ConvertibleDepositAuctioneerAbi,
+        functionName: "getAuctionParameters",
+      },
+    ],
+  });
+
+  const dayStateResult = results[0];
+  const parametersResult = results[1];
+
+  if (dayStateResult.status === "failure" || parametersResult.status === "failure") {
+    throw new Error(
+      `Failed to fetch auctioneer day state and parameters for ${address}: ${dayStateResult.error || parametersResult.error}`,
+    );
+  }
+
+  return {
+    dayState: {
+      dayInitTimestamp: BigInt(dayStateResult.result.initTimestamp),
+      convertible: dayStateResult.result.convertible,
+    },
+    parameters: parametersResult.result,
+  };
+}
 
 /**
  * Fetch auctioneer active status
  */
-export const fetchAuctioneerIsActive = experimental_createEffect(
-  {
-    name: "fetchAuctioneerIsActive",
-    input: {
-      chainId: S.number,
-      address: S.string,
-    },
-    output: S.boolean,
-    cache: true,
-  },
-  async ({ input }) => {
-    const client = getClient(input.chainId);
-    const auctioneerAddress = input.address as `0x${string}`;
+export async function fetchAuctioneerIsActive(
+  client: PonderClient,
+  address: Address,
+): Promise<boolean> {
+  const result = await client.readContract({
+    address,
+    abi: ConvertibleDepositAuctioneerAbi,
+    functionName: "isActive",
+  });
 
-    const result = await client.readContract({
-      address: auctioneerAddress,
-      abi: ConvertibleDepositAuctioneerAbi,
-      functionName: "isActive",
-    });
-
-    return result;
-  },
-);
+  return result;
+}
 
 /**
  * Fetch auctioneer enabled deposit periods
  */
-export const fetchAuctioneerEnabledPeriods = experimental_createEffect(
-  {
-    name: "fetchAuctioneerEnabledPeriods",
-    input: {
-      chainId: S.number,
-      address: S.string,
-    },
-    output: S.array(S.number),
-    cache: true,
-  },
-  async ({ input }) => {
-    const client = getClient(input.chainId);
-    const auctioneerAddress = input.address as `0x${string}`;
+export async function fetchAuctioneerEnabledPeriods(
+  client: PonderClient,
+  address: Address,
+): Promise<number[]> {
+  const result = await client.readContract({
+    address,
+    abi: ConvertibleDepositAuctioneerAbi,
+    functionName: "getDepositPeriods",
+  });
 
-    const result = await client.readContract({
-      address: auctioneerAddress,
-      abi: ConvertibleDepositAuctioneerAbi,
-      functionName: "getDepositPeriods",
-    });
-
-    return [...result];
-  },
-);
+  return [...result];
+}

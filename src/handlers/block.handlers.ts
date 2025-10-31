@@ -1,66 +1,56 @@
-import { onBlock } from "generated";
-import { fetchBlockTimestamp } from "../contracts/block";
-import {
-  getOrCreateAuctioneerSnapshot,
-  getOrCreateDepositFacilitySnapshot,
-} from "../entities/snapshot";
-import { getAddressId } from "../utils/ids";
-import {
-  getAuctioneerAddressesFromConfig,
-  getFacilityAddressesFromConfig,
-} from "../utils/snapshot";
+// Block handler for periodic snapshot creation
+// Creates snapshots every 3000 blocks (~1 hour at 12s block time)
 
-// TODO add chain definition for mainnet
+import { ponder } from "ponder:registry";
+import schema from "ponder:schema";
+import { and, eq } from "ponder";
+import { getOrCreateDepositFacilityAssetSnapshot, refreshAuctionState } from "../entities/snapshot";
 
-[
-  {
-    chain: 11155111 as const,
-    interval: 3000, // 1 hour at 12 second blocks
-    startBlock: 9180152, // Activation
-  },
-].forEach(({ chain, interval, startBlock }) => {
-  onBlock(
-    {
-      name: "snapshot",
-      chain: chain,
-      interval,
-      startBlock,
-    },
-    async ({ block, context }) => {
-      context.log.info(`Processing block ${block.number} on chain ${block.chainId}`);
+ponder.on("Snapshot:block", async ({ event, context }) => {
+  const chainId = Number(context.chain.id);
+  const blockNumber = BigInt(event.block.number);
+  const timestamp = BigInt(event.block.timestamp);
 
-      const timestamp = await context.effect(fetchBlockTimestamp, {
-        chainId: block.chainId,
-        blockNumber: block.number,
-      });
+  // Get all enabled auctioneers for this chain
+  const auctioneers = await context.db.sql
+    .select()
+    .from(schema.auctioneer)
+    .where(and(eq(schema.auctioneer.chainId, chainId), eq(schema.auctioneer.enabled, true)));
 
-      const auctioneerAddresses = getAuctioneerAddressesFromConfig(block.chainId);
-      for (const address of auctioneerAddresses) {
-        const auctioneer = await context.Auctioneer.get(getAddressId(block.chainId, address));
-        if (!auctioneer || !auctioneer.enabled) continue;
+  for (const auctioneer of auctioneers) {
+    await refreshAuctionState(context, chainId, blockNumber, timestamp, auctioneer.address);
+  }
 
-        await getOrCreateAuctioneerSnapshot(
-          context,
-          block.chainId,
-          block.number,
-          timestamp,
-          auctioneer,
-        );
-      }
+  // Get all enabled facilities for this chain
+  const facilities = await context.db.sql
+    .select()
+    .from(schema.depositFacility)
+    .where(
+      and(eq(schema.depositFacility.chainId, chainId), eq(schema.depositFacility.enabled, true)),
+    );
 
-      const facilityAddresses = getFacilityAddressesFromConfig(block.chainId);
-      for (const address of facilityAddresses) {
-        const facility = await context.DepositFacility.get(getAddressId(block.chainId, address));
-        if (!facility || !facility.enabled) continue;
+  for (const facility of facilities) {
+    // Get all deposit facility assets for this facility
+    const facilityAssets = await context.db.sql
+      .select()
+      .from(schema.depositFacilityAsset)
+      .where(
+        and(
+          eq(schema.depositFacilityAsset.chainId, chainId),
+          eq(schema.depositFacilityAsset.facility, facility.address),
+        ),
+      );
 
-        await getOrCreateDepositFacilitySnapshot(
-          context,
-          block.chainId,
-          block.number,
-          timestamp,
-          facility,
-        );
-      }
-    },
-  );
+    // Create snapshots for each asset
+    for (const facilityAsset of facilityAssets) {
+      await getOrCreateDepositFacilityAssetSnapshot(
+        context,
+        chainId,
+        blockNumber,
+        timestamp,
+        facility.address,
+        facilityAsset.depositAsset,
+      );
+    }
+  }
 });

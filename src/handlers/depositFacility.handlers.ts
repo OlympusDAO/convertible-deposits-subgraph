@@ -1,589 +1,515 @@
-/*
- * Event handlers for ConvertibleDepositFacility contract
- */
-import {
-  ConvertibleDepositFacility,
-  type ConvertibleDepositFacility_AssetCommitCancelled,
-  type ConvertibleDepositFacility_AssetCommitted,
-  type ConvertibleDepositFacility_AssetCommitWithdrawn,
-  type ConvertibleDepositFacility_AssetPeriodReclaimRateSet,
-  type ConvertibleDepositFacility_ClaimedYield,
-  type ConvertibleDepositFacility_ConvertedDeposit,
-  type ConvertibleDepositFacility_ConvertedDeposits,
-  type ConvertibleDepositFacility_CreatedDeposit,
-  type ConvertibleDepositFacility_Disabled,
-  type ConvertibleDepositFacility_Enabled,
-  type ConvertibleDepositFacility_OperatorAuthorized,
-  type ConvertibleDepositFacility_OperatorDeauthorized,
-  type ConvertibleDepositFacility_Reclaimed,
-} from "generated";
-import type { Hex } from "viem";
+// Event handlers for ConvertibleDepositFacility contract
+
+import { ponder } from "ponder:registry";
+import schema from "ponder:schema";
+import type { Address } from "viem";
 import { fetchPositions, fetchUserPositionIds } from "../contracts/position";
-import { getAssetDecimals, getDepositAsset, getDepositAssetPeriod } from "../entities/asset";
+import { getAssetDecimals } from "../entities/asset";
 import {
   getOrCreateDepositFacility,
   getOrCreateDepositFacilityAsset,
   getOrCreateDepositFacilityAssetPeriod,
+  updateDepositFacility,
+  updateDepositFacilityAsset,
+  updateDepositFacilityAssetPeriod,
 } from "../entities/depositFacility";
 import { getOrCreateDepositor } from "../entities/depositor";
-import { getOrCreatePosition } from "../entities/position";
-import {
-  getOrCreateDepositFacilityAssetSnapshot,
-  getOrCreateDepositFacilitySnapshot,
-  updateFacilityAssetDeposited,
-} from "../entities/snapshot";
+import { getOrCreatePosition, getPosition, updatePosition } from "../entities/position";
+import { updateFacilityAssetSnapshotDeposited } from "../entities/snapshot";
 import { toBpsDecimal, toDecimal, toOhmDecimal } from "../utils/decimal";
-import { buildEntityId, getBlockId, getPositionId } from "../utils/ids";
 
-ConvertibleDepositFacility.AssetCommitCancelled.handler(async ({ event, context }) => {
-  const id = getBlockId(event.chainId, event.block.number, event.logIndex);
+ponder.on("ConvertibleDepositFacility:Enabled", async ({ event, context }) => {
+  const chainId = Number(context.chain.id);
+  const facilityAddress = event.log.address as Address;
+
+  // Get or create facility
+  await getOrCreateDepositFacility(context, chainId, facilityAddress);
+
+  // Record the Enabled event
+  await context.db.insert(schema.convertibleDepositFacilityEnabled).values({
+    chainId,
+    block: BigInt(event.block.number),
+    logIndex: event.log.logIndex,
+    txHash: event.transaction.hash,
+    timestamp: BigInt(event.block.timestamp),
+    facility: facilityAddress.toLowerCase() as Address,
+  });
+
+  // Update facility status
+  await updateDepositFacility(context, chainId, facilityAddress, { enabled: true });
+});
+
+ponder.on("ConvertibleDepositFacility:Disabled", async ({ event, context }) => {
+  const chainId = Number(context.chain.id);
+  const facilityAddress = event.log.address as Address;
+
+  // Get or create facility
+  await getOrCreateDepositFacility(context, chainId, facilityAddress);
+
+  // Record the Disabled event
+  await context.db.insert(schema.convertibleDepositFacilityDisabled).values({
+    chainId,
+    block: BigInt(event.block.number),
+    logIndex: event.log.logIndex,
+    txHash: event.transaction.hash,
+    timestamp: BigInt(event.block.timestamp),
+    facility: facilityAddress.toLowerCase() as Address,
+  });
+
+  // Update facility status
+  await updateDepositFacility(context, chainId, facilityAddress, { enabled: false });
+});
+
+ponder.on("ConvertibleDepositFacility:OperatorAuthorized", async ({ event, context }) => {
+  const chainId = Number(context.chain.id);
+  const facilityAddress = event.log.address as Address;
+
+  // Get or create facility
+  await getOrCreateDepositFacility(context, chainId, facilityAddress);
+
+  // Record event
+  await context.db.insert(schema.convertibleDepositFacilityOperatorAuthorized).values({
+    chainId,
+    block: BigInt(event.block.number),
+    logIndex: event.log.logIndex,
+    txHash: event.transaction.hash,
+    timestamp: BigInt(event.block.timestamp),
+    facility: facilityAddress.toLowerCase() as Address,
+    operator: (event.args.operator as Address).toLowerCase() as Address,
+  });
+});
+
+ponder.on("ConvertibleDepositFacility:OperatorDeauthorized", async ({ event, context }) => {
+  const chainId = Number(context.chain.id);
+  const facilityAddress = event.log.address as Address;
+
+  // Get or create facility
+  await getOrCreateDepositFacility(context, chainId, facilityAddress);
+
+  // Record event
+  await context.db.insert(schema.convertibleDepositFacilityOperatorDeauthorized).values({
+    chainId,
+    block: BigInt(event.block.number),
+    logIndex: event.log.logIndex,
+    txHash: event.transaction.hash,
+    timestamp: BigInt(event.block.timestamp),
+    facility: facilityAddress.toLowerCase() as Address,
+    operator: (event.args.operator as Address).toLowerCase() as Address,
+  });
+});
+
+ponder.on("ConvertibleDepositFacility:AssetCommitCancelled", async ({ event, context }) => {
+  const chainId = Number(context.chain.id);
+  const facilityAddress = event.log.address as Address;
+  const assetAddress = event.args.asset as Address;
 
   // Create/fetch records
   const facilityAsset = await getOrCreateDepositFacilityAsset(
     context,
-    event.chainId,
-    event.srcAddress as Hex,
-    event.params.asset as Hex,
+    chainId,
+    facilityAddress,
+    assetAddress,
   );
-  const assetDecimals = await getAssetDecimals(context, event.chainId, event.params.asset as Hex);
+  const assetDecimals = await getAssetDecimals(context, chainId, assetAddress);
 
   // Calculate committed amount
-  const committedAmount = facilityAsset.committedAmount - event.params.amount;
+  const committedAmount = facilityAsset.committedAmount - BigInt(event.args.amount);
 
   // Record event
-  const entity: ConvertibleDepositFacility_AssetCommitCancelled = {
-    id,
-    facilityAsset_id: facilityAsset.id,
-    chainId: event.chainId,
-    txHash: event.transaction.hash,
+  await context.db.insert(schema.convertibleDepositFacilityAssetCommitCancelled).values({
+    chainId,
     block: BigInt(event.block.number),
+    logIndex: event.log.logIndex,
+    txHash: event.transaction.hash,
     timestamp: BigInt(event.block.timestamp),
-    operator: event.params.operator.toLowerCase(),
-    amount: event.params.amount,
-    amountDecimal: toDecimal(event.params.amount, assetDecimals),
+    facility: facilityAddress.toLowerCase() as Address,
+    depositAsset: assetAddress.toLowerCase() as Address,
+    operator: (event.args.operator as Address).toLowerCase() as Address,
+    amount: BigInt(event.args.amount),
+    amountDecimal: toDecimal(BigInt(event.args.amount), assetDecimals),
     committedAmount: committedAmount,
     committedAmountDecimal: toDecimal(committedAmount, assetDecimals),
-  };
-  context.ConvertibleDepositFacility_AssetCommitCancelled.set(entity);
+  });
 
   // Update facility asset amount
-  const updatedFacilityAsset = {
-    ...facilityAsset,
+  await updateDepositFacilityAsset(context, chainId, facilityAddress, assetAddress, {
     committedAmount: committedAmount,
     committedAmountDecimal: toDecimal(committedAmount, assetDecimals),
-  };
-  context.DepositFacilityAsset.set(updatedFacilityAsset);
+  });
 });
 
-ConvertibleDepositFacility.AssetCommitWithdrawn.handler(async ({ event, context }) => {
-  const id = getBlockId(event.chainId, event.block.number, event.logIndex);
+ponder.on("ConvertibleDepositFacility:AssetCommitWithdrawn", async ({ event, context }) => {
+  const chainId = Number(context.chain.id);
+  const facilityAddress = event.log.address as Address;
+  const assetAddress = event.args.asset as Address;
 
   // Create/fetch records
   const facilityAsset = await getOrCreateDepositFacilityAsset(
     context,
-    event.chainId,
-    event.srcAddress as Hex,
-    event.params.asset as Hex,
+    chainId,
+    facilityAddress,
+    assetAddress,
   );
-  const assetDecimals = await getAssetDecimals(context, event.chainId, event.params.asset as Hex);
+  const assetDecimals = await getAssetDecimals(context, chainId, assetAddress);
 
   // Calculate committed amount
-  const committedAmount = facilityAsset.committedAmount - event.params.amount;
+  const committedAmount = facilityAsset.committedAmount - BigInt(event.args.amount);
 
   // Record event
-  const entity: ConvertibleDepositFacility_AssetCommitWithdrawn = {
-    id,
-    facilityAsset_id: facilityAsset.id,
-    chainId: event.chainId,
-    txHash: event.transaction.hash,
+  await context.db.insert(schema.convertibleDepositFacilityAssetCommitWithdrawn).values({
+    chainId,
     block: BigInt(event.block.number),
+    logIndex: event.log.logIndex,
+    txHash: event.transaction.hash,
     timestamp: BigInt(event.block.timestamp),
-    operator: event.params.operator.toLowerCase(),
-    amount: event.params.amount,
-    amountDecimal: toDecimal(event.params.amount, assetDecimals),
+    facility: facilityAddress.toLowerCase() as Address,
+    depositAsset: assetAddress.toLowerCase() as Address,
+    operator: (event.args.operator as Address).toLowerCase() as Address,
+    amount: BigInt(event.args.amount),
+    amountDecimal: toDecimal(BigInt(event.args.amount), assetDecimals),
     committedAmount: committedAmount,
     committedAmountDecimal: toDecimal(committedAmount, assetDecimals),
-  };
-  context.ConvertibleDepositFacility_AssetCommitWithdrawn.set(entity);
+  });
 
   // Update facility asset amount
-  const updatedFacilityAsset = {
-    ...facilityAsset,
+  await updateDepositFacilityAsset(context, chainId, facilityAddress, assetAddress, {
     committedAmount: committedAmount,
     committedAmountDecimal: toDecimal(committedAmount, assetDecimals),
-  };
-  context.DepositFacilityAsset.set(updatedFacilityAsset);
+  });
 });
 
-ConvertibleDepositFacility.AssetCommitted.handler(async ({ event, context }) => {
-  const id = getBlockId(event.chainId, event.block.number, event.logIndex);
+ponder.on("ConvertibleDepositFacility:AssetCommitted", async ({ event, context }) => {
+  const chainId = Number(context.chain.id);
+  const facilityAddress = event.log.address as Address;
+  const assetAddress = event.args.asset as Address;
 
   // Create/fetch records
   const facilityAsset = await getOrCreateDepositFacilityAsset(
     context,
-    event.chainId,
-    event.srcAddress as Hex,
-    event.params.asset as Hex,
+    chainId,
+    facilityAddress,
+    assetAddress,
   );
-  const assetDecimals = await getAssetDecimals(context, event.chainId, event.params.asset as Hex);
+  const assetDecimals = await getAssetDecimals(context, chainId, assetAddress);
 
   // Calculate committed amount
-  const committedAmount = facilityAsset.committedAmount + event.params.amount;
+  const committedAmount = facilityAsset.committedAmount + BigInt(event.args.amount);
 
   // Record event
-  const entity: ConvertibleDepositFacility_AssetCommitted = {
-    id,
-    facilityAsset_id: facilityAsset.id,
-    chainId: event.chainId,
-    txHash: event.transaction.hash,
+  await context.db.insert(schema.convertibleDepositFacilityAssetCommitted).values({
+    chainId,
     block: BigInt(event.block.number),
+    logIndex: event.log.logIndex,
+    txHash: event.transaction.hash,
     timestamp: BigInt(event.block.timestamp),
-    operator: event.params.operator.toLowerCase(),
-    amount: event.params.amount,
-    amountDecimal: toDecimal(event.params.amount, assetDecimals),
+    facility: facilityAddress.toLowerCase() as Address,
+    depositAsset: assetAddress.toLowerCase() as Address,
+    operator: (event.args.operator as Address).toLowerCase() as Address,
+    amount: BigInt(event.args.amount),
+    amountDecimal: toDecimal(BigInt(event.args.amount), assetDecimals),
     committedAmount: committedAmount,
     committedAmountDecimal: toDecimal(committedAmount, assetDecimals),
-  };
-  context.ConvertibleDepositFacility_AssetCommitted.set(entity);
+  });
 
   // Update facility asset amount
-  const updatedFacilityAsset = {
-    ...facilityAsset,
+  await updateDepositFacilityAsset(context, chainId, facilityAddress, assetAddress, {
     committedAmount: committedAmount,
     committedAmountDecimal: toDecimal(committedAmount, assetDecimals),
-  };
-  context.DepositFacilityAsset.set(updatedFacilityAsset);
+  });
 });
 
-ConvertibleDepositFacility.AssetPeriodReclaimRateSet.handler(async ({ event, context }) => {
-  const id = getBlockId(event.chainId, event.block.number, event.logIndex);
+ponder.on("ConvertibleDepositFacility:AssetPeriodReclaimRateSet", async ({ event, context }) => {
+  const chainId = Number(context.chain.id);
+  const facilityAddress = event.log.address as Address;
+  const assetAddress = event.args.asset as Address;
+  const depositPeriod = Number(event.args.depositPeriod);
 
   // Create/fetch records
-  const facilityAssetPeriod = await getOrCreateDepositFacilityAssetPeriod(
+  await getOrCreateDepositFacilityAssetPeriod(
     context,
-    event.chainId,
-    event.srcAddress as Hex,
-    event.params.asset as Hex,
-    Number(event.params.depositPeriod),
+    chainId,
+    facilityAddress,
+    assetAddress,
+    depositPeriod,
   );
 
   // Record event
-  const entity: ConvertibleDepositFacility_AssetPeriodReclaimRateSet = {
-    id,
-    facilityAssetPeriod_id: facilityAssetPeriod.id,
-    chainId: event.chainId,
-    txHash: event.transaction.hash,
+  await context.db.insert(schema.convertibleDepositFacilityAssetPeriodReclaimRateSet).values({
+    chainId,
     block: BigInt(event.block.number),
+    logIndex: event.log.logIndex,
+    txHash: event.transaction.hash,
     timestamp: BigInt(event.block.timestamp),
-    reclaimRate: event.params.reclaimRate,
-    reclaimRateDecimal: toBpsDecimal(event.params.reclaimRate),
-  };
-  context.ConvertibleDepositFacility_AssetPeriodReclaimRateSet.set(entity);
+    facility: facilityAddress.toLowerCase() as Address,
+    depositAsset: assetAddress.toLowerCase() as Address,
+    depositPeriod,
+    reclaimRate: BigInt(event.args.reclaimRate),
+    reclaimRateDecimal: toBpsDecimal(Number(event.args.reclaimRate)),
+  });
 
   // Update facility asset period reclaim rate
-  const updatedFacilityAssetPeriod = {
-    ...facilityAssetPeriod,
-    reclaimRate: event.params.reclaimRate,
-    reclaimRateDecimal: toBpsDecimal(event.params.reclaimRate),
-  };
-  context.DepositFacilityAssetPeriod.set(updatedFacilityAssetPeriod);
+  await updateDepositFacilityAssetPeriod(
+    context,
+    chainId,
+    facilityAddress,
+    assetAddress,
+    depositPeriod,
+    {
+      reclaimRate: BigInt(event.args.reclaimRate),
+      reclaimRateDecimal: toBpsDecimal(Number(event.args.reclaimRate)),
+    },
+  );
 });
 
-ConvertibleDepositFacility.ClaimedYield.handler(async ({ event, context }) => {
-  const id = getBlockId(event.chainId, event.block.number, event.logIndex);
+ponder.on("ConvertibleDepositFacility:CreatedDeposit", async ({ event, context }) => {
+  const chainId = Number(context.chain.id);
+  const facilityAddress = event.log.address as Address;
+  const assetAddress = event.args.asset as Address;
+  const depositPeriod = Number(event.args.periodMonths);
+  const positionId = event.args.positionId;
+  const depositorAddress = event.args.depositor as Address;
 
   // Create/fetch records
-  const facilityAsset = await getOrCreateDepositFacilityAsset(
+  await getOrCreateDepositFacilityAssetPeriod(
     context,
-    event.chainId,
-    event.srcAddress as Hex,
-    event.params.asset as Hex,
+    chainId,
+    facilityAddress,
+    assetAddress,
+    depositPeriod,
   );
-  const assetDecimals = await getAssetDecimals(context, event.chainId, event.params.asset as Hex);
+  await getOrCreateDepositor(context, chainId, depositorAddress);
+  await getOrCreatePosition(
+    context,
+    chainId,
+    facilityAddress,
+    assetAddress,
+    depositPeriod,
+    BigInt(positionId),
+    depositorAddress,
+    event.transaction.hash,
+    BigInt(event.block.number),
+    BigInt(event.block.timestamp),
+  );
+  const assetDecimals = await getAssetDecimals(context, chainId, assetAddress);
 
   // Record event
-  const entity: ConvertibleDepositFacility_ClaimedYield = {
-    id,
-    facilityAsset_id: facilityAsset.id,
-    chainId: event.chainId,
-    txHash: event.transaction.hash,
+  await context.db.insert(schema.convertibleDepositFacilityCreatedDeposit).values({
+    chainId,
     block: BigInt(event.block.number),
+    logIndex: event.log.logIndex,
+    txHash: event.transaction.hash,
     timestamp: BigInt(event.block.timestamp),
-    amount: event.params.amount,
-    amountDecimal: toDecimal(event.params.amount, assetDecimals),
-  };
-  context.ConvertibleDepositFacility_ClaimedYield.set(entity);
+    facility: facilityAddress.toLowerCase() as Address,
+    depositAsset: assetAddress.toLowerCase() as Address,
+    depositPeriod,
+    depositor: depositorAddress.toLowerCase() as Address,
+    positionId: BigInt(positionId),
+    depositAmount: BigInt(event.args.depositAmount),
+    depositAmountDecimal: toDecimal(BigInt(event.args.depositAmount), assetDecimals),
+  });
 
-  // Create/update facility asset snapshot to refresh claimable yield
-  const facility = await getOrCreateDepositFacility(
+  // Update position with initial amount
+  await updatePosition(context, chainId, BigInt(positionId), {
+    initialAmount: BigInt(event.args.depositAmount),
+    initialAmountDecimal: toDecimal(BigInt(event.args.depositAmount), assetDecimals),
+    remainingAmount: BigInt(event.args.depositAmount),
+    remainingAmountDecimal: toDecimal(BigInt(event.args.depositAmount), assetDecimals),
+  });
+
+  // Update facility asset snapshot with deposit
+  await updateFacilityAssetSnapshotDeposited(
     context,
-    event.chainId,
-    event.srcAddress as Hex,
-  );
-  const depositAsset = await getDepositAsset(context, facilityAsset.depositAsset_id);
-  const facilitySnapshot = await getOrCreateDepositFacilitySnapshot(
-    context,
-    event.chainId,
-    event.block.number,
-    event.block.timestamp,
-    facility,
-  );
-  await getOrCreateDepositFacilityAssetSnapshot(
-    context,
-    event.chainId,
-    event.block.number,
-    event.block.timestamp,
-    facilitySnapshot,
-    facility,
-    depositAsset,
+    chainId,
+    BigInt(event.block.number),
+    BigInt(event.block.timestamp),
+    facilityAddress,
+    assetAddress,
+    BigInt(event.args.depositAmount),
   );
 });
 
-ConvertibleDepositFacility.ConvertedDeposit.handler(async ({ event, context }) => {
-  const id = getBlockId(event.chainId, event.block.number, event.logIndex);
+ponder.on("ConvertibleDepositFacility:Reclaimed", async ({ event, context }) => {
+  const chainId = Number(context.chain.id);
+  const facilityAddress = event.log.address as Address;
+  const assetAddress = event.args.depositToken as Address;
+  const depositPeriod = Number(event.args.depositPeriod);
+  const depositorAddress = event.args.user as Address;
 
   // Create/fetch records
-  const depositor = await getOrCreateDepositor(
+  await getOrCreateDepositFacilityAssetPeriod(
     context,
-    event.chainId,
-    event.params.depositor as Hex,
+    chainId,
+    facilityAddress,
+    assetAddress,
+    depositPeriod,
   );
-  const facilityAssetPeriod = await getOrCreateDepositFacilityAssetPeriod(
-    context,
-    event.chainId,
-    event.srcAddress as Hex,
-    event.params.asset as Hex,
-    Number(event.params.periodMonths),
-  );
-  const assetDecimals = await getAssetDecimals(context, event.chainId, event.params.asset as Hex);
+  await getOrCreateDepositor(context, chainId, depositorAddress);
+  const assetDecimals = await getAssetDecimals(context, chainId, assetAddress);
 
-  // Create record for the original event
-  const entity: ConvertibleDepositFacility_ConvertedDeposits = {
-    id,
-    chainId: event.chainId,
-    txHash: event.transaction.hash,
+  // Record event
+  await context.db.insert(schema.convertibleDepositFacilityReclaimed).values({
+    chainId,
     block: BigInt(event.block.number),
+    logIndex: event.log.logIndex,
+    txHash: event.transaction.hash,
     timestamp: BigInt(event.block.timestamp),
-    depositAmount: event.params.depositAmount,
-    depositAmountDecimal: toDecimal(event.params.depositAmount, assetDecimals),
-    convertedAmount: event.params.convertedAmount,
-    convertedAmountDecimal: toOhmDecimal(event.params.convertedAmount),
-  };
-  context.ConvertibleDepositFacility_ConvertedDeposits.set(entity);
-
-  // Update positions of depositor for this asset period
-  const contractPositionIds = await context.effect(fetchUserPositionIds, {
-    chainId: event.chainId,
-    userAddress: event.params.depositor as Hex,
-  });
-  const contractPositions = await context.effect(fetchPositions, {
-    chainId: event.chainId,
-    positionIds: contractPositionIds,
+    facility: facilityAddress.toLowerCase() as Address,
+    depositAsset: assetAddress.toLowerCase() as Address,
+    depositPeriod,
+    depositor: depositorAddress.toLowerCase() as Address,
+    reclaimedAmount: BigInt(event.args.reclaimedAmount),
+    reclaimedAmountDecimal: toDecimal(BigInt(event.args.reclaimedAmount), assetDecimals),
+    forfeitedAmount: BigInt(event.args.forfeitedAmount),
+    forfeitedAmountDecimal: toDecimal(BigInt(event.args.forfeitedAmount), assetDecimals),
   });
 
+  // Update facility asset snapshot with withdrawal (negative delta for reclaimed amount)
+  await updateFacilityAssetSnapshotDeposited(
+    context,
+    chainId,
+    BigInt(event.block.number),
+    BigInt(event.block.timestamp),
+    facilityAddress,
+    assetAddress,
+    -BigInt(event.args.reclaimedAmount), // Negative for withdrawal
+  );
+});
+
+ponder.on("ConvertibleDepositFacility:ConvertedDeposit", async ({ event, context }) => {
+  const chainId = Number(context.chain.id);
+  const facilityAddress = event.log.address as Address;
+  const assetAddress = event.args.asset as Address;
+  const depositPeriod = Number(event.args.periodMonths);
+  const depositorAddress = event.args.depositor as Address;
+
+  // Create/fetch records
+  await getOrCreateDepositor(context, chainId, depositorAddress);
+  await getOrCreateDepositFacilityAssetPeriod(
+    context,
+    chainId,
+    facilityAddress,
+    assetAddress,
+    depositPeriod,
+  );
+  const assetDecimals = await getAssetDecimals(context, chainId, assetAddress);
+
+  // Create record for the parent event
+  await context.db.insert(schema.convertibleDepositFacilityConvertedDeposits).values({
+    chainId,
+    block: BigInt(event.block.number),
+    logIndex: event.log.logIndex,
+    txHash: event.transaction.hash,
+    timestamp: BigInt(event.block.timestamp),
+    facility: facilityAddress.toLowerCase() as Address,
+    depositAsset: assetAddress.toLowerCase() as Address,
+    depositPeriod,
+    depositAmount: BigInt(event.args.depositAmount),
+    depositAmountDecimal: toDecimal(BigInt(event.args.depositAmount), assetDecimals),
+    convertedAmount: BigInt(event.args.convertedAmount),
+    convertedAmountDecimal: toOhmDecimal(BigInt(event.args.convertedAmount)),
+  });
+
   // Update positions of depositor for this asset period
+  const contractPositionIds = await fetchUserPositionIds(context.client, depositorAddress);
+  const contractPositions = await fetchPositions(context.client, contractPositionIds);
+
+  // Track total converted amount for snapshot update
+  let totalDepositConverted = BigInt(0);
+
+  // Update positions of depositor for this asset period
+  let logIndexCounter = event.log.logIndex;
   for (let i = 0; i < contractPositionIds.length; i++) {
     const contractPositionId = contractPositionIds[i];
     const contractPosition = contractPositions[i];
-    const recordPositionId = getPositionId(event.chainId, contractPositionId);
-    const recordPosition = await context.ConvertibleDepositPosition.get(recordPositionId);
 
-    if (!recordPosition) continue;
-    if (recordPosition.assetPeriod_id !== facilityAssetPeriod.depositAssetPeriod_id) continue;
+    // Skip if position data is missing
+    if (!contractPositionId || !contractPosition) {
+      throw new Error(`Position data is missing for contract position ID: ${contractPositionId}`);
+    }
 
-    // Skip if the position's remaining amount and the contract value are the same
+    // Get the position record - this will throw if position is not found
+    const recordPosition = await getPosition(context, chainId, contractPositionId);
+
+    // Check if this position matches the facility asset period
+    if (
+      recordPosition.facility.toLowerCase() !== facilityAddress.toLowerCase() ||
+      recordPosition.depositAsset.toLowerCase() !== assetAddress.toLowerCase() ||
+      recordPosition.depositPeriod !== depositPeriod
+    ) {
+      throw new Error(`Position does not match facility asset period: ${contractPositionId}`);
+    }
+
     const depositConvertedAmount =
       recordPosition.remainingAmount - contractPosition.remainingDeposit;
-    if (depositConvertedAmount === 0n) continue;
 
     // Calculate the amount converted
     const convertedAmount =
       (depositConvertedAmount * BigInt(1e9)) / contractPosition.conversionPrice;
 
-    // Create record for the converted deposit
-    const convertedDepositEntity: ConvertibleDepositFacility_ConvertedDeposit = {
-      id: buildEntityId([event.chainId, event.block.number, event.logIndex, contractPositionId]),
-      chainId: event.chainId,
-      txHash: event.transaction.hash,
+    // Create record for the converted deposit (use sequential logIndex for child events)
+    await context.db.insert(schema.convertibleDepositFacilityConvertedDeposit).values({
+      chainId,
       block: BigInt(event.block.number),
+      logIndex: logIndexCounter++,
+      txHash: event.transaction.hash,
       timestamp: BigInt(event.block.timestamp),
-      position_id: recordPositionId,
-      facilityAssetPeriod_id: facilityAssetPeriod.id,
-      depositor_id: depositor.id,
+      facility: facilityAddress.toLowerCase() as Address,
+      depositAsset: assetAddress.toLowerCase() as Address,
+      depositPeriod,
+      depositor: depositorAddress.toLowerCase() as Address,
+      positionId: contractPositionId,
+      parentEventChainId: chainId,
+      parentEventBlock: BigInt(event.block.number),
+      parentEventLogIndex: event.log.logIndex,
       depositAmount: depositConvertedAmount,
       depositAmountDecimal: toDecimal(depositConvertedAmount, assetDecimals),
       convertedAmount: convertedAmount,
       convertedAmountDecimal: toOhmDecimal(convertedAmount),
-      event_id: entity.id,
-    };
-    context.ConvertibleDepositFacility_ConvertedDeposit.set(convertedDepositEntity);
+    });
+
+    // Accumulate total converted amount
+    totalDepositConverted += depositConvertedAmount;
 
     // Update the position record with the new remaining amount
-    const updatedPosition = {
-      ...recordPosition,
+    await updatePosition(context, chainId, contractPositionId, {
       remainingAmount: contractPosition.remainingDeposit,
       remainingAmountDecimal: toDecimal(contractPosition.remainingDeposit, assetDecimals),
-    };
-    context.ConvertibleDepositPosition.set(updatedPosition);
+    });
   }
 
-  // Update facility asset snapshot with withdrawal (negative delta)
-  const facility = await getOrCreateDepositFacility(
-    context,
-    event.chainId,
-    event.srcAddress as Hex,
-  );
-  const depositAssetPeriod = await getDepositAssetPeriod(
-    context,
-    facilityAssetPeriod.depositAssetPeriod_id,
-  );
-  const depositAsset = await getDepositAsset(context, depositAssetPeriod.depositAsset_id);
-  await updateFacilityAssetDeposited(
-    context,
-    event.chainId,
-    event.block.number,
-    event.block.timestamp,
-    facility,
-    depositAsset,
-    -event.params.depositAmount, // Negative for withdrawal
-  );
+  // Update facility asset snapshot with converted deposits (negative delta for reduced deposits)
+  if (totalDepositConverted > 0n) {
+    await updateFacilityAssetSnapshotDeposited(
+      context,
+      chainId,
+      BigInt(event.block.number),
+      BigInt(event.block.timestamp),
+      facilityAddress,
+      assetAddress,
+      -totalDepositConverted, // Negative because deposits are converted away
+    );
+  }
 });
 
-ConvertibleDepositFacility.CreatedDeposit.handler(async ({ event, context }) => {
-  const id = getBlockId(event.chainId, event.block.number, event.logIndex);
+ponder.on("ConvertibleDepositFacility:ClaimedYield", async ({ event, context }) => {
+  const chainId = Number(context.chain.id);
+  const facilityAddress = event.log.address as Address;
+  const assetAddress = event.args.asset as Address;
 
   // Create/fetch records
-  const facilityAssetPeriod = await getOrCreateDepositFacilityAssetPeriod(
-    context,
-    event.chainId,
-    event.srcAddress as Hex,
-    event.params.asset as Hex,
-    Number(event.params.periodMonths),
-  );
-  const depositor = await getOrCreateDepositor(
-    context,
-    event.chainId,
-    event.params.depositor as Hex,
-  );
-  const position = await getOrCreatePosition(
-    context,
-    event.chainId,
-    event.srcAddress as Hex,
-    event.params.asset as Hex,
-    Number(event.params.periodMonths),
-    event.params.positionId,
-    event.params.depositor as Hex,
-    event.transaction.hash as Hex,
-    BigInt(event.block.number),
-    BigInt(event.block.timestamp),
-  );
-  const assetDecimals = await getAssetDecimals(context, event.chainId, event.params.asset as Hex);
+  await getOrCreateDepositFacilityAsset(context, chainId, facilityAddress, assetAddress);
+  const assetDecimals = await getAssetDecimals(context, chainId, assetAddress);
 
   // Record event
-  const entity: ConvertibleDepositFacility_CreatedDeposit = {
-    id,
-    facilityAssetPeriod_id: facilityAssetPeriod.id,
-    depositor_id: depositor.id,
-    position_id: position.id,
-    chainId: event.chainId,
-    txHash: event.transaction.hash,
+  await context.db.insert(schema.convertibleDepositFacilityClaimedYield).values({
+    chainId,
     block: BigInt(event.block.number),
-    timestamp: BigInt(event.block.timestamp),
-    depositAmount: event.params.depositAmount,
-    depositAmountDecimal: toDecimal(event.params.depositAmount, assetDecimals),
-  };
-  context.ConvertibleDepositFacility_CreatedDeposit.set(entity);
-
-  // Update position with initial amount
-  const updatedPosition = {
-    ...position,
-    initialAmount: event.params.depositAmount,
-    initialAmountDecimal: toDecimal(event.params.depositAmount, assetDecimals),
-    remainingAmount: event.params.depositAmount,
-    remainingAmountDecimal: toDecimal(event.params.depositAmount, assetDecimals),
-  };
-  context.ConvertibleDepositPosition.set(updatedPosition);
-
-  // Update facility asset snapshot with deposit
-  const facility = await getOrCreateDepositFacility(
-    context,
-    event.chainId,
-    event.srcAddress as Hex,
-  );
-  const depositAssetPeriod = await getDepositAssetPeriod(
-    context,
-    facilityAssetPeriod.depositAssetPeriod_id,
-  );
-  const depositAsset = await getDepositAsset(context, depositAssetPeriod.depositAsset_id);
-  await updateFacilityAssetDeposited(
-    context,
-    event.chainId,
-    event.block.number,
-    event.block.timestamp,
-    facility,
-    depositAsset,
-    event.params.depositAmount,
-  );
-});
-
-ConvertibleDepositFacility.Disabled.handler(async ({ event, context }) => {
-  const id = getBlockId(event.chainId, event.block.number, event.logIndex);
-
-  // Create/fetch records
-  const facility = await getOrCreateDepositFacility(
-    context,
-    event.chainId,
-    event.srcAddress as Hex,
-  );
-
-  // Record event
-  const entity: ConvertibleDepositFacility_Disabled = {
-    id,
-    facility_id: facility.id,
-    chainId: event.chainId,
+    logIndex: event.log.logIndex,
     txHash: event.transaction.hash,
-    block: BigInt(event.block.number),
     timestamp: BigInt(event.block.timestamp),
-  };
-  context.ConvertibleDepositFacility_Disabled.set(entity);
-
-  // Update facility status
-  const updatedFacility = {
-    ...facility,
-    enabled: false,
-  };
-  context.DepositFacility.set(updatedFacility);
+    facility: facilityAddress.toLowerCase() as Address,
+    depositAsset: assetAddress.toLowerCase() as Address,
+    amount: BigInt(event.args.amount),
+    amountDecimal: toDecimal(BigInt(event.args.amount), assetDecimals),
+  });
 });
-
-ConvertibleDepositFacility.Enabled.handler(async ({ event, context }) => {
-  const id = getBlockId(event.chainId, event.block.number, event.logIndex);
-
-  // Create/fetch records
-  const facility = await getOrCreateDepositFacility(
-    context,
-    event.chainId,
-    event.srcAddress as Hex,
-  );
-
-  // Record event
-  const entity: ConvertibleDepositFacility_Enabled = {
-    id,
-    facility_id: facility.id,
-    chainId: event.chainId,
-    txHash: event.transaction.hash,
-    block: BigInt(event.block.number),
-    timestamp: BigInt(event.block.timestamp),
-  };
-  context.ConvertibleDepositFacility_Enabled.set(entity);
-
-  // Update facility status
-  const updatedFacility = {
-    ...facility,
-    enabled: true,
-  };
-  context.DepositFacility.set(updatedFacility);
-});
-
-ConvertibleDepositFacility.OperatorAuthorized.handler(async ({ event, context }) => {
-  const id = getBlockId(event.chainId, event.block.number, event.logIndex);
-
-  // Create/fetch records
-  const facility = await getOrCreateDepositFacility(
-    context,
-    event.chainId,
-    event.srcAddress as Hex,
-  );
-
-  // Record event
-  const entity: ConvertibleDepositFacility_OperatorAuthorized = {
-    id,
-    facility_id: facility.id,
-    chainId: event.chainId,
-    txHash: event.transaction.hash,
-    block: BigInt(event.block.number),
-    timestamp: BigInt(event.block.timestamp),
-    operator: event.params.operator.toLowerCase(),
-  };
-  context.ConvertibleDepositFacility_OperatorAuthorized.set(entity);
-});
-
-ConvertibleDepositFacility.OperatorDeauthorized.handler(async ({ event, context }) => {
-  const id = getBlockId(event.chainId, event.block.number, event.logIndex);
-
-  // Create/fetch records
-  const facility = await getOrCreateDepositFacility(
-    context,
-    event.chainId,
-    event.srcAddress as Hex,
-  );
-
-  // Record event
-  const entity: ConvertibleDepositFacility_OperatorDeauthorized = {
-    id,
-    facility_id: facility.id,
-    chainId: event.chainId,
-    txHash: event.transaction.hash,
-    block: BigInt(event.block.number),
-    timestamp: BigInt(event.block.timestamp),
-    operator: event.params.operator.toLowerCase(),
-  };
-  context.ConvertibleDepositFacility_OperatorDeauthorized.set(entity);
-});
-
-ConvertibleDepositFacility.Reclaimed.handler(async ({ event, context }) => {
-  const id = getBlockId(event.chainId, event.block.number, event.logIndex);
-
-  // Create/fetch records
-  const facilityAssetPeriod = await getOrCreateDepositFacilityAssetPeriod(
-    context,
-    event.chainId,
-    event.srcAddress as Hex,
-    event.params.depositToken as Hex,
-    Number(event.params.depositPeriod),
-  );
-  const depositor = await getOrCreateDepositor(context, event.chainId, event.params.user as Hex);
-  const assetDecimals = await getAssetDecimals(
-    context,
-    event.chainId,
-    event.params.depositToken as Hex,
-  );
-
-  // Record event
-  const entity: ConvertibleDepositFacility_Reclaimed = {
-    id,
-    facilityAssetPeriod_id: facilityAssetPeriod.id,
-    depositor_id: depositor.id,
-    chainId: event.chainId,
-    txHash: event.transaction.hash,
-    block: BigInt(event.block.number),
-    timestamp: BigInt(event.block.timestamp),
-    reclaimedAmount: event.params.reclaimedAmount,
-    reclaimedAmountDecimal: toDecimal(event.params.reclaimedAmount, assetDecimals),
-    forfeitedAmount: event.params.forfeitedAmount,
-    forfeitedAmountDecimal: toDecimal(event.params.forfeitedAmount, assetDecimals),
-  };
-  context.ConvertibleDepositFacility_Reclaimed.set(entity);
-
-  // Update facility asset snapshot with withdrawal (negative delta)
-  const facility = await getOrCreateDepositFacility(
-    context,
-    event.chainId,
-    event.srcAddress as Hex,
-  );
-  const depositAssetPeriod = await getDepositAssetPeriod(
-    context,
-    facilityAssetPeriod.depositAssetPeriod_id,
-  );
-  const depositAsset = await getDepositAsset(context, depositAssetPeriod.depositAsset_id);
-  await updateFacilityAssetDeposited(
-    context,
-    event.chainId,
-    event.block.number,
-    event.block.timestamp,
-    facility,
-    depositAsset,
-    -event.params.reclaimedAmount, // Negative for withdrawal
-  );
-});
-
-// TODO add split event

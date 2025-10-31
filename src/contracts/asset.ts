@@ -1,75 +1,45 @@
-import { experimental_createEffect, S } from "envio";
+// Contract call functions for Asset (ERC20)
+// In Ponder, we use direct contract calls instead of Effect API
+
+import type { Address } from "viem";
 import { erc20Abi } from "viem";
-import { getClient } from "../utils/client";
+import type { PonderClient } from "../types";
 
-export const fetchAssetDecimals = experimental_createEffect(
-  {
-    name: "fetchAssetDecimals",
-    input: {
-      chainId: S.number,
-      address: S.string,
-    },
-    output: S.number,
-    cache: true,
-  },
-  async ({ input }) => {
-    const client = getClient(input.chainId);
-    const assetAddress = input.address as `0x${string}`;
+/**
+ * Fetch ERC20 asset decimals
+ */
+export async function fetchAssetDecimals(client: PonderClient, address: Address): Promise<number> {
+  const result = await client.readContract({
+    address,
+    abi: erc20Abi,
+    functionName: "decimals",
+  });
 
-    const result = await client.readContract({
-      address: assetAddress,
-      abi: erc20Abi,
-      functionName: "decimals",
-    });
+  return result;
+}
 
-    return result;
-  },
-);
+/**
+ * Fetch ERC20 asset name
+ */
+export async function fetchAssetName(client: PonderClient, address: Address): Promise<string> {
+  const result = await client.readContract({
+    address,
+    abi: erc20Abi,
+    functionName: "name",
+  });
 
-export const fetchAssetName = experimental_createEffect(
-  {
-    name: "fetchAssetName",
-    input: {
-      chainId: S.number,
-      address: S.string,
-    },
-    output: S.string,
-    cache: true,
-  },
-  async ({ input }) => {
-    const client = getClient(input.chainId);
-    const assetAddress = input.address as `0x${string}`;
+  return result;
+}
 
-    const result = await client.readContract({
-      address: assetAddress,
-      abi: erc20Abi,
-      functionName: "name",
-    });
+/**
+ * Fetch ERC20 asset symbol
+ */
+export async function fetchAssetSymbol(client: PonderClient, address: Address): Promise<string> {
+  const result = await client.readContract({
+    address,
+    abi: erc20Abi,
+    functionName: "symbol",
+  });
 
-    return result;
-  },
-);
-
-export const fetchAssetSymbol = experimental_createEffect(
-  {
-    name: "fetchAssetSymbol",
-    input: {
-      chainId: S.number,
-      address: S.string,
-    },
-    output: S.string,
-    cache: true,
-  },
-  async ({ input }) => {
-    const client = getClient(input.chainId);
-    const assetAddress = input.address as `0x${string}`;
-
-    const result = await client.readContract({
-      address: assetAddress,
-      abi: erc20Abi,
-      functionName: "symbol",
-    });
-
-    return result;
-  },
-);
+  return result;
+}

@@ -1,34 +1,41 @@
-import type { Redemption } from "generated";
-import type { HandlerContext } from "generated/src/Types";
-import type { Hex } from "viem";
+import type { Context } from "ponder:registry";
+import schema from "ponder:schema";
+import type { Address } from "viem";
 import { fetchRedemption } from "../contracts/redemptionVault";
 import { toDecimal } from "../utils/decimal";
-import { buildEntityId, getPositionId } from "../utils/ids";
-import { getDepositAssetPeriodDecimals, getOrCreateDepositAssetPeriod } from "./asset";
+import { getOrCreateDepositAssetPeriod } from "./asset";
 import { getOrCreateDepositFacility } from "./depositFacility";
 import { getOrCreateDepositor } from "./depositor";
 import { getOrCreateReceiptToken } from "./receiptToken";
 import { getOrCreateRedemptionVault } from "./redemptionVault";
 
-const UINT256_MAX = BigInt(
-  "115792089237316195423570985008687907853269984665640564039457584007913129639935",
-);
-
+/**
+ * Get or create a Redemption entity
+ */
 export async function getOrCreateRedemption(
-  context: HandlerContext,
+  context: Context,
   chainId: number,
-  redemptionVaultAddress: Hex,
-  facilityAddress: Hex,
-  depositAssetAddress: Hex,
+  redemptionVaultAddress: Address,
+  facilityAddress: Address,
+  depositAssetAddress: Address,
   depositAssetPeriodMonths: number,
-  userAddress: Hex,
+  userAddress: Address,
   redemptionId: number,
-): Promise<Redemption> {
-  const id = buildEntityId([chainId, userAddress, redemptionId]);
-  const existing = await context.Redemption.get(id);
-  if (existing) return existing as Redemption;
+): Promise<typeof schema.redemption.$inferSelect> {
+  // Check if redemption already exists
+  const existing = await context.db.find(schema.redemption, {
+    chainId,
+    redemptionVault: redemptionVaultAddress.toLowerCase() as Address,
+    depositor: userAddress.toLowerCase() as Address,
+    redemptionId,
+  });
 
-  const depositor = await getOrCreateDepositor(context, chainId, userAddress);
+  if (existing) {
+    return existing;
+  }
+
+  // Get or create related entities
+  await getOrCreateDepositor(context, chainId, userAddress);
   const receiptToken = await getOrCreateReceiptToken(
     context,
     chainId,
@@ -36,62 +43,115 @@ export async function getOrCreateRedemption(
     depositAssetAddress,
     depositAssetPeriodMonths,
   );
-  const redemptionVault = await getOrCreateRedemptionVault(
-    context,
-    chainId,
-    redemptionVaultAddress,
-  );
-  const facility = await getOrCreateDepositFacility(context, chainId, facilityAddress);
-  const depositAssetPeriod = await getOrCreateDepositAssetPeriod(
+  await getOrCreateRedemptionVault(context, chainId, redemptionVaultAddress);
+  await getOrCreateDepositFacility(context, chainId, facilityAddress);
+  await getOrCreateDepositAssetPeriod(
     context,
     chainId,
     depositAssetAddress,
     depositAssetPeriodMonths,
   );
-  const assetDecimals = await getDepositAssetPeriodDecimals(context, depositAssetPeriod.id);
+
+  // Get asset decimals for decimal conversion
+  const assetDecimals = await context.db.find(schema.asset, {
+    chainId,
+    address: depositAssetAddress.toLowerCase() as Address,
+  });
+
+  if (!assetDecimals) {
+    throw new Error(`Asset not found: ${chainId}, ${depositAssetAddress}`);
+  }
 
   // Fetch redemption data from contract
-  const redemption = await context.effect(fetchRedemption, {
-    chainId,
-    vaultAddress: redemptionVaultAddress,
+  const redemptionData = await fetchRedemption(
+    context.client,
+    redemptionVaultAddress,
     userAddress,
     redemptionId,
-  });
-  const positionId =
-    redemption.positionId === UINT256_MAX
-      ? undefined
-      : getPositionId(chainId, redemption.positionId);
+  );
 
   // Create redemption record
-  const created: Redemption = {
-    id,
-    chainId: chainId,
-    redemptionVault_id: redemptionVault.id,
-    depositor_id: depositor.id,
-    depositAssetPeriod_id: depositAssetPeriod.id,
-    facility_id: facility.id,
-    receiptToken_id: receiptToken.id,
-    amount: redemption.amount,
-    amountDecimal: toDecimal(redemption.amount, assetDecimals),
-    redeemableAt: BigInt(redemption.redeemableAt),
-    position_id: positionId,
-  };
-  context.Redemption.set(created);
+  await context.db.insert(schema.redemption).values({
+    chainId,
+    redemptionVault: redemptionVaultAddress.toLowerCase() as Address,
+    depositor: userAddress.toLowerCase() as Address,
+    redemptionId,
+    depositAsset: depositAssetAddress.toLowerCase() as Address,
+    depositPeriod: depositAssetPeriodMonths,
+    facility: facilityAddress.toLowerCase() as Address,
+    receiptTokenManager: receiptToken.receiptTokenManager,
+    receiptTokenId: receiptToken.receiptTokenId,
+    positionId: redemptionData.positionId,
+    amount: redemptionData.amount,
+    amountDecimal: toDecimal(redemptionData.amount, assetDecimals.decimals),
+    redeemableAt: redemptionData.redeemableAt,
+  });
+
+  // Return the created entity
+  const created = await context.db.find(schema.redemption, {
+    chainId,
+    redemptionVault: redemptionVaultAddress.toLowerCase() as Address,
+    depositor: userAddress.toLowerCase() as Address,
+    redemptionId,
+  });
+
+  if (!created) {
+    throw new Error(
+      `Failed to create redemption: ${chainId}, ${redemptionVaultAddress}, ${userAddress}, ${redemptionId}`,
+    );
+  }
+
   return created;
 }
 
+/**
+ * Get an existing Redemption entity (throws if not found)
+ */
 export async function getRedemption(
-  context: HandlerContext,
+  context: Context,
   chainId: number,
-  userAddress: Hex,
+  redemptionVaultAddress: Address,
+  userAddress: Address,
   redemptionId: number,
-): Promise<Redemption> {
-  const id = buildEntityId([chainId, userAddress, redemptionId]);
-  const existing = await context.Redemption.get(id);
+): Promise<typeof schema.redemption.$inferSelect> {
+  const redemption = await context.db.find(schema.redemption, {
+    chainId,
+    redemptionVault: redemptionVaultAddress.toLowerCase() as Address,
+    depositor: userAddress.toLowerCase() as Address,
+    redemptionId,
+  });
 
-  if (!existing) {
-    throw new Error(`Redemption ${id} not found`);
+  if (!redemption) {
+    throw new Error(
+      `Redemption not found: ${chainId}, ${redemptionVaultAddress}, ${userAddress}, ${redemptionId}`,
+    );
   }
 
-  return existing as Redemption;
+  return redemption;
+}
+
+/**
+ * Update an existing Redemption entity
+ */
+export async function updateRedemption(
+  context: Context,
+  chainId: number,
+  redemptionVaultAddress: Address,
+  userAddress: Address,
+  redemptionId: number,
+  updates: Partial<
+    Omit<
+      typeof schema.redemption.$inferSelect,
+      "chainId" | "redemptionVault" | "depositor" | "redemptionId"
+    >
+  >,
+): Promise<void> {
+  await context.db
+    .update(schema.redemption, {
+      chainId,
+      redemptionVault: redemptionVaultAddress.toLowerCase() as Address,
+      depositor: userAddress.toLowerCase() as Address,
+      redemptionId,
+    })
+    .set(updates);
 }

@@ -1,51 +1,69 @@
-import type { ReceiptToken } from "generated";
-import type { HandlerContext } from "generated/src/Types";
-import type { Hex } from "viem";
-import { fetchReceiptTokenId, fetchReceiptTokenManager } from "../contracts/depositManager";
-import { getReceiptTokenId } from "../utils/ids";
+import type { Context } from "ponder:registry";
+import schema from "ponder:schema";
+import type { Address } from "viem";
+import { fetchDepositManager, fetchReceiptTokenData } from "../contracts/depositFacility";
 import { getOrCreateDepositAssetPeriod } from "./asset";
 import { getOrCreateDepositFacility } from "./depositFacility";
 
+/**
+ * Get or create a ReceiptToken entity
+ */
 export async function getOrCreateReceiptToken(
-  context: HandlerContext,
+  context: Context,
   chainId: number,
-  facilityAddress: Hex,
-  depositAssetAddress: Hex,
-  depositAssetPeriodMonths: number,
-): Promise<ReceiptToken> {
-  // Look up the ReceiptTokenManager address
-  const receiptTokenManager = await context.effect(fetchReceiptTokenManager, {
-    chainId,
-    facility: facilityAddress,
-  });
-  const receiptTokenId = await context.effect(fetchReceiptTokenId, {
-    chainId,
-    facility: facilityAddress,
-    asset: depositAssetAddress,
-    depositPeriod: depositAssetPeriodMonths,
-  });
+  facilityAddress: Address,
+  depositAssetAddress: Address,
+  depositPeriod: number,
+): Promise<typeof schema.receiptToken.$inferSelect> {
+  // Get deposit manager address
+  const depositManagerAddress = await fetchDepositManager(context.client, facilityAddress);
 
-  const id = getReceiptTokenId(chainId, receiptTokenManager, receiptTokenId);
-  const existing = await context.ReceiptToken.get(id);
-  if (existing) return existing as ReceiptToken;
-
-  const facility = await getOrCreateDepositFacility(context, chainId, facilityAddress);
-  const depositAssetPeriod = await getOrCreateDepositAssetPeriod(
-    context,
-    chainId,
+  // Fetch receipt token data (manager and ID) from contract
+  const receiptTokenData = await fetchReceiptTokenData(
+    context.client,
+    depositManagerAddress,
     depositAssetAddress,
-    depositAssetPeriodMonths,
+    depositPeriod,
+    facilityAddress,
   );
 
-  const created: ReceiptToken = {
-    id,
-    chainId: chainId,
-    receiptTokenManager: receiptTokenManager.toLowerCase(),
-    receiptTokenId: receiptTokenId,
-    facility_id: facility.id,
-    depositAssetPeriod_id: depositAssetPeriod.id,
-  };
-  context.ReceiptToken.set(created);
+  // Check if receipt token already exists
+  const existing = await context.db.find(schema.receiptToken, {
+    chainId,
+    receiptTokenManager: receiptTokenData.receiptTokenManager.toLowerCase() as Address,
+    receiptTokenId: receiptTokenData.receiptTokenId,
+  });
+
+  if (existing) {
+    return existing;
+  }
+
+  // Get or create related entities
+  await getOrCreateDepositFacility(context, chainId, facilityAddress);
+  await getOrCreateDepositAssetPeriod(context, chainId, depositAssetAddress, depositPeriod);
+
+  // Create receipt token
+  await context.db.insert(schema.receiptToken).values({
+    chainId,
+    receiptTokenManager: receiptTokenData.receiptTokenManager.toLowerCase() as Address,
+    receiptTokenId: receiptTokenData.receiptTokenId,
+    facility: facilityAddress.toLowerCase() as Address,
+    depositAsset: depositAssetAddress.toLowerCase() as Address,
+    depositPeriod,
+  });
+
+  // Return the created entity
+  const created = await context.db.find(schema.receiptToken, {
+    chainId,
+    receiptTokenManager: receiptTokenData.receiptTokenManager.toLowerCase() as Address,
+    receiptTokenId: receiptTokenData.receiptTokenId,
+  });
+
+  if (!created) {
+    throw new Error(
+      `Failed to create receipt token: ${chainId}, ${receiptTokenData.receiptTokenManager}, ${receiptTokenData.receiptTokenId}`,
+    );
+  }
 
   return created;
 }

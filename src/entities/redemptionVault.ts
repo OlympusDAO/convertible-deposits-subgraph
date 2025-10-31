@@ -1,90 +1,159 @@
-import type {
-  depositRedemptionVault as DepositRedemptionVault,
-  DepositRedemptionVaultAssetConfiguration,
-} from "generated";
-import type { HandlerContext } from "generated/src/Types";
-import type { Hex } from "viem";
+import type { Context } from "ponder:registry";
+import schema from "ponder:schema";
+import type { Address } from "viem";
 import {
   fetchClaimDefaultRewardPercentage,
-  fetchRedemptionVaultInterestRate,
-  fetchRedemptionVaultMaxBorrowPercentage,
+  fetchRedemptionVaultAssetConfiguration,
 } from "../contracts/redemptionVault";
 import { toBpsDecimal } from "../utils/decimal";
-import { buildEntityId, getAddressId } from "../utils/ids";
-import { getOrCreateDepositAsset } from "./asset";
-import { getOrCreateDepositFacility } from "./depositFacility";
 
+/**
+ * Get or create a DepositRedemptionVault entity
+ */
 export async function getOrCreateRedemptionVault(
-  context: HandlerContext,
+  context: Context,
   chainId: number,
-  address: Hex,
-): Promise<DepositRedemptionVault> {
-  const id = getAddressId(chainId, address);
-  const existing = await context.DepositRedemptionVault.get(id);
-  if (existing) return existing as DepositRedemptionVault;
-
-  // Fetch the claim default reward percentage from the contract
-  const claimDefaultRewardPercentage = await context.effect(fetchClaimDefaultRewardPercentage, {
+  address: Address,
+): Promise<typeof schema.depositRedemptionVault.$inferSelect> {
+  // Check if redemption vault already exists
+  const existing = await context.db.find(schema.depositRedemptionVault, {
     chainId,
-    vaultAddress: address,
+    address: address.toLowerCase() as Address,
   });
 
-  const created: DepositRedemptionVault = {
-    id,
-    chainId: chainId,
-    address: address.toLowerCase(),
+  if (existing) {
+    return existing;
+  }
+
+  // Fetch the claim default reward percentage from the contract
+  const claimDefaultRewardPercentage = await fetchClaimDefaultRewardPercentage(
+    context.client,
+    address,
+  );
+
+  // Create redemption vault
+  await context.db.insert(schema.depositRedemptionVault).values({
+    chainId,
+    address: address.toLowerCase() as Address,
     enabled: false,
     claimDefaultRewardPercentage: BigInt(claimDefaultRewardPercentage),
-    claimDefaultRewardPercentageDecimal: toBpsDecimal(claimDefaultRewardPercentage),
-  };
-  context.DepositRedemptionVault.set(created);
+    claimDefaultRewardPercentageDecimal: toBpsDecimal(BigInt(claimDefaultRewardPercentage)),
+  });
+
+  // Return the created entity
+  const created = await context.db.find(schema.depositRedemptionVault, {
+    chainId,
+    address: address.toLowerCase() as Address,
+  });
+
+  if (!created) {
+    throw new Error(`Failed to create redemption vault: ${chainId}, ${address}`);
+  }
+
   return created;
 }
 
-export async function getOrCreateRedemptionVaultAssetConfiguration(
-  context: HandlerContext,
+/**
+ * Update an existing DepositRedemptionVault entity
+ */
+export async function updateRedemptionVault(
+  context: Context,
   chainId: number,
-  redemptionVaultAddress: Hex,
-  facilityAddress: Hex,
-  depositAssetAddress: Hex,
-): Promise<DepositRedemptionVaultAssetConfiguration> {
-  const id = buildEntityId([chainId, redemptionVaultAddress, facilityAddress, depositAssetAddress]);
-  const existing = await context.DepositRedemptionVaultAssetConfiguration.get(id);
-  if (existing) return existing as DepositRedemptionVaultAssetConfiguration;
+  address: Address,
+  updates: Partial<Omit<typeof schema.depositRedemptionVault.$inferSelect, "chainId" | "address">>,
+): Promise<void> {
+  await context.db
+    .update(schema.depositRedemptionVault, {
+      chainId,
+      address: address.toLowerCase() as Address,
+    })
+    .set(updates);
+}
 
-  const redemptionVault = await getOrCreateRedemptionVault(
-    context,
+/**
+ * Get or create a DepositRedemptionVaultAssetConfiguration entity
+ */
+export async function getOrCreateRedemptionVaultAssetConfiguration(
+  context: Context,
+  chainId: number,
+  redemptionVaultAddress: Address,
+  facilityAddress: Address,
+  depositAssetAddress: Address,
+): Promise<typeof schema.depositRedemptionVaultAssetConfiguration.$inferSelect> {
+  // Check if asset configuration already exists
+  const existing = await context.db.find(schema.depositRedemptionVaultAssetConfiguration, {
     chainId,
-    redemptionVaultAddress,
-  );
-  const facility = await getOrCreateDepositFacility(context, chainId, facilityAddress);
-  const depositAsset = await getOrCreateDepositAsset(context, chainId, depositAssetAddress);
+    redemptionVault: redemptionVaultAddress.toLowerCase() as Address,
+    facility: facilityAddress.toLowerCase() as Address,
+    depositAsset: depositAssetAddress.toLowerCase() as Address,
+  });
+
+  if (existing) {
+    return existing;
+  }
+
+  // Get or create redemption vault first
+  await getOrCreateRedemptionVault(context, chainId, redemptionVaultAddress);
 
   // Fetch the data from the contract
-  const interestRate = await context.effect(fetchRedemptionVaultInterestRate, {
-    chainId,
-    vaultAddress: redemptionVaultAddress,
+  const config = await fetchRedemptionVaultAssetConfiguration(
+    context.client,
+    redemptionVaultAddress,
     facilityAddress,
-    assetAddress: depositAssetAddress,
-  });
-  const maxBorrowPercentage = await context.effect(fetchRedemptionVaultMaxBorrowPercentage, {
+    depositAssetAddress,
+  );
+
+  // Create asset configuration
+  await context.db.insert(schema.depositRedemptionVaultAssetConfiguration).values({
     chainId,
-    vaultAddress: redemptionVaultAddress,
-    facilityAddress,
-    assetAddress: depositAssetAddress,
+    redemptionVault: redemptionVaultAddress.toLowerCase() as Address,
+    facility: facilityAddress.toLowerCase() as Address,
+    depositAsset: depositAssetAddress.toLowerCase() as Address,
+    interestRate: BigInt(config.interestRate),
+    interestRateDecimal: toBpsDecimal(BigInt(config.interestRate)),
+    maxBorrowPercentage: BigInt(config.maxBorrowPercentage),
+    maxBorrowPercentageDecimal: toBpsDecimal(BigInt(config.maxBorrowPercentage)),
   });
 
-  const created: DepositRedemptionVaultAssetConfiguration = {
-    id,
-    chainId: chainId,
-    redemptionVault_id: redemptionVault.id,
-    facility_id: facility.id,
-    depositAsset_id: depositAsset.id,
-    interestRate: BigInt(interestRate),
-    interestRateDecimal: toBpsDecimal(interestRate),
-    maxBorrowPercentage: BigInt(maxBorrowPercentage),
-    maxBorrowPercentageDecimal: toBpsDecimal(maxBorrowPercentage),
-  };
-  context.DepositRedemptionVaultAssetConfiguration.set(created);
+  // Return the created entity
+  const created = await context.db.find(schema.depositRedemptionVaultAssetConfiguration, {
+    chainId,
+    redemptionVault: redemptionVaultAddress.toLowerCase() as Address,
+    facility: facilityAddress.toLowerCase() as Address,
+    depositAsset: depositAssetAddress.toLowerCase() as Address,
+  });
+
+  if (!created) {
+    throw new Error(
+      `Failed to create redemption vault asset configuration: ${chainId}, ${redemptionVaultAddress}, ${facilityAddress}, ${depositAssetAddress}`,
+    );
+  }
+
   return created;
+}
+
+/**
+ * Update an existing DepositRedemptionVaultAssetConfiguration entity
+ */
+export async function updateRedemptionVaultAssetConfiguration(
+  context: Context,
+  chainId: number,
+  redemptionVaultAddress: Address,
+  facilityAddress: Address,
+  depositAssetAddress: Address,
+  updates: Partial<
+    Omit<
+      typeof schema.depositRedemptionVaultAssetConfiguration.$inferSelect,
+      "chainId" | "redemptionVault" | "facility" | "depositAsset"
+    >
+  >,
+): Promise<void> {
+  await context.db
+    .update(schema.depositRedemptionVaultAssetConfiguration, {
+      chainId,
+      redemptionVault: redemptionVaultAddress.toLowerCase() as Address,
+      facility: facilityAddress.toLowerCase() as Address,
+      depositAsset: depositAssetAddress.toLowerCase() as Address,
+    })
+    .set(updates);
 }

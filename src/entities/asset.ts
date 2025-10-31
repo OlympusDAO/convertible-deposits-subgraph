@@ -1,182 +1,211 @@
-import type { Asset, DepositAsset, DepositAssetPeriod } from "generated";
-import type { HandlerContext } from "generated/src/Types";
-import type { Hex } from "viem";
+// Entity helpers for Asset, DepositAsset, and DepositAssetPeriod
+// In Ponder, we use context.db for database operations and context.client for contract calls
+
+import type { Context } from "ponder:registry";
+import schema from "ponder:schema";
+import type { Address } from "viem";
 import { fetchAssetDecimals, fetchAssetName, fetchAssetSymbol } from "../contracts/asset";
-import { buildEntityId, getAddressId } from "../utils/ids";
 
 /**
  * Get or create an Asset
- *
- * @param context - The handler context
- * @param chainId - The chain ID
- * @param address - The asset address
- * @returns The asset
  */
 export async function getOrCreateAsset(
-  context: HandlerContext,
+  context: Context,
   chainId: number,
-  address: Hex,
-): Promise<Asset> {
-  const id = getAddressId(chainId, address);
-  const existing = await context.Asset.get(id);
-  if (existing) return existing as Asset;
+  address: Address,
+): Promise<typeof schema.asset.$inferSelect> {
+  // Check if asset exists
+  const existing = await context.db.find(schema.asset, {
+    chainId,
+    address: address.toLowerCase() as Address,
+  });
+
+  if (existing) {
+    return existing;
+  }
 
   // Fetch asset details from contract
-  const decimals = await context.effect(fetchAssetDecimals, { chainId, address });
-  const name = (await context.effect(fetchAssetName, { chainId, address })) as string;
-  const symbol = (await context.effect(fetchAssetSymbol, { chainId, address })) as string;
+  const decimals = await fetchAssetDecimals(context.client, address);
+  const name = await fetchAssetName(context.client, address);
+  const symbol = await fetchAssetSymbol(context.client, address);
 
-  const created: Asset = {
-    id,
-    chainId: chainId,
-    address: address.toLowerCase(),
+  // Insert new asset
+  const newAsset = {
+    chainId,
+    address: address.toLowerCase() as Address,
     decimals,
     name,
     symbol,
   };
-  context.Asset.set(created);
-  return created;
+
+  await context.db.insert(schema.asset).values(newAsset);
+
+  return newAsset;
 }
 
 /**
- * Get an Asset record from the ID
- *
- * @param context - The handler context
- * @param assetId - The asset ID
- * @returns The asset
+ * Get an Asset record
  */
-export async function getAsset(context: HandlerContext, assetId: string): Promise<Asset> {
-  const asset = await context.Asset.get(assetId);
-  if (!asset) {
-    throw new Error(`Asset not found: ${assetId}`);
+export async function getAsset(
+  context: Context,
+  chainId: number,
+  address: Address,
+): Promise<typeof schema.asset.$inferSelect> {
+  const result = await context.db.find(schema.asset, {
+    chainId,
+    address: address.toLowerCase() as Address,
+  });
+
+  if (!result) {
+    throw new Error(`Asset not found: ${chainId}:${address}`);
   }
-  return asset as Asset;
+
+  return result;
 }
 
+/**
+ * Get asset decimals
+ */
 export async function getAssetDecimals(
-  context: HandlerContext,
+  context: Context,
   chainId: number,
-  assetAddress: Hex,
+  assetAddress: Address,
 ): Promise<number> {
-  const asset = await getAsset(context, getAddressId(chainId, assetAddress));
+  const asset = await getAsset(context, chainId, assetAddress);
   return asset.decimals;
 }
 
 /**
  * Get or create a DepositAsset
- *
- * @param context
- * @param chainId
- * @param assetAddress
- * @returns
  */
 export async function getOrCreateDepositAsset(
-  context: HandlerContext,
+  context: Context,
   chainId: number,
-  assetAddress: Hex,
-): Promise<DepositAsset> {
-  const id = getAddressId(chainId, assetAddress);
-  const existing = await context.DepositAsset.get(id);
-  if (existing) return existing as DepositAsset;
+  assetAddress: Address,
+): Promise<typeof schema.depositAsset.$inferSelect> {
+  // Check if deposit asset exists
+  const existing = await context.db.find(schema.depositAsset, {
+    chainId,
+    asset: assetAddress.toLowerCase() as Address,
+  });
+
+  if (existing) {
+    return existing;
+  }
 
   // Create the underlying Asset record
-  const asset = await getOrCreateAsset(context, chainId, assetAddress);
+  await getOrCreateAsset(context, chainId, assetAddress);
 
-  const created: DepositAsset = {
-    id,
-    chainId: chainId,
-    asset_id: asset.id,
+  // Insert new deposit asset
+  const newDepositAsset = {
+    chainId,
+    asset: assetAddress.toLowerCase() as Address,
     enabled: true,
   };
-  context.DepositAsset.set(created);
-  return created;
+
+  await context.db.insert(schema.depositAsset).values(newDepositAsset);
+
+  return newDepositAsset;
 }
 
 /**
- * Get a DepositAsset record from the ID
- *
- * @param context
- * @param assetId
- * @returns
+ * Get a DepositAsset record
  */
 export async function getDepositAsset(
-  context: HandlerContext,
-  assetId: string,
-): Promise<DepositAsset> {
-  const asset = await context.DepositAsset.get(assetId);
-  if (!asset) {
-    throw new Error(`DepositAsset not found: ${assetId}`);
+  context: Context,
+  chainId: number,
+  assetAddress: Address,
+): Promise<typeof schema.depositAsset.$inferSelect> {
+  const result = await context.db.find(schema.depositAsset, {
+    chainId,
+    asset: assetAddress.toLowerCase() as Address,
+  });
+
+  if (!result) {
+    throw new Error(`DepositAsset not found: ${chainId}:${assetAddress}`);
   }
-  return asset as DepositAsset;
+
+  return result;
 }
 
+/**
+ * Get deposit asset decimals
+ */
 export async function getDepositAssetDecimals(
-  context: HandlerContext,
-  assetId: string,
+  context: Context,
+  chainId: number,
+  assetAddress: Address,
 ): Promise<number> {
-  const depositAsset = await getDepositAsset(context, assetId);
-  const asset = await getAsset(context, depositAsset.asset_id);
-
-  return asset.decimals;
+  return await getAssetDecimals(context, chainId, assetAddress);
 }
 
 /**
  * Get or create a DepositAssetPeriod
- *
- * @param context
- * @param chainId
- * @param depositAssetId
- * @param periodMonths
- * @returns
  */
 export async function getOrCreateDepositAssetPeriod(
-  context: HandlerContext,
+  context: Context,
   chainId: number,
-  depositAssetAddress: Hex,
-  periodMonths: number,
-): Promise<DepositAssetPeriod> {
-  const id = buildEntityId([chainId, depositAssetAddress, periodMonths]);
-  const existing = await context.DepositAssetPeriod.get(id);
-  if (existing) return existing as DepositAssetPeriod;
+  depositAssetAddress: Address,
+  depositPeriod: number,
+): Promise<typeof schema.depositAssetPeriod.$inferSelect> {
+  // Check if deposit asset period exists
+  const existing = await context.db.find(schema.depositAssetPeriod, {
+    chainId,
+    depositAsset: depositAssetAddress.toLowerCase() as Address,
+    depositPeriod,
+  });
+
+  if (existing) {
+    return existing;
+  }
 
   // Create the underlying DepositAsset record
-  const depositAsset = await getOrCreateDepositAsset(context, chainId, depositAssetAddress);
+  await getOrCreateDepositAsset(context, chainId, depositAssetAddress);
 
-  const created: DepositAssetPeriod = {
-    id,
-    chainId: chainId,
-    depositAsset_id: depositAsset.id,
-    periodMonths: periodMonths,
-    enabled: true, // TODO confirm if enabled by default
+  // Insert new deposit asset period
+  const newPeriod = {
+    chainId,
+    depositAsset: depositAssetAddress.toLowerCase() as Address,
+    depositPeriod,
+    enabled: true,
   };
-  context.DepositAssetPeriod.set(created);
-  return created;
+
+  await context.db.insert(schema.depositAssetPeriod).values(newPeriod);
+
+  return newPeriod;
 }
 
 /**
- * Get a DepositAssetPeriod record from the ID
- *
- * @param context
- * @param recordId
- * @returns
+ * Get a DepositAssetPeriod record
  */
 export async function getDepositAssetPeriod(
-  context: HandlerContext,
-  recordId: string,
-): Promise<DepositAssetPeriod> {
-  const existing = await context.DepositAssetPeriod.get(recordId);
-  if (!existing) {
-    throw new Error(`DepositAssetPeriod not found: ${recordId}`);
+  context: Context,
+  chainId: number,
+  depositAssetAddress: Address,
+  depositPeriod: number,
+): Promise<typeof schema.depositAssetPeriod.$inferSelect> {
+  const result = await context.db.find(schema.depositAssetPeriod, {
+    chainId,
+    depositAsset: depositAssetAddress.toLowerCase() as Address,
+    depositPeriod,
+  });
+
+  if (!result) {
+    throw new Error(
+      `DepositAssetPeriod not found: ${chainId}:${depositAssetAddress}:${depositPeriod}`,
+    );
   }
-  return existing as DepositAssetPeriod;
+
+  return result;
 }
 
+/**
+ * Get deposit asset period decimals
+ */
 export async function getDepositAssetPeriodDecimals(
-  context: HandlerContext,
-  recordId: string,
+  context: Context,
+  chainId: number,
+  depositAssetAddress: Address,
 ): Promise<number> {
-  const depositAssetPeriod = await getDepositAssetPeriod(context, recordId);
-  const depositAsset = await getDepositAsset(context, depositAssetPeriod.depositAsset_id);
-  const asset = await getAsset(context, depositAsset.asset_id);
-  return asset.decimals;
+  return await getAssetDecimals(context, chainId, depositAssetAddress);
 }

@@ -1,10 +1,12 @@
-import type { ConvertibleDepositPosition } from "generated";
-import type { HandlerContext } from "generated/src/Types";
-import type { Hex } from "viem";
+// Entity helpers for ConvertibleDepositPosition
+// In Ponder, we use context.db for database operations and context.client for contract calls
+
+import type { Context } from "ponder:registry";
+import schema from "ponder:schema";
+import type { Address } from "viem";
 import { fetchPosition } from "../contracts/position";
 import { toDecimal } from "../utils/decimal";
-import { getPositionId } from "../utils/ids";
-import { getDepositAssetPeriodDecimals, getOrCreateDepositAssetPeriod } from "./asset";
+import { getDepositAssetPeriod, getDepositAssetPeriodDecimals } from "./asset";
 import { getOrCreateDepositFacility } from "./depositFacility";
 import { getOrCreateDepositor } from "./depositor";
 import { getOrCreateReceiptToken } from "./receiptToken";
@@ -13,105 +15,153 @@ const UINT256_MAX = BigInt(
   "115792089237316195423570985008687907853269984665640564039457584007913129639935",
 );
 
+/**
+ * Get or create a ConvertibleDepositPosition
+ */
 export async function getOrCreatePosition(
-  context: HandlerContext,
+  context: Context,
   chainId: number,
-  facilityAddress: Hex,
-  depositAssetAddress: Hex,
-  depositAssetPeriodMonths: number,
+  facilityAddress: Address,
+  depositAssetAddress: Address,
+  depositPeriod: number,
   positionId: bigint,
-  depositorAddress: Hex,
-  txHash: Hex,
+  depositorAddress: Address,
+  txHash: Address,
   block: bigint,
   timestamp: bigint,
-): Promise<ConvertibleDepositPosition> {
-  const id = getPositionId(chainId, positionId);
-  const existing = await context.ConvertibleDepositPosition.get(id);
-  if (existing) return existing as ConvertibleDepositPosition;
+): Promise<typeof schema.convertibleDepositPosition.$inferSelect> {
+  // Check if position exists
+  const existing = await context.db.find(schema.convertibleDepositPosition, {
+    chainId,
+    positionId,
+  });
 
-  const facility = await getOrCreateDepositFacility(context, chainId, facilityAddress);
-  const depositor = await getOrCreateDepositor(context, chainId, depositorAddress);
-  const depositAssetPeriod = await getOrCreateDepositAssetPeriod(
+  if (existing) {
+    return existing;
+  }
+
+  // Get or create related entities
+  await getOrCreateDepositFacility(context, chainId, facilityAddress);
+  await getOrCreateDepositor(context, chainId, depositorAddress);
+  const _depositAssetPeriod = await getDepositAssetPeriod(
     context,
     chainId,
     depositAssetAddress,
-    depositAssetPeriodMonths,
+    depositPeriod,
   );
-  const assetDecimals = await getDepositAssetPeriodDecimals(context, depositAssetPeriod.id);
+  const assetDecimals = await getDepositAssetPeriodDecimals(context, chainId, depositAssetAddress);
+
+  // Fetch receipt token data
   const receiptToken = await getOrCreateReceiptToken(
     context,
     chainId,
     facilityAddress,
     depositAssetAddress,
-    depositAssetPeriodMonths,
+    depositPeriod,
   );
 
   // Fetch position data from contract
-  const position = await context.effect(fetchPosition, {
-    chainId,
-    positionId,
-  });
+  const position = await fetchPosition(context.client, positionId);
 
-  // Determine the conversion price
-  let conversionPrice: bigint | undefined;
+  // Determine the conversion price (UINT256_MAX means not set)
+  let conversionPrice: bigint | null = null;
+  let conversionPriceDecimal: string | null = null;
   if (position.conversionPrice !== UINT256_MAX) {
     conversionPrice = position.conversionPrice;
+    conversionPriceDecimal = toDecimal(position.conversionPrice, assetDecimals);
   }
 
-  const created: ConvertibleDepositPosition = {
-    id,
-    facility_id: facility.id,
-    chainId: chainId,
-    txHash: txHash.toLowerCase(),
-    block: BigInt(block),
-    timestamp: BigInt(timestamp),
-    positionId: BigInt(positionId),
-    depositor_id: depositor.id,
-    assetPeriod_id: depositAssetPeriod.id,
+  // Insert new position
+  const newPosition = {
+    chainId,
+    positionId,
+    txHash: txHash.toLowerCase() as Address,
+    block,
+    timestamp,
+    facility: facilityAddress.toLowerCase() as Address,
+    depositor: depositorAddress.toLowerCase() as Address,
+    depositAsset: depositAssetAddress.toLowerCase() as Address,
+    depositPeriod,
+    receiptTokenManager: receiptToken.receiptTokenManager,
+    receiptTokenId: receiptToken.receiptTokenId,
     initialAmount: position.remainingDeposit,
     initialAmountDecimal: toDecimal(position.remainingDeposit, assetDecimals),
     remainingAmount: position.remainingDeposit,
     remainingAmountDecimal: toDecimal(position.remainingDeposit, assetDecimals),
-    conversionPrice: conversionPrice,
-    conversionPriceDecimal: conversionPrice ? toDecimal(conversionPrice, assetDecimals) : undefined,
-    receiptToken_id: receiptToken.id,
+    conversionPrice,
+    conversionPriceDecimal,
   };
-  context.ConvertibleDepositPosition.set(created);
 
-  return created;
+  await context.db.insert(schema.convertibleDepositPosition).values(newPosition);
+
+  return newPosition;
 }
 
+/**
+ * Get a ConvertibleDepositPosition by ID
+ */
 export async function getPosition(
-  context: HandlerContext,
-  recordId: string,
-): Promise<ConvertibleDepositPosition> {
-  const existing = await context.ConvertibleDepositPosition.get(recordId);
-  if (!existing) {
-    throw new Error(`Position ${recordId} not found`);
-  }
-
-  return existing as ConvertibleDepositPosition;
-}
-
-export async function updatePositionFromContract(
-  context: HandlerContext,
-  recordId: string,
-  assetDecimals: number,
-): Promise<void> {
-  const position = await getPosition(context, recordId);
-
-  // Fetch updated position data from contract
-  const contractPosition = await context.effect(fetchPosition, {
-    chainId: position.chainId,
-    positionId: position.positionId,
+  context: Context,
+  chainId: number,
+  positionId: bigint,
+): Promise<typeof schema.convertibleDepositPosition.$inferSelect> {
+  const existing = await context.db.find(schema.convertibleDepositPosition, {
+    chainId,
+    positionId,
   });
 
+  if (!existing) {
+    throw new Error(`Position not found: ${chainId}:${positionId}`);
+  }
+
+  return existing;
+}
+
+/**
+ * Update a position with new values
+ */
+export async function updatePosition(
+  context: Context,
+  chainId: number,
+  positionId: bigint,
+  updates: Partial<
+    Omit<typeof schema.convertibleDepositPosition.$inferSelect, "chainId" | "positionId">
+  >,
+): Promise<void> {
+  await context.db
+    .update(schema.convertibleDepositPosition, {
+      chainId,
+      positionId,
+    })
+    .set(updates);
+}
+
+/**
+ * Update a position from contract state
+ * Note: In Ponder, we use insert with the same primary key to update
+ */
+export async function updatePositionFromContract(
+  context: Context,
+  chainId: number,
+  positionId: bigint,
+  assetDecimals: number,
+): Promise<void> {
+  const _position = await getPosition(context, chainId, positionId);
+
+  // Fetch updated position data from contract
+  const contractPosition = await fetchPosition(context.client, positionId);
+
   // Update the position with the latest remainingAmount from the contract
-  const updatedPosition: ConvertibleDepositPosition = {
-    ...position,
+  const updatedPosition = {
     remainingAmount: contractPosition.remainingDeposit,
     remainingAmountDecimal: toDecimal(contractPosition.remainingDeposit, assetDecimals),
   };
 
-  context.ConvertibleDepositPosition.set(updatedPosition);
+  // In Ponder, insert with same primary key updates the record
+  await context.db
+    .update(schema.convertibleDepositPosition, {
+      chainId,
+      positionId,
+    })
+    .set(updatedPosition);
 }
