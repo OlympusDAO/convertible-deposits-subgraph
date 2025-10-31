@@ -112,6 +112,21 @@ export async function getPosition(
 }
 
 /**
+ * Update a position with new values
+ */
+export async function updatePosition(
+  context: Context,
+  chainId: number,
+  positionId: bigint,
+  updates: Partial<Omit<typeof schema.convertibleDepositPosition.$inferSelect, "chainId" | "positionId">>,
+): Promise<void> {
+  await context.db.update(schema.convertibleDepositPosition, {
+    chainId,
+    positionId,
+  }).set(updates);
+}
+
+/**
  * Update a position from contract state
  * Note: In Ponder, we use insert with the same primary key to update
  */
