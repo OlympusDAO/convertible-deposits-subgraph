@@ -129,6 +129,49 @@ export async function fetchAuctioneerDayState(
 }
 
 /**
+ * Batch fetch auctioneer day state and parameters in a single multicall
+ */
+export async function fetchAuctioneerDayStateAndParameters(
+  client: PonderClient,
+  address: Address,
+): Promise<{
+  dayState: { dayInitTimestamp: bigint; convertible: bigint };
+  parameters: { target: bigint; tickSize: bigint; minPrice: bigint };
+}> {
+  const results = await client.multicall({
+    contracts: [
+      {
+        address,
+        abi: ConvertibleDepositAuctioneerAbi,
+        functionName: "getDayState",
+      },
+      {
+        address,
+        abi: ConvertibleDepositAuctioneerAbi,
+        functionName: "getAuctionParameters",
+      },
+    ],
+  });
+
+  const dayStateResult = results[0];
+  const parametersResult = results[1];
+
+  if (dayStateResult.status === "failure" || parametersResult.status === "failure") {
+    throw new Error(
+      `Failed to fetch auctioneer day state and parameters for ${address}: ${dayStateResult.error || parametersResult.error}`
+    );
+  }
+
+  return {
+    dayState: {
+      dayInitTimestamp: BigInt(dayStateResult.result.initTimestamp),
+      convertible: dayStateResult.result.convertible,
+    },
+    parameters: parametersResult.result,
+  };
+}
+
+/**
  * Fetch auctioneer active status
  */
 export async function fetchAuctioneerIsActive(

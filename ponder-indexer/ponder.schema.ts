@@ -641,6 +641,153 @@ export const convertibleDepositFacilityClaimedYield = onchainTable(
   })
 );
 
+// Snapshot entities for interval-based state tracking
+export const auctioneerSnapshot = onchainTable(
+  "auctioneer_snapshot",
+  (t) => ({
+    chainId: t.integer().notNull(),
+    block: t.bigint().notNull(),
+    timestamp: t.bigint().notNull(),
+    auctioneer: t.hex().notNull(), // Auctioneer address (FK)
+    // Day state from getDayState()
+    dayInitTimestamp: t.bigint().notNull(),
+    ohmSold: t.bigint().notNull(), // convertible from getDayState
+    ohmSoldDecimal: t.text().notNull(), // BigDecimal as text
+    // Auction parameters (from contract)
+    isAuctionActive: t.boolean().notNull(),
+    target: t.bigint().notNull(),
+    targetDecimal: t.text().notNull(), // BigDecimal as text
+    tickSize: t.bigint().notNull(),
+    tickSizeDecimal: t.text().notNull(), // BigDecimal as text
+    minPrice: t.bigint().notNull(),
+    minPriceDecimal: t.text().notNull(), // BigDecimal as text
+  }),
+  (table) => ({
+    pk: primaryKey({ columns: [table.chainId, table.block, table.auctioneer] }),
+  })
+);
+
+export const auctioneerDepositPeriodSnapshot = onchainTable(
+  "auctioneer_deposit_period_snapshot",
+  (t) => ({
+    chainId: t.integer().notNull(),
+    block: t.bigint().notNull(),
+    timestamp: t.bigint().notNull(),
+    auctioneer: t.hex().notNull(), // Auctioneer address (FK)
+    depositAsset: t.hex().notNull(), // Asset address (FK)
+    depositPeriod: t.integer().notNull(), // Period months (FK)
+    parentSnapshotChainId: t.integer().notNull(), // Parent snapshot chainId
+    parentSnapshotBlock: t.bigint().notNull(), // Parent snapshot block
+    parentSnapshotAuctioneer: t.hex().notNull(), // Parent snapshot auctioneer
+    // Current tick state for this specific period
+    currentTickPrice: t.bigint().notNull(),
+    currentTickPriceDecimal: t.text().notNull(), // BigDecimal as text
+    currentTickCapacity: t.bigint().notNull(),
+    currentTickCapacityDecimal: t.text().notNull(), // BigDecimal as text
+  }),
+  (table) => ({
+    pk: primaryKey({
+      columns: [table.chainId, table.block, table.auctioneer, table.depositAsset, table.depositPeriod],
+    }),
+  })
+);
+
+export const depositFacilityAssetSnapshot = onchainTable(
+  "deposit_facility_asset_snapshot",
+  (t) => ({
+    chainId: t.integer().notNull(),
+    block: t.bigint().notNull(),
+    timestamp: t.bigint().notNull(),
+    facility: t.hex().notNull(), // Facility address (FK)
+    depositAsset: t.hex().notNull(), // Asset address (FK)
+    // Incremental counters (copied from previous snapshot, adjusted by events)
+    // Includes pending redemption (still in the DepositManager), excludes borrowed amount
+    totalDeposited: t.bigint().notNull(),
+    totalDepositedDecimal: t.text().notNull(), // BigDecimal as text
+    pendingRedemption: t.bigint().notNull(),
+    pendingRedemptionDecimal: t.text().notNull(), // BigDecimal as text
+    borrowedAmount: t.bigint().notNull(),
+    borrowedAmountDecimal: t.text().notNull(), // BigDecimal as text
+    // Claimable yield (from contract call)
+    claimableYield: t.bigint().notNull(),
+    claimableYieldDecimal: t.text().notNull(), // BigDecimal as text
+  }),
+  (table) => ({
+    pk: primaryKey({ columns: [table.chainId, table.block, table.facility, table.depositAsset] }),
+  })
+);
+
+// Snapshot Relations
+export const auctioneerSnapshotRelations = relations(auctioneerSnapshot, ({ one, many }) => ({
+  auctioneer: one(auctioneer, {
+    fields: [auctioneerSnapshot.chainId, auctioneerSnapshot.auctioneer],
+    references: [auctioneer.chainId, auctioneer.address],
+  }),
+  depositPeriodSnapshots: many(auctioneerDepositPeriodSnapshot),
+}));
+
+export const auctioneerDepositPeriodSnapshotRelations = relations(
+  auctioneerDepositPeriodSnapshot,
+  ({ one }) => ({
+    auctioneerSnapshot: one(auctioneerSnapshot, {
+      fields: [
+        auctioneerDepositPeriodSnapshot.parentSnapshotChainId,
+        auctioneerDepositPeriodSnapshot.parentSnapshotBlock,
+        auctioneerDepositPeriodSnapshot.parentSnapshotAuctioneer,
+      ],
+      references: [
+        auctioneerSnapshot.chainId,
+        auctioneerSnapshot.block,
+        auctioneerSnapshot.auctioneer,
+      ],
+    }),
+    auctioneer: one(auctioneer, {
+      fields: [auctioneerDepositPeriodSnapshot.chainId, auctioneerDepositPeriodSnapshot.auctioneer],
+      references: [auctioneer.chainId, auctioneer.address],
+    }),
+    assetPeriod: one(depositAssetPeriod, {
+      fields: [
+        auctioneerDepositPeriodSnapshot.chainId,
+        auctioneerDepositPeriodSnapshot.depositAsset,
+        auctioneerDepositPeriodSnapshot.depositPeriod,
+      ],
+      references: [
+        depositAssetPeriod.chainId,
+        depositAssetPeriod.depositAsset,
+        depositAssetPeriod.depositPeriod,
+      ],
+    }),
+    auctioneerDepositPeriod: one(auctioneerDepositPeriod, {
+      fields: [
+        auctioneerDepositPeriodSnapshot.chainId,
+        auctioneerDepositPeriodSnapshot.auctioneer,
+        auctioneerDepositPeriodSnapshot.depositAsset,
+        auctioneerDepositPeriodSnapshot.depositPeriod,
+      ],
+      references: [
+        auctioneerDepositPeriod.chainId,
+        auctioneerDepositPeriod.auctioneer,
+        auctioneerDepositPeriod.depositAsset,
+        auctioneerDepositPeriod.depositPeriod,
+      ],
+    }),
+  })
+);
+
+export const depositFacilityAssetSnapshotRelations = relations(
+  depositFacilityAssetSnapshot,
+  ({ one }) => ({
+    facility: one(depositFacility, {
+      fields: [depositFacilityAssetSnapshot.chainId, depositFacilityAssetSnapshot.facility],
+      references: [depositFacility.chainId, depositFacility.address],
+    }),
+    depositAsset: one(depositAsset, {
+      fields: [depositFacilityAssetSnapshot.chainId, depositFacilityAssetSnapshot.depositAsset],
+      references: [depositAsset.chainId, depositAsset.asset],
+    }),
+  })
+);
+
 // ============================================================================
 // Relations
 // ============================================================================
@@ -683,6 +830,7 @@ export const auctioneerRelations = relations(auctioneer, ({ one, many }) => ({
   depositPeriodEnabledEvents: many(convertibleDepositAuctioneerDepositPeriodEnabled),
   auctionParametersUpdatedEvents: many(convertibleDepositAuctioneerAuctionParametersUpdated),
   auctionResultEvents: many(convertibleDepositAuctioneerAuctionResult),
+  snapshots: many(auctioneerSnapshot),
 }));
 
 export const auctioneerDepositPeriodRelations = relations(auctioneerDepositPeriod, ({ one, many }) => ({
@@ -708,6 +856,7 @@ export const auctioneerDepositPeriodRelations = relations(auctioneerDepositPerio
 export const depositFacilityRelations = relations(depositFacility, ({ many }) => ({
   positions: many(convertibleDepositPosition),
   assets: many(depositFacilityAsset),
+  assetSnapshots: many(depositFacilityAssetSnapshot),
   enabledEvents: many(convertibleDepositFacilityEnabled),
   disabledEvents: many(convertibleDepositFacilityDisabled),
   operatorAuthorizedEvents: many(convertibleDepositFacilityOperatorAuthorized),

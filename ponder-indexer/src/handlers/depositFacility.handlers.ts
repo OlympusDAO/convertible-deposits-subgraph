@@ -15,6 +15,10 @@ import { getAssetDecimals } from "../entities/asset";
 import { getOrCreateDepositor } from "../entities/depositor";
 import { getOrCreatePosition, updatePosition, getPosition } from "../entities/position";
 import { fetchUserPositionIds, fetchPositions } from "../contracts/position";
+import {
+  updateFacilityAssetDeposited,
+  updateFacilityAssetPendingRedemption,
+} from "../entities/snapshot";
 import { toDecimal, toOhmDecimal, toBpsDecimal } from "../utils/decimal";
 
 ponder.on("ConvertibleDepositFacility:Enabled", async ({ event, context }) => {
@@ -322,6 +326,17 @@ ponder.on("ConvertibleDepositFacility:CreatedDeposit", async ({ event, context }
     remainingAmount: BigInt(event.args.depositAmount),
     remainingAmountDecimal: toDecimal(BigInt(event.args.depositAmount), assetDecimals),
   });
+
+  // Update facility asset snapshot with deposit
+  await updateFacilityAssetDeposited(
+    context,
+    chainId,
+    BigInt(event.block.number),
+    BigInt(event.block.timestamp),
+    facilityAddress,
+    assetAddress,
+    BigInt(event.args.depositAmount),
+  );
 });
 
 ponder.on("ConvertibleDepositFacility:Reclaimed", async ({ event, context }) => {
@@ -358,6 +373,17 @@ ponder.on("ConvertibleDepositFacility:Reclaimed", async ({ event, context }) => 
     forfeitedAmount: BigInt(event.args.forfeitedAmount),
     forfeitedAmountDecimal: toDecimal(BigInt(event.args.forfeitedAmount), assetDecimals),
   });
+
+  // Update facility asset snapshot with withdrawal (negative delta for reclaimed amount)
+  await updateFacilityAssetDeposited(
+    context,
+    chainId,
+    BigInt(event.block.number),
+    BigInt(event.block.timestamp),
+    facilityAddress,
+    assetAddress,
+    -BigInt(event.args.reclaimedAmount), // Negative for withdrawal
+  );
 });
 
 ponder.on("ConvertibleDepositFacility:ConvertedDeposit", async ({ event, context }) => {
@@ -397,6 +423,9 @@ ponder.on("ConvertibleDepositFacility:ConvertedDeposit", async ({ event, context
   // Update positions of depositor for this asset period
   const contractPositionIds = await fetchUserPositionIds(context.client, depositorAddress);
   const contractPositions = await fetchPositions(context.client, contractPositionIds);
+
+  // Track total converted amount for snapshot update
+  let totalDepositConverted = BigInt(0);
 
   // Update positions of depositor for this asset period
   let logIndexCounter = event.log.logIndex;
@@ -447,11 +476,27 @@ ponder.on("ConvertibleDepositFacility:ConvertedDeposit", async ({ event, context
       convertedAmountDecimal: toOhmDecimal(convertedAmount),
     });
 
+    // Accumulate total converted amount
+    totalDepositConverted += depositConvertedAmount;
+
     // Update the position record with the new remaining amount
     await updatePosition(context, chainId, contractPositionId, {
       remainingAmount: contractPosition.remainingDeposit,
       remainingAmountDecimal: toDecimal(contractPosition.remainingDeposit, assetDecimals),
     });
+  }
+
+  // Update facility asset snapshot with converted deposits (negative delta for reduced deposits)
+  if (totalDepositConverted > 0n) {
+    await updateFacilityAssetDeposited(
+      context,
+      chainId,
+      BigInt(event.block.number),
+      BigInt(event.block.timestamp),
+      facilityAddress,
+      assetAddress,
+      -totalDepositConverted, // Negative because deposits are converted away
+    );
   }
 });
 
