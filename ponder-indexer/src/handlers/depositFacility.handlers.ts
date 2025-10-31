@@ -10,8 +10,9 @@ import {
 } from "../entities/depositFacility";
 import { getAssetDecimals } from "../entities/asset";
 import { getOrCreateDepositor } from "../entities/depositor";
-import { getOrCreatePosition, updatePosition } from "../entities/position";
-import { toDecimal } from "../utils/decimal";
+import { getOrCreatePosition, updatePosition, getPosition } from "../entities/position";
+import { fetchUserPositionIds, fetchPositions } from "../contracts/position";
+import { toDecimal, toOhmDecimal } from "../utils/decimal";
 
 ponder.on("ConvertibleDepositFacility:Enabled", async ({ event, context }) => {
   const chainId = Number(context.chain.id);
@@ -193,3 +194,97 @@ ponder.on("ConvertibleDepositFacility:Reclaimed", async ({ event, context }) => 
   });
 });
 
+ponder.on("ConvertibleDepositFacility:ConvertedDeposit", async ({ event, context }) => {
+  const chainId = Number(context.chain.id);
+  const facilityAddress = event.log.address as Address;
+  const assetAddress = event.args.asset as Address;
+  const depositPeriod = Number(event.args.periodMonths);
+  const depositorAddress = event.args.depositor as Address;
+
+  // Create/fetch records
+  await getOrCreateDepositor(context, chainId, depositorAddress);
+  await getOrCreateDepositFacilityAssetPeriod(
+    context,
+    chainId,
+    facilityAddress,
+    assetAddress,
+    depositPeriod,
+  );
+  const assetDecimals = await getAssetDecimals(context, chainId, assetAddress);
+
+  // Create record for the parent event
+  await context.db.insert(schema.convertibleDepositFacilityConvertedDeposits).values({
+    chainId,
+    block: BigInt(event.block.number),
+    logIndex: event.log.logIndex,
+    txHash: event.transaction.hash,
+    timestamp: BigInt(event.block.timestamp),
+    facility: facilityAddress.toLowerCase() as Address,
+    depositAsset: assetAddress.toLowerCase() as Address,
+    depositPeriod,
+    depositAmount: BigInt(event.args.depositAmount),
+    depositAmountDecimal: toDecimal(BigInt(event.args.depositAmount), assetDecimals),
+    convertedAmount: BigInt(event.args.convertedAmount),
+    convertedAmountDecimal: toOhmDecimal(BigInt(event.args.convertedAmount)),
+  });
+
+  // Update positions of depositor for this asset period
+  const contractPositionIds = await fetchUserPositionIds(context.client, depositorAddress);
+  const contractPositions = await fetchPositions(context.client, contractPositionIds);
+
+  // Update positions of depositor for this asset period
+  let logIndexCounter = event.log.logIndex;
+  for (let i = 0; i < contractPositionIds.length; i++) {
+    const contractPositionId = contractPositionIds[i];
+    const contractPosition = contractPositions[i];
+
+    // Skip if position data is missing
+    if (!contractPositionId || !contractPosition) {
+      throw new Error(`Position data is missing for contract position ID: ${contractPositionId}`);
+    }
+
+    // Get the position record - this will throw if position is not found
+    const recordPosition = await getPosition(context, chainId, contractPositionId);
+
+    // Check if this position matches the facility asset period
+    if (
+      recordPosition.facility.toLowerCase() !== facilityAddress.toLowerCase() ||
+      recordPosition.depositAsset.toLowerCase() !== assetAddress.toLowerCase() ||
+      recordPosition.depositPeriod !== depositPeriod
+    ) {
+      throw new Error(`Position does not match facility asset period: ${contractPositionId}`);
+    }
+
+    const depositConvertedAmount = recordPosition.remainingAmount - contractPosition.remainingDeposit;
+
+    // Calculate the amount converted
+    const convertedAmount = (depositConvertedAmount * BigInt(1e9)) / contractPosition.conversionPrice;
+
+    // Create record for the converted deposit (use sequential logIndex for child events)
+    await context.db.insert(schema.convertibleDepositFacilityConvertedDeposit).values({
+      chainId,
+      block: BigInt(event.block.number),
+      logIndex: logIndexCounter++,
+      txHash: event.transaction.hash,
+      timestamp: BigInt(event.block.timestamp),
+      facility: facilityAddress.toLowerCase() as Address,
+      depositAsset: assetAddress.toLowerCase() as Address,
+      depositPeriod,
+      depositor: depositorAddress.toLowerCase() as Address,
+      positionId: contractPositionId,
+      parentEventChainId: chainId,
+      parentEventBlock: BigInt(event.block.number),
+      parentEventLogIndex: event.log.logIndex,
+      depositAmount: depositConvertedAmount,
+      depositAmountDecimal: toDecimal(depositConvertedAmount, assetDecimals),
+      convertedAmount: convertedAmount,
+      convertedAmountDecimal: toOhmDecimal(convertedAmount),
+    });
+
+    // Update the position record with the new remaining amount
+    await updatePosition(context, chainId, contractPositionId, {
+      remainingAmount: contractPosition.remainingDeposit,
+      remainingAmountDecimal: toDecimal(contractPosition.remainingDeposit, assetDecimals),
+    });
+  }
+});

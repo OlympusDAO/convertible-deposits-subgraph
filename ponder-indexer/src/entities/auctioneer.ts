@@ -120,6 +120,10 @@ export async function getOrCreateAuctioneerDepositPeriod(
     depositAsset: depositAssetAddress.toLowerCase() as Address,
     depositPeriod,
     enabled: false,
+    currentTickCapacity: null,
+    currentTickCapacityDecimal: null,
+    currentTickPrice: null,
+    currentTickPriceDecimal: null,
   };
 
   await context.db.insert(schema.auctioneerDepositPeriod).values(newPeriod);

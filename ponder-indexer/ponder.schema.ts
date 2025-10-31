@@ -108,6 +108,12 @@ export const auctioneerDepositPeriod = onchainTable(
     depositAsset: t.hex().notNull(), // Asset address (FK to depositAssetPeriod)
     depositPeriod: t.integer().notNull(), // Period months (FK to depositAssetPeriod)
     enabled: t.boolean().notNull(),
+    // Current tick data (updated on each bid)
+    // TODO consider if this is needed? vs having snapshot
+    currentTickCapacity: t.bigint(),
+    currentTickCapacityDecimal: t.text(), // BigDecimal as text
+    currentTickPrice: t.bigint(),
+    currentTickPriceDecimal: t.text(), // BigDecimal as text
   }),
   (table) => ({
     pk: primaryKey({
@@ -499,6 +505,81 @@ export const convertibleDepositFacilityReclaimed = onchainTable(
   })
 );
 
+export const convertibleDepositAuctioneerBid = onchainTable(
+  "convertible_deposit_auctioneer_bid",
+  (t) => ({
+    chainId: t.integer().notNull(),
+    block: t.bigint().notNull(),
+    logIndex: t.integer().notNull(),
+    txHash: t.hex().notNull(),
+    timestamp: t.bigint().notNull(),
+    auctioneer: t.hex().notNull(), // Auctioneer address (FK)
+    depositAsset: t.hex().notNull(), // Asset address (FK)
+    depositPeriod: t.integer().notNull(), // Period months (FK)
+    depositor: t.hex().notNull(), // Depositor address (FK)
+    positionId: t.bigint().notNull(), // Position ID (FK)
+    depositAmount: t.bigint().notNull(),
+    depositAmountDecimal: t.text().notNull(), // BigDecimal as text
+    convertedAmount: t.bigint().notNull(),
+    convertedAmountDecimal: t.text().notNull(), // BigDecimal as text
+    tickCapacity: t.bigint().notNull(),
+    tickCapacityDecimal: t.text().notNull(), // BigDecimal as text
+    tickPrice: t.bigint().notNull(),
+    tickPriceDecimal: t.text().notNull(), // BigDecimal as text
+  }),
+  (table) => ({
+    pk: primaryKey({ columns: [table.chainId, table.block, table.logIndex] }),
+  })
+);
+
+export const convertibleDepositFacilityConvertedDeposits = onchainTable(
+  "convertible_deposit_facility_converted_deposits",
+  (t) => ({
+    chainId: t.integer().notNull(),
+    block: t.bigint().notNull(),
+    logIndex: t.integer().notNull(),
+    txHash: t.hex().notNull(),
+    timestamp: t.bigint().notNull(),
+    facility: t.hex().notNull(), // Facility address (FK)
+    depositAsset: t.hex().notNull(), // Asset address (FK)
+    depositPeriod: t.integer().notNull(), // Period months (FK)
+    depositAmount: t.bigint().notNull(),
+    depositAmountDecimal: t.text().notNull(), // BigDecimal as text
+    convertedAmount: t.bigint().notNull(),
+    convertedAmountDecimal: t.text().notNull(), // BigDecimal as text
+  }),
+  (table) => ({
+    pk: primaryKey({ columns: [table.chainId, table.block, table.logIndex] }),
+  })
+);
+
+export const convertibleDepositFacilityConvertedDeposit = onchainTable(
+  "convertible_deposit_facility_converted_deposit",
+  (t) => ({
+    chainId: t.integer().notNull(),
+    block: t.bigint().notNull(),
+    logIndex: t.integer().notNull(),
+    txHash: t.hex().notNull(),
+    timestamp: t.bigint().notNull(),
+    facility: t.hex().notNull(), // Facility address (FK)
+    depositAsset: t.hex().notNull(), // Asset address (FK)
+    depositPeriod: t.integer().notNull(), // Period months (FK)
+    depositor: t.hex().notNull(), // Depositor address (FK)
+    positionId: t.bigint().notNull(), // Position ID (FK)
+    parentEventChainId: t.integer().notNull(), // Parent event chainId
+    parentEventBlock: t.bigint().notNull(), // Parent event block
+    parentEventLogIndex: t.integer().notNull(), // Parent event logIndex
+    depositAmount: t.bigint().notNull(),
+    depositAmountDecimal: t.text().notNull(), // BigDecimal as text
+    convertedAmount: t.bigint().notNull(),
+    convertedAmountDecimal: t.text().notNull(), // BigDecimal as text
+  }),
+  (table) => ({
+    // TODO this PK might not be unique, add index?
+    pk: primaryKey({ columns: [table.chainId, table.block, table.logIndex] }),
+  })
+);
+
 // ============================================================================
 // Relations
 // ============================================================================
@@ -541,7 +622,7 @@ export const auctioneerRelations = relations(auctioneer, ({ one, many }) => ({
   depositPeriodEnabledEvents: many(convertibleDepositAuctioneerDepositPeriodEnabled),
 }));
 
-export const auctioneerDepositPeriodRelations = relations(auctioneerDepositPeriod, ({ one }) => ({
+export const auctioneerDepositPeriodRelations = relations(auctioneerDepositPeriod, ({ one, many }) => ({
   auctioneer: one(auctioneer, {
     fields: [auctioneerDepositPeriod.chainId, auctioneerDepositPeriod.auctioneer],
     references: [auctioneer.chainId, auctioneer.address],
@@ -558,6 +639,7 @@ export const auctioneerDepositPeriodRelations = relations(auctioneerDepositPerio
       depositAssetPeriod.depositPeriod,
     ],
   }),
+  bidEvents: many(convertibleDepositAuctioneerBid),
 }));
 
 export const depositFacilityRelations = relations(depositFacility, ({ many }) => ({
@@ -617,6 +699,7 @@ export const depositFacilityAssetPeriodRelations = relations(
     }),
     createdDepositEvents: many(convertibleDepositFacilityCreatedDeposit),
     reclaimedEvents: many(convertibleDepositFacilityReclaimed),
+    convertedDepositsEvents: many(convertibleDepositFacilityConvertedDeposits),
   })
 );
 
@@ -624,6 +707,8 @@ export const depositorRelations = relations(depositor, ({ many }) => ({
   positions: many(convertibleDepositPosition),
   createdDepositEvents: many(convertibleDepositFacilityCreatedDeposit),
   reclaimedEvents: many(convertibleDepositFacilityReclaimed),
+  bidEvents: many(convertibleDepositAuctioneerBid),
+  convertedDepositEvents: many(convertibleDepositFacilityConvertedDeposit),
 }));
 
 export const convertibleDepositPositionRelations = relations(
@@ -650,6 +735,8 @@ export const convertibleDepositPositionRelations = relations(
       ],
     }),
     createdDepositEvents: many(convertibleDepositFacilityCreatedDeposit),
+    bidEvents: many(convertibleDepositAuctioneerBid),
+    convertedDepositEvents: many(convertibleDepositFacilityConvertedDeposit),
     // ReceiptToken relation will be added when we create that entity
   })
 );
@@ -993,6 +1080,127 @@ export const convertibleDepositFacilityReclaimedRelations = relations(
     depositor: one(depositor, {
       fields: [convertibleDepositFacilityReclaimed.chainId, convertibleDepositFacilityReclaimed.depositor],
       references: [depositor.chainId, depositor.address],
+    }),
+  })
+);
+
+export const convertibleDepositAuctioneerBidRelations = relations(
+  convertibleDepositAuctioneerBid,
+  ({ one }) => ({
+    auctioneer: one(auctioneer, {
+      fields: [convertibleDepositAuctioneerBid.chainId, convertibleDepositAuctioneerBid.auctioneer],
+      references: [auctioneer.chainId, auctioneer.address],
+    }),
+    auctioneerDepositPeriod: one(auctioneerDepositPeriod, {
+      fields: [
+        convertibleDepositAuctioneerBid.chainId,
+        convertibleDepositAuctioneerBid.auctioneer,
+        convertibleDepositAuctioneerBid.depositAsset,
+        convertibleDepositAuctioneerBid.depositPeriod,
+      ],
+      references: [
+        auctioneerDepositPeriod.chainId,
+        auctioneerDepositPeriod.auctioneer,
+        auctioneerDepositPeriod.depositAsset,
+        auctioneerDepositPeriod.depositPeriod,
+      ],
+    }),
+    assetPeriod: one(depositAssetPeriod, {
+      fields: [
+        convertibleDepositAuctioneerBid.chainId,
+        convertibleDepositAuctioneerBid.depositAsset,
+        convertibleDepositAuctioneerBid.depositPeriod,
+      ],
+      references: [
+        depositAssetPeriod.chainId,
+        depositAssetPeriod.depositAsset,
+        depositAssetPeriod.depositPeriod,
+      ],
+    }),
+    depositor: one(depositor, {
+      fields: [convertibleDepositAuctioneerBid.chainId, convertibleDepositAuctioneerBid.depositor],
+      references: [depositor.chainId, depositor.address],
+    }),
+    position: one(convertibleDepositPosition, {
+      fields: [convertibleDepositAuctioneerBid.chainId, convertibleDepositAuctioneerBid.positionId],
+      references: [convertibleDepositPosition.chainId, convertibleDepositPosition.positionId],
+    }),
+  })
+);
+
+export const convertibleDepositFacilityConvertedDepositsRelations = relations(
+  convertibleDepositFacilityConvertedDeposits,
+  ({ one, many }) => ({
+    facility: one(depositFacility, {
+      fields: [convertibleDepositFacilityConvertedDeposits.chainId, convertibleDepositFacilityConvertedDeposits.facility],
+      references: [depositFacility.chainId, depositFacility.address],
+    }),
+    depositAsset: one(depositAsset, {
+      fields: [convertibleDepositFacilityConvertedDeposits.chainId, convertibleDepositFacilityConvertedDeposits.depositAsset],
+      references: [depositAsset.chainId, depositAsset.asset],
+    }),
+    facilityAssetPeriod: one(depositFacilityAssetPeriod, {
+      fields: [
+        convertibleDepositFacilityConvertedDeposits.chainId,
+        convertibleDepositFacilityConvertedDeposits.facility,
+        convertibleDepositFacilityConvertedDeposits.depositAsset,
+        convertibleDepositFacilityConvertedDeposits.depositPeriod,
+      ],
+      references: [
+        depositFacilityAssetPeriod.chainId,
+        depositFacilityAssetPeriod.facility,
+        depositFacilityAssetPeriod.depositAsset,
+        depositFacilityAssetPeriod.depositPeriod,
+      ],
+    }),
+    convertedDeposits: many(convertibleDepositFacilityConvertedDeposit),
+  })
+);
+
+export const convertibleDepositFacilityConvertedDepositRelations = relations(
+  convertibleDepositFacilityConvertedDeposit,
+  ({ one }) => ({
+    facility: one(depositFacility, {
+      fields: [convertibleDepositFacilityConvertedDeposit.chainId, convertibleDepositFacilityConvertedDeposit.facility],
+      references: [depositFacility.chainId, depositFacility.address],
+    }),
+    depositAsset: one(depositAsset, {
+      fields: [convertibleDepositFacilityConvertedDeposit.chainId, convertibleDepositFacilityConvertedDeposit.depositAsset],
+      references: [depositAsset.chainId, depositAsset.asset],
+    }),
+    facilityAssetPeriod: one(depositFacilityAssetPeriod, {
+      fields: [
+        convertibleDepositFacilityConvertedDeposit.chainId,
+        convertibleDepositFacilityConvertedDeposit.facility,
+        convertibleDepositFacilityConvertedDeposit.depositAsset,
+        convertibleDepositFacilityConvertedDeposit.depositPeriod,
+      ],
+      references: [
+        depositFacilityAssetPeriod.chainId,
+        depositFacilityAssetPeriod.facility,
+        depositFacilityAssetPeriod.depositAsset,
+        depositFacilityAssetPeriod.depositPeriod,
+      ],
+    }),
+    depositor: one(depositor, {
+      fields: [convertibleDepositFacilityConvertedDeposit.chainId, convertibleDepositFacilityConvertedDeposit.depositor],
+      references: [depositor.chainId, depositor.address],
+    }),
+    position: one(convertibleDepositPosition, {
+      fields: [convertibleDepositFacilityConvertedDeposit.chainId, convertibleDepositFacilityConvertedDeposit.positionId],
+      references: [convertibleDepositPosition.chainId, convertibleDepositPosition.positionId],
+    }),
+    parentEvent: one(convertibleDepositFacilityConvertedDeposits, {
+      fields: [
+        convertibleDepositFacilityConvertedDeposit.parentEventChainId,
+        convertibleDepositFacilityConvertedDeposit.parentEventBlock,
+        convertibleDepositFacilityConvertedDeposit.parentEventLogIndex,
+      ],
+      references: [
+        convertibleDepositFacilityConvertedDeposits.chainId,
+        convertibleDepositFacilityConvertedDeposits.block,
+        convertibleDepositFacilityConvertedDeposits.logIndex,
+      ],
     }),
   })
 );
