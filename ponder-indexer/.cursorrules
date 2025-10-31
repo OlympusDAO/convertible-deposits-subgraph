@@ -1,0 +1,15 @@
+## Ponder Indexer Development Rules
+
+### Type Checking
+- **ALWAYS run `pnpm tsc --noEmit` after completing each milestone** to ensure TypeScript compilation is successful
+- Run `pnpm tsc --noEmit` after any significant code changes to catch type errors early
+
+### Linting
+- Linting setup is required (see TODO list)
+- Once linting is configured, run linting checks as part of the milestone completion process
+
+### Development Workflow
+- After schema changes, verify compilation with `pnpm tsc --noEmit`
+- After handler implementations, test with `pnpm dev` (if available) or build with `pnpm build`
+- Maintain type safety throughout the migration
+
