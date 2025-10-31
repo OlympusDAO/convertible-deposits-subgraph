@@ -197,12 +197,7 @@ export const auctioneerDepositPeriod = onchainTable(
     depositAsset: t.hex().notNull(), // Asset address (FK to depositAssetPeriod)
     depositPeriod: t.integer().notNull(), // Period months (FK to depositAssetPeriod)
     enabled: t.boolean().notNull(),
-    // Current tick data (updated on each bid)
-    // TODO consider if this is needed? vs having snapshot
-    currentTickCapacity: t.bigint(),
-    currentTickCapacityDecimal: t.text(), // BigDecimal as text
-    currentTickPrice: t.bigint(),
-    currentTickPriceDecimal: t.text(), // BigDecimal as text
+    // Note: Current tick data is stored in auctioneerDepositPeriodSnapshot, updated on each bid
   }),
   (table) => ({
     pk: primaryKey({

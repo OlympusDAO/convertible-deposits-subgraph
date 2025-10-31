@@ -119,6 +119,64 @@ export async function getOrCreateAuctioneerSnapshot(
 }
 
 /**
+ * Get or create an AuctioneerDepositPeriodSnapshot for a specific period
+ */
+export async function getOrCreateAuctioneerDepositPeriodSnapshot(
+  context: Context,
+  chainId: number,
+  blockNumber: bigint,
+  timestamp: bigint,
+  auctioneerAddress: Address,
+  depositAssetAddress: Address,
+  depositPeriod: number,
+  tickPrice: bigint,
+  tickPriceDecimal: string,
+  tickCapacity: bigint,
+  tickCapacityDecimal: string,
+): Promise<typeof schema.auctioneerDepositPeriodSnapshot.$inferSelect> {
+  // Check if snapshot already exists
+  const existing = await context.db.find(schema.auctioneerDepositPeriodSnapshot, {
+    chainId,
+    block: blockNumber,
+    auctioneer: auctioneerAddress.toLowerCase() as Address,
+    depositAsset: depositAssetAddress.toLowerCase() as Address,
+    depositPeriod,
+  });
+
+  if (existing) {
+    return existing;
+  }
+
+  // Create the period snapshot
+  await context.db.insert(schema.auctioneerDepositPeriodSnapshot).values({
+    chainId,
+    block: blockNumber,
+    timestamp,
+    auctioneer: auctioneerAddress.toLowerCase() as Address,
+    depositAsset: depositAssetAddress.toLowerCase() as Address,
+    depositPeriod,
+    currentTickPrice: tickPrice,
+    currentTickPriceDecimal: tickPriceDecimal,
+    currentTickCapacity: tickCapacity,
+    currentTickCapacityDecimal: tickCapacityDecimal,
+  });
+
+  const snapshot = await context.db.find(schema.auctioneerDepositPeriodSnapshot, {
+    chainId,
+    block: blockNumber,
+    auctioneer: auctioneerAddress.toLowerCase() as Address,
+    depositAsset: depositAssetAddress.toLowerCase() as Address,
+    depositPeriod,
+  });
+
+  if (!snapshot) {
+    throw new Error(`Failed to create auctioneer deposit period snapshot`);
+  }
+
+  return snapshot;
+}
+
+/**
  * Refresh auction state from contract and create snapshot
  */
 export async function refreshAuctionState(

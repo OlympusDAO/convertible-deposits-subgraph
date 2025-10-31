@@ -18,7 +18,10 @@ import {
 import { getOrCreateDepositFacility } from "../entities/depositFacility";
 import { getOrCreateDepositor } from "../entities/depositor";
 import { getOrCreatePosition } from "../entities/position";
-import { getOrCreateAuctioneerSnapshot } from "../entities/snapshot";
+import {
+  getOrCreateAuctioneerDepositPeriodSnapshot,
+  getOrCreateAuctioneerSnapshot,
+} from "../entities/snapshot";
 import { toBpsDecimal, toDecimal, toOhmDecimal } from "../utils/decimal";
 
 ponder.on("ConvertibleDepositAuctioneer:Enabled", async ({ event, context }) => {
@@ -330,21 +333,6 @@ ponder.on("ConvertibleDepositAuctioneer:Bid", async ({ event, context }) => {
     tickPriceDecimal,
   });
 
-  // Update the AuctioneerDepositPeriod with the new tick data
-  await updateAuctioneerDepositPeriod(
-    context,
-    chainId,
-    auctioneerAddress,
-    depositAssetAddress,
-    depositPeriod,
-    {
-      currentTickCapacity: tickCapacity,
-      currentTickCapacityDecimal: tickCapacityDecimal,
-      currentTickPrice: tickPrice,
-      currentTickPriceDecimal: tickPriceDecimal,
-    },
-  );
-
   // Update auctioneer snapshot after bid (day state/tick changes)
   await getOrCreateAuctioneerSnapshot(
     context,
@@ -352,6 +340,21 @@ ponder.on("ConvertibleDepositAuctioneer:Bid", async ({ event, context }) => {
     BigInt(event.block.number),
     BigInt(event.block.timestamp),
     auctioneerAddress,
+  );
+
+  // Create/update period-specific snapshot with tick data
+  await getOrCreateAuctioneerDepositPeriodSnapshot(
+    context,
+    chainId,
+    BigInt(event.block.number),
+    BigInt(event.block.timestamp),
+    auctioneerAddress,
+    depositAssetAddress,
+    depositPeriod,
+    tickPrice,
+    tickPriceDecimal,
+    tickCapacity,
+    tickCapacityDecimal,
   );
 });
 
