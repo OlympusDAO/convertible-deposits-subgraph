@@ -4,8 +4,10 @@
 import { ponder } from "ponder:registry";
 import schema from "ponder:schema";
 import { and, eq } from "ponder";
-import { getOrCreateAuctioneerSnapshot } from "../entities/snapshot";
-import { getOrCreateDepositFacilityAssetSnapshot } from "../entities/snapshot";
+import {
+  getOrCreateAuctioneerSnapshot,
+  getOrCreateDepositFacilityAssetSnapshot,
+} from "../entities/snapshot";
 
 ponder.on("Snapshot:block", async ({ event, context }) => {
   const chainId = Number(context.chain.id);
@@ -32,7 +34,9 @@ ponder.on("Snapshot:block", async ({ event, context }) => {
   const facilities = await context.db.sql
     .select()
     .from(schema.depositFacility)
-    .where(and(eq(schema.depositFacility.chainId, chainId), eq(schema.depositFacility.enabled, true)));
+    .where(
+      and(eq(schema.depositFacility.chainId, chainId), eq(schema.depositFacility.enabled, true)),
+    );
 
   for (const facility of facilities) {
     // Get all deposit facility assets for this facility
