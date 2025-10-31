@@ -12,7 +12,7 @@ import {
 import { getOrCreateDepositFacility } from "../entities/depositFacility";
 import { getOrCreateDepositor } from "../entities/depositor";
 import { getOrCreatePosition } from "../entities/position";
-import { getDepositAssetPeriod, getDepositAssetPeriodDecimals } from "../entities/asset";
+import { getDepositAssetPeriodDecimals, getOrCreateDepositAsset, getDepositAssetDecimals } from "../entities/asset";
 import { fetchAuctioneerCurrentTick } from "../contracts/auctioneer";
 import { toBpsDecimal, toDecimal, toOhmDecimal } from "../utils/decimal";
 
@@ -342,5 +342,73 @@ ponder.on("ConvertibleDepositAuctioneer:Bid", async ({ event, context }) => {
       currentTickPriceDecimal: tickPriceDecimal,
     },
   );
+});
+
+ponder.on("ConvertibleDepositAuctioneer:AuctionParametersUpdated", async ({ event, context }) => {
+  const chainId = Number(context.chain.id);
+  const auctioneerAddress = event.log.address as Address;
+  const depositAssetAddress = event.args.depositAsset as Address;
+
+  // Get or create entities
+  await getOrCreateAuctioneer(context, chainId, auctioneerAddress);
+  await getOrCreateDepositAsset(context, chainId, depositAssetAddress);
+  const assetDecimals = await getDepositAssetDecimals(context, chainId, depositAssetAddress);
+
+  // Calculate decimals
+  const target = event.args.newTarget;
+  const targetDecimal = toOhmDecimal(BigInt(target));
+  const tickSize = event.args.newTickSize;
+  const tickSizeDecimal = toOhmDecimal(BigInt(tickSize));
+  const minPrice = event.args.newMinPrice;
+  const minPriceDecimal = toDecimal(BigInt(minPrice), assetDecimals);
+
+  // Record the AuctionParametersUpdated event
+  await context.db.insert(schema.convertibleDepositAuctioneerAuctionParametersUpdated).values({
+    chainId,
+    block: BigInt(event.block.number),
+    logIndex: event.log.logIndex,
+    txHash: event.transaction.hash,
+    timestamp: BigInt(event.block.timestamp),
+    auctioneer: auctioneerAddress.toLowerCase() as Address,
+    depositAsset: depositAssetAddress.toLowerCase() as Address,
+    target: BigInt(target),
+    targetDecimal,
+    tickSize: BigInt(tickSize),
+    tickSizeDecimal,
+    minPrice: BigInt(minPrice),
+    minPriceDecimal,
+  });
+});
+
+ponder.on("ConvertibleDepositAuctioneer:AuctionResult", async ({ event, context }) => {
+  const chainId = Number(context.chain.id);
+  const auctioneerAddress = event.log.address as Address;
+  const depositAssetAddress = event.args.depositAsset as Address;
+
+  // Get or create entities
+  await getOrCreateAuctioneer(context, chainId, auctioneerAddress);
+  await getOrCreateDepositAsset(context, chainId, depositAssetAddress);
+
+  // Calculate decimals
+  const ohmConvertible = event.args.ohmConvertible;
+  const ohmConvertibleDecimal = toOhmDecimal(BigInt(ohmConvertible));
+  const target = event.args.target;
+  const targetDecimal = toOhmDecimal(BigInt(target));
+
+  // Record the AuctionResult event
+  await context.db.insert(schema.convertibleDepositAuctioneerAuctionResult).values({
+    chainId,
+    block: BigInt(event.block.number),
+    logIndex: event.log.logIndex,
+    txHash: event.transaction.hash,
+    timestamp: BigInt(event.block.timestamp),
+    auctioneer: auctioneerAddress.toLowerCase() as Address,
+    depositAsset: depositAssetAddress.toLowerCase() as Address,
+    ohmConvertible: BigInt(ohmConvertible),
+    ohmConvertibleDecimal,
+    target: BigInt(target),
+    targetDecimal,
+    periodIndex: Number(event.args.periodIndex),
+  });
 });
 

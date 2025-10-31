@@ -580,6 +580,67 @@ export const convertibleDepositFacilityConvertedDeposit = onchainTable(
   })
 );
 
+export const convertibleDepositAuctioneerAuctionParametersUpdated = onchainTable(
+  "convertible_deposit_auctioneer_auction_parameters_updated",
+  (t) => ({
+    chainId: t.integer().notNull(),
+    block: t.bigint().notNull(),
+    logIndex: t.integer().notNull(),
+    txHash: t.hex().notNull(),
+    timestamp: t.bigint().notNull(),
+    auctioneer: t.hex().notNull(), // Auctioneer address (FK)
+    depositAsset: t.hex().notNull(), // Asset address (FK)
+    target: t.bigint().notNull(),
+    targetDecimal: t.text().notNull(), // BigDecimal as text
+    tickSize: t.bigint().notNull(),
+    tickSizeDecimal: t.text().notNull(), // BigDecimal as text
+    minPrice: t.bigint().notNull(),
+    minPriceDecimal: t.text().notNull(), // BigDecimal as text
+  }),
+  (table) => ({
+    pk: primaryKey({ columns: [table.chainId, table.block, table.logIndex] }),
+  })
+);
+
+export const convertibleDepositAuctioneerAuctionResult = onchainTable(
+  "convertible_deposit_auctioneer_auction_result",
+  (t) => ({
+    chainId: t.integer().notNull(),
+    block: t.bigint().notNull(),
+    logIndex: t.integer().notNull(),
+    txHash: t.hex().notNull(),
+    timestamp: t.bigint().notNull(),
+    auctioneer: t.hex().notNull(), // Auctioneer address (FK)
+    depositAsset: t.hex().notNull(), // Asset address (FK)
+    ohmConvertible: t.bigint().notNull(),
+    ohmConvertibleDecimal: t.text().notNull(), // BigDecimal as text
+    target: t.bigint().notNull(),
+    targetDecimal: t.text().notNull(), // BigDecimal as text
+    periodIndex: t.integer().notNull(),
+  }),
+  (table) => ({
+    pk: primaryKey({ columns: [table.chainId, table.block, table.logIndex] }),
+  })
+);
+
+export const convertibleDepositFacilityClaimedYield = onchainTable(
+  "convertible_deposit_facility_claimed_yield",
+  (t) => ({
+    chainId: t.integer().notNull(),
+    block: t.bigint().notNull(),
+    logIndex: t.integer().notNull(),
+    txHash: t.hex().notNull(),
+    timestamp: t.bigint().notNull(),
+    facility: t.hex().notNull(), // Facility address (FK)
+    depositAsset: t.hex().notNull(), // Asset address (FK)
+    amount: t.bigint().notNull(),
+    amountDecimal: t.text().notNull(), // BigDecimal as text
+  }),
+  (table) => ({
+    pk: primaryKey({ columns: [table.chainId, table.block, table.logIndex] }),
+  })
+);
+
 // ============================================================================
 // Relations
 // ============================================================================
@@ -620,6 +681,8 @@ export const auctioneerRelations = relations(auctioneer, ({ one, many }) => ({
   depositPeriodDisabledEvents: many(convertibleDepositAuctioneerDepositPeriodDisabled),
   depositPeriodEnableQueuedEvents: many(convertibleDepositAuctioneerDepositPeriodEnableQueued),
   depositPeriodEnabledEvents: many(convertibleDepositAuctioneerDepositPeriodEnabled),
+  auctionParametersUpdatedEvents: many(convertibleDepositAuctioneerAuctionParametersUpdated),
+  auctionResultEvents: many(convertibleDepositAuctioneerAuctionResult),
 }));
 
 export const auctioneerDepositPeriodRelations = relations(auctioneerDepositPeriod, ({ one, many }) => ({
@@ -664,6 +727,7 @@ export const depositFacilityAssetRelations = relations(depositFacilityAsset, ({ 
   commitCancelledEvents: many(convertibleDepositFacilityAssetCommitCancelled),
   commitWithdrawnEvents: many(convertibleDepositFacilityAssetCommitWithdrawn),
   committedEvents: many(convertibleDepositFacilityAssetCommitted),
+  claimedYieldEvents: many(convertibleDepositFacilityClaimedYield),
 }));
 
 export const depositFacilityAssetPeriodRelations = relations(
@@ -1154,6 +1218,60 @@ export const convertibleDepositFacilityConvertedDepositsRelations = relations(
       ],
     }),
     convertedDeposits: many(convertibleDepositFacilityConvertedDeposit),
+  })
+);
+
+export const convertibleDepositAuctioneerAuctionParametersUpdatedRelations = relations(
+  convertibleDepositAuctioneerAuctionParametersUpdated,
+  ({ one }) => ({
+    auctioneer: one(auctioneer, {
+      fields: [convertibleDepositAuctioneerAuctionParametersUpdated.chainId, convertibleDepositAuctioneerAuctionParametersUpdated.auctioneer],
+      references: [auctioneer.chainId, auctioneer.address],
+    }),
+    depositAsset: one(depositAsset, {
+      fields: [convertibleDepositAuctioneerAuctionParametersUpdated.chainId, convertibleDepositAuctioneerAuctionParametersUpdated.depositAsset],
+      references: [depositAsset.chainId, depositAsset.asset],
+    }),
+  })
+);
+
+export const convertibleDepositAuctioneerAuctionResultRelations = relations(
+  convertibleDepositAuctioneerAuctionResult,
+  ({ one }) => ({
+    auctioneer: one(auctioneer, {
+      fields: [convertibleDepositAuctioneerAuctionResult.chainId, convertibleDepositAuctioneerAuctionResult.auctioneer],
+      references: [auctioneer.chainId, auctioneer.address],
+    }),
+    depositAsset: one(depositAsset, {
+      fields: [convertibleDepositAuctioneerAuctionResult.chainId, convertibleDepositAuctioneerAuctionResult.depositAsset],
+      references: [depositAsset.chainId, depositAsset.asset],
+    }),
+  })
+);
+
+export const convertibleDepositFacilityClaimedYieldRelations = relations(
+  convertibleDepositFacilityClaimedYield,
+  ({ one }) => ({
+    facility: one(depositFacility, {
+      fields: [convertibleDepositFacilityClaimedYield.chainId, convertibleDepositFacilityClaimedYield.facility],
+      references: [depositFacility.chainId, depositFacility.address],
+    }),
+    depositAsset: one(depositAsset, {
+      fields: [convertibleDepositFacilityClaimedYield.chainId, convertibleDepositFacilityClaimedYield.depositAsset],
+      references: [depositAsset.chainId, depositAsset.asset],
+    }),
+    facilityAsset: one(depositFacilityAsset, {
+      fields: [
+        convertibleDepositFacilityClaimedYield.chainId,
+        convertibleDepositFacilityClaimedYield.facility,
+        convertibleDepositFacilityClaimedYield.depositAsset,
+      ],
+      references: [
+        depositFacilityAsset.chainId,
+        depositFacilityAsset.facility,
+        depositFacilityAsset.depositAsset,
+      ],
+    }),
   })
 );
 

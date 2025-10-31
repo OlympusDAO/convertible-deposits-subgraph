@@ -7,6 +7,7 @@ import {
   getOrCreateDepositFacility,
   updateDepositFacility,
   getOrCreateDepositFacilityAssetPeriod,
+  getOrCreateDepositFacilityAsset,
 } from "../entities/depositFacility";
 import { getAssetDecimals } from "../entities/asset";
 import { getOrCreateDepositor } from "../entities/depositor";
@@ -287,4 +288,27 @@ ponder.on("ConvertibleDepositFacility:ConvertedDeposit", async ({ event, context
       remainingAmountDecimal: toDecimal(contractPosition.remainingDeposit, assetDecimals),
     });
   }
+});
+
+ponder.on("ConvertibleDepositFacility:ClaimedYield", async ({ event, context }) => {
+  const chainId = Number(context.chain.id);
+  const facilityAddress = event.log.address as Address;
+  const assetAddress = event.args.asset as Address;
+
+  // Create/fetch records
+  await getOrCreateDepositFacilityAsset(context, chainId, facilityAddress, assetAddress);
+  const assetDecimals = await getAssetDecimals(context, chainId, assetAddress);
+
+  // Record event
+  await context.db.insert(schema.convertibleDepositFacilityClaimedYield).values({
+    chainId,
+    block: BigInt(event.block.number),
+    logIndex: event.log.logIndex,
+    txHash: event.transaction.hash,
+    timestamp: BigInt(event.block.timestamp),
+    facility: facilityAddress.toLowerCase() as Address,
+    depositAsset: assetAddress.toLowerCase() as Address,
+    amount: BigInt(event.args.amount),
+    amountDecimal: toDecimal(BigInt(event.args.amount), assetDecimals),
+  });
 });
