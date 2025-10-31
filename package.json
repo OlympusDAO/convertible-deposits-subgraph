@@ -12,7 +12,23 @@
     "test": "pnpm mocha",
     "typecheck": "tsc --noEmit",
     "format": "biome check --write .",
-    "format:check": "biome check ."
+    "format:check": "biome check .",
+    "generate-config": "tsx generate-config.js",
+    "init": "git submodule update --init",
+    "docker:build": "docker build -t convertible-deposits-indexer:latest .",
+    "docker:up": "docker-compose -f docker-compose.indexer.yaml up -d",
+    "docker:down": "docker-compose -f docker-compose.indexer.yaml down",
+    "docker:logs": "docker-compose -f docker-compose.indexer.yaml logs -f envio-indexer",
+    "docker:logs:init": "docker-compose -f docker-compose.indexer.yaml logs hasura-init",
+    "docker:init": "docker-compose -f docker-compose.indexer.yaml up hasura-init",
+    "docker:rebuild": "docker-compose -f docker-compose.indexer.yaml up --build -d",
+    "docker:clean": "docker-compose -f docker-compose.indexer.yaml down -v",
+    "ghcr:pull": "docker-compose -f docker-compose.ghcr.yaml pull",
+    "ghcr:up": "docker-compose -f docker-compose.ghcr.yaml up -d",
+    "ghcr:down": "docker-compose -f docker-compose.ghcr.yaml down",
+    "ghcr:logs": "docker-compose -f docker-compose.ghcr.yaml logs -f envio-indexer",
+    "ghcr:restart": "docker-compose -f docker-compose.ghcr.yaml pull && docker-compose -f docker-compose.ghcr.yaml up -d",
+    "ghcr:clean": "docker-compose -f docker-compose.ghcr.yaml down -v"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.2.5",
@@ -20,8 +36,11 @@
     "@types/mocha": "10.0.6",
     "@types/node": "20.8.8",
     "chai": "4.3.10",
+    "dotenv": "^16.4.7",
+    "handlebars": "^4.7.8",
     "mocha": "10.2.0",
     "ts-mocha": "^10.0.0",
+    "tsx": "^4.20.6",
     "typescript": "5.2.2"
   },
   "dependencies": {

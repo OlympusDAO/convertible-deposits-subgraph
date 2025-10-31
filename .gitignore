@@ -13,9 +13,7 @@
 *.cma
 *.a
 *.cmxa
-*.obj
 *~
-*.annot
 *.cmj
 *.bak
 lib/*
@@ -35,3 +33,4 @@ logs
 build
 .env
 .env.*
+.idea

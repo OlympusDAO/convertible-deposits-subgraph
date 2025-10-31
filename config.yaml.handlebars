@@ -1,13 +1,23 @@
 # yaml-language-server: $schema=./node_modules/envio/evm.schema.json
 name: olympus-convertible-deposits
 networks:
-- id: 11155111
-  start_block: 9179734
+{{#each networks}}
+- id: {{chainId}}
+  {{#if startBlock}}
+  start_block: {{startBlock}}
+  {{else}}
+  start_block: 0
+  {{/if}}
+  {{#if rpc}}
+  rpc: {{rpc}}
+  {{/if}}
   contracts:
   - name: ConvertibleDepositAuctioneer
     address:
-    - 0xc14156AF3bF6c11b1c40C8f51f64bA5496870126
-    start_block: 9179736
+    - {{ConvertibleDepositAuctioneer}}
+    {{#if ConvertibleDepositAuctioneer_BLOCK}}
+    start_block: {{ConvertibleDepositAuctioneer_BLOCK}}
+    {{/if}}
     handler: src/handlers/auctioneer.handlers.ts
     events:
     - event: AuctionParametersUpdated(address indexed depositAsset, uint256 newTarget, uint256 newTickSize, uint256 newMinPrice)
@@ -23,8 +33,10 @@ networks:
     - event: TickStepUpdated(address indexed depositAsset, uint24 newTickStep)
   - name: ConvertibleDepositFacility
     address:
-    - 0x87568265eb6Ea27f37613d242D4192B6f6771269
-    start_block: 9179735
+    - {{ConvertibleDepositFacility}}
+    {{#if ConvertibleDepositFacility_BLOCK}}
+    start_block: {{ConvertibleDepositFacility_BLOCK}}
+    {{/if}}
     handler: src/handlers/depositFacility.handlers.ts
     events:
     - event: AssetCommitCancelled(address indexed asset, address indexed operator, uint256 amount)
@@ -41,8 +53,10 @@ networks:
     - event: Reclaimed(address indexed user, address indexed depositToken, uint8 depositPeriod, uint256 reclaimedAmount, uint256 forfeitedAmount)
   - name: DepositRedemptionVault
     address:
-    - 0x69b2Be653BAB628116b360818BE75a2d97b45C4a
-    start_block: 9179734
+    - {{DepositRedemptionVault}}
+    {{#if DepositRedemptionVault_BLOCK}}
+    start_block: {{DepositRedemptionVault_BLOCK}}
+    {{/if}}
     handler: src/handlers/depositRedemptionVault.handlers.ts
     events:
     - event: AnnualInterestRateSet(address indexed asset, address indexed facility, uint16 rate)
@@ -59,6 +73,7 @@ networks:
     - event: RedemptionCancelled(address indexed user, uint16 indexed redemptionId, address indexed depositToken, uint8 depositPeriod, uint256 amount, uint256 remainingAmount)
     - event: RedemptionFinished(address indexed user, uint16 indexed redemptionId, address indexed depositToken, uint8 depositPeriod, uint256 amount)
     - event: RedemptionStarted(address indexed user, uint16 indexed redemptionId, address indexed depositToken, uint8 depositPeriod, uint256 amount, address facility)
+{{/each}}
 unordered_multichain_mode: true
 preload_handlers: true
 field_selection:
