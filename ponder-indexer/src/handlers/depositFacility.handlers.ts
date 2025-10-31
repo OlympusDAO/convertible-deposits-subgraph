@@ -8,12 +8,14 @@ import {
   updateDepositFacility,
   getOrCreateDepositFacilityAssetPeriod,
   getOrCreateDepositFacilityAsset,
+  updateDepositFacilityAsset,
+  updateDepositFacilityAssetPeriod,
 } from "../entities/depositFacility";
 import { getAssetDecimals } from "../entities/asset";
 import { getOrCreateDepositor } from "../entities/depositor";
 import { getOrCreatePosition, updatePosition, getPosition } from "../entities/position";
 import { fetchUserPositionIds, fetchPositions } from "../contracts/position";
-import { toDecimal, toOhmDecimal } from "../utils/decimal";
+import { toDecimal, toOhmDecimal, toBpsDecimal } from "../utils/decimal";
 
 ponder.on("ConvertibleDepositFacility:Enabled", async ({ event, context }) => {
   const chainId = Number(context.chain.id);
@@ -101,6 +103,169 @@ ponder.on("ConvertibleDepositFacility:OperatorDeauthorized", async ({ event, con
     facility: facilityAddress.toLowerCase() as Address,
     operator: (event.args.operator as Address).toLowerCase() as Address,
   });
+});
+
+ponder.on("ConvertibleDepositFacility:AssetCommitCancelled", async ({ event, context }) => {
+  const chainId = Number(context.chain.id);
+  const facilityAddress = event.log.address as Address;
+  const assetAddress = event.args.asset as Address;
+
+  // Create/fetch records
+  const facilityAsset = await getOrCreateDepositFacilityAsset(
+    context,
+    chainId,
+    facilityAddress,
+    assetAddress,
+  );
+  const assetDecimals = await getAssetDecimals(context, chainId, assetAddress);
+
+  // Calculate committed amount
+  const committedAmount = facilityAsset.committedAmount - BigInt(event.args.amount);
+
+  // Record event
+  await context.db.insert(schema.convertibleDepositFacilityAssetCommitCancelled).values({
+    chainId,
+    block: BigInt(event.block.number),
+    logIndex: event.log.logIndex,
+    txHash: event.transaction.hash,
+    timestamp: BigInt(event.block.timestamp),
+    facility: facilityAddress.toLowerCase() as Address,
+    depositAsset: assetAddress.toLowerCase() as Address,
+    operator: (event.args.operator as Address).toLowerCase() as Address,
+    amount: BigInt(event.args.amount),
+    amountDecimal: toDecimal(BigInt(event.args.amount), assetDecimals),
+    committedAmount: committedAmount,
+    committedAmountDecimal: toDecimal(committedAmount, assetDecimals),
+  });
+
+  // Update facility asset amount
+  await updateDepositFacilityAsset(context, chainId, facilityAddress, assetAddress, {
+    committedAmount: committedAmount,
+    committedAmountDecimal: toDecimal(committedAmount, assetDecimals),
+  });
+});
+
+ponder.on("ConvertibleDepositFacility:AssetCommitWithdrawn", async ({ event, context }) => {
+  const chainId = Number(context.chain.id);
+  const facilityAddress = event.log.address as Address;
+  const assetAddress = event.args.asset as Address;
+
+  // Create/fetch records
+  const facilityAsset = await getOrCreateDepositFacilityAsset(
+    context,
+    chainId,
+    facilityAddress,
+    assetAddress,
+  );
+  const assetDecimals = await getAssetDecimals(context, chainId, assetAddress);
+
+  // Calculate committed amount
+  const committedAmount = facilityAsset.committedAmount - BigInt(event.args.amount);
+
+  // Record event
+  await context.db.insert(schema.convertibleDepositFacilityAssetCommitWithdrawn).values({
+    chainId,
+    block: BigInt(event.block.number),
+    logIndex: event.log.logIndex,
+    txHash: event.transaction.hash,
+    timestamp: BigInt(event.block.timestamp),
+    facility: facilityAddress.toLowerCase() as Address,
+    depositAsset: assetAddress.toLowerCase() as Address,
+    operator: (event.args.operator as Address).toLowerCase() as Address,
+    amount: BigInt(event.args.amount),
+    amountDecimal: toDecimal(BigInt(event.args.amount), assetDecimals),
+    committedAmount: committedAmount,
+    committedAmountDecimal: toDecimal(committedAmount, assetDecimals),
+  });
+
+  // Update facility asset amount
+  await updateDepositFacilityAsset(context, chainId, facilityAddress, assetAddress, {
+    committedAmount: committedAmount,
+    committedAmountDecimal: toDecimal(committedAmount, assetDecimals),
+  });
+});
+
+ponder.on("ConvertibleDepositFacility:AssetCommitted", async ({ event, context }) => {
+  const chainId = Number(context.chain.id);
+  const facilityAddress = event.log.address as Address;
+  const assetAddress = event.args.asset as Address;
+
+  // Create/fetch records
+  const facilityAsset = await getOrCreateDepositFacilityAsset(
+    context,
+    chainId,
+    facilityAddress,
+    assetAddress,
+  );
+  const assetDecimals = await getAssetDecimals(context, chainId, assetAddress);
+
+  // Calculate committed amount
+  const committedAmount = facilityAsset.committedAmount + BigInt(event.args.amount);
+
+  // Record event
+  await context.db.insert(schema.convertibleDepositFacilityAssetCommitted).values({
+    chainId,
+    block: BigInt(event.block.number),
+    logIndex: event.log.logIndex,
+    txHash: event.transaction.hash,
+    timestamp: BigInt(event.block.timestamp),
+    facility: facilityAddress.toLowerCase() as Address,
+    depositAsset: assetAddress.toLowerCase() as Address,
+    operator: (event.args.operator as Address).toLowerCase() as Address,
+    amount: BigInt(event.args.amount),
+    amountDecimal: toDecimal(BigInt(event.args.amount), assetDecimals),
+    committedAmount: committedAmount,
+    committedAmountDecimal: toDecimal(committedAmount, assetDecimals),
+  });
+
+  // Update facility asset amount
+  await updateDepositFacilityAsset(context, chainId, facilityAddress, assetAddress, {
+    committedAmount: committedAmount,
+    committedAmountDecimal: toDecimal(committedAmount, assetDecimals),
+  });
+});
+
+ponder.on("ConvertibleDepositFacility:AssetPeriodReclaimRateSet", async ({ event, context }) => {
+  const chainId = Number(context.chain.id);
+  const facilityAddress = event.log.address as Address;
+  const assetAddress = event.args.asset as Address;
+  const depositPeriod = Number(event.args.depositPeriod);
+
+  // Create/fetch records
+  await getOrCreateDepositFacilityAssetPeriod(
+    context,
+    chainId,
+    facilityAddress,
+    assetAddress,
+    depositPeriod,
+  );
+
+  // Record event
+  await context.db.insert(schema.convertibleDepositFacilityAssetPeriodReclaimRateSet).values({
+    chainId,
+    block: BigInt(event.block.number),
+    logIndex: event.log.logIndex,
+    txHash: event.transaction.hash,
+    timestamp: BigInt(event.block.timestamp),
+    facility: facilityAddress.toLowerCase() as Address,
+    depositAsset: assetAddress.toLowerCase() as Address,
+    depositPeriod,
+    reclaimRate: BigInt(event.args.reclaimRate),
+    reclaimRateDecimal: toBpsDecimal(Number(event.args.reclaimRate)),
+  });
+
+  // Update facility asset period reclaim rate
+  await updateDepositFacilityAssetPeriod(
+    context,
+    chainId,
+    facilityAddress,
+    assetAddress,
+    depositPeriod,
+    {
+      reclaimRate: BigInt(event.args.reclaimRate),
+      reclaimRateDecimal: toBpsDecimal(Number(event.args.reclaimRate)),
+    },
+  );
 });
 
 ponder.on("ConvertibleDepositFacility:CreatedDeposit", async ({ event, context }) => {
