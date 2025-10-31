@@ -4,9 +4,11 @@
 - **ALWAYS run `pnpm tsc --noEmit` after completing each milestone** to ensure TypeScript compilation is successful
 - Run `pnpm tsc --noEmit` after any significant code changes to catch type errors early
 
-### Linting
-- Linting setup is required (see TODO list)
-- Once linting is configured, run linting checks as part of the milestone completion process
+### Linting (Biome)
+- Biome 2.3.2 is configured for linting and formatting
+- Run `pnpm lint:check` to check linting and formatting without making changes
+- Run `pnpm lint` to run linting and formatting checks with automatic fixes
+- Run linting checks as part of the milestone completion process
 
 ### Development Workflow
 - After schema changes, verify compilation with `pnpm tsc --noEmit`
