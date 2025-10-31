@@ -10,5 +10,5 @@ import "./handlers/depositFacility.handlers";
 // Redemption vault handlers
 import "./handlers/redemptionVault.handlers";
 
-// TODO Future handlers will be imported here:
-// import "./handlers/block.handlers";
+// Block handlers (snapshots)
+import "./handlers/block.handlers";

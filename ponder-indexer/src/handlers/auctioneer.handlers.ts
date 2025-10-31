@@ -18,6 +18,7 @@ import {
 import { getOrCreateDepositFacility } from "../entities/depositFacility";
 import { getOrCreateDepositor } from "../entities/depositor";
 import { getOrCreatePosition } from "../entities/position";
+import { getOrCreateAuctioneerSnapshot } from "../entities/snapshot";
 import { toBpsDecimal, toDecimal, toOhmDecimal } from "../utils/decimal";
 
 ponder.on("ConvertibleDepositAuctioneer:Enabled", async ({ event, context }) => {
@@ -343,6 +344,15 @@ ponder.on("ConvertibleDepositAuctioneer:Bid", async ({ event, context }) => {
       currentTickPriceDecimal: tickPriceDecimal,
     },
   );
+
+  // Update auctioneer snapshot after bid (day state/tick changes)
+  await getOrCreateAuctioneerSnapshot(
+    context,
+    chainId,
+    BigInt(event.block.number),
+    BigInt(event.block.timestamp),
+    auctioneerAddress,
+  );
 });
 
 ponder.on("ConvertibleDepositAuctioneer:AuctionParametersUpdated", async ({ event, context }) => {
@@ -411,4 +421,13 @@ ponder.on("ConvertibleDepositAuctioneer:AuctionResult", async ({ event, context 
     targetDecimal,
     periodIndex: Number(event.args.periodIndex),
   });
+
+  // Update auctioneer snapshot after auction result (day state changes)
+  await getOrCreateAuctioneerSnapshot(
+    context,
+    chainId,
+    BigInt(event.block.number),
+    BigInt(event.block.timestamp),
+    auctioneerAddress,
+  );
 });

@@ -32,4 +32,11 @@ export default createConfig({
       startBlock: 9180152,
     },
   },
+  blocks: {
+    Snapshot: {
+      chain: "sepolia",
+      interval: 3000, // ~1 hour at 12s block time
+      startBlock: 9180152, // Activation block
+    },
+  },
 });

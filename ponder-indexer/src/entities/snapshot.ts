@@ -110,7 +110,7 @@ export async function getOrCreateAuctioneerSnapshot(
     throw new Error(`Failed to create auctioneer snapshot`);
   }
 
-  // Create separate snapshots for each enabled deposit period
+  // TODO Create separate snapshots for each enabled deposit period
   // Note: Since we can't query by enabled status, we'll need to track periods differently
   // For now, we'll skip period snapshots creation in getOrCreateAuctioneerSnapshot
   // and create them separately when needed

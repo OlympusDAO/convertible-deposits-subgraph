@@ -664,7 +664,6 @@ export const convertibleDepositFacilityConvertedDeposit = onchainTable(
     convertedAmountDecimal: t.text().notNull(), // BigDecimal as text
   }),
   (table) => ({
-    // TODO this PK might not be unique, add index?
     pk: primaryKey({ columns: [table.chainId, table.block, table.logIndex] }),
   }),
 );
@@ -1029,9 +1028,6 @@ export const auctioneerDepositPeriodSnapshot = onchainTable(
     auctioneer: t.hex().notNull(), // Auctioneer address (FK)
     depositAsset: t.hex().notNull(), // Asset address (FK)
     depositPeriod: t.integer().notNull(), // Period months (FK)
-    parentSnapshotChainId: t.integer().notNull(), // Parent snapshot chainId
-    parentSnapshotBlock: t.bigint().notNull(), // Parent snapshot block
-    parentSnapshotAuctioneer: t.hex().notNull(), // Parent snapshot auctioneer
     // Current tick state for this specific period
     currentTickPrice: t.bigint().notNull(),
     currentTickPriceDecimal: t.text().notNull(), // BigDecimal as text
@@ -1695,9 +1691,9 @@ export const auctioneerDepositPeriodSnapshotRelations = relations(
   ({ one }) => ({
     auctioneerSnapshot: one(auctioneerSnapshot, {
       fields: [
-        auctioneerDepositPeriodSnapshot.parentSnapshotChainId,
-        auctioneerDepositPeriodSnapshot.parentSnapshotBlock,
-        auctioneerDepositPeriodSnapshot.parentSnapshotAuctioneer,
+        auctioneerDepositPeriodSnapshot.chainId,
+        auctioneerDepositPeriodSnapshot.block,
+        auctioneerDepositPeriodSnapshot.auctioneer,
       ],
       references: [
         auctioneerSnapshot.chainId,
