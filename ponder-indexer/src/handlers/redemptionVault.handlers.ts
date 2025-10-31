@@ -25,9 +25,9 @@ import {
   updateRedemptionVaultAssetConfiguration,
 } from "../entities/redemptionVault";
 import {
-  updateFacilityAssetBorrowedAmount,
-  updateFacilityAssetDeposited,
-  updateFacilityAssetPendingRedemption,
+  updateFacilityAssetSnapshotBorrowedAmount,
+  updateFacilityAssetSnapshotDeposited,
+  updateFacilityAssetSnapshotPendingRedemption,
 } from "../entities/snapshot";
 import { toBpsDecimal, toDecimal } from "../utils/decimal";
 
@@ -292,7 +292,7 @@ ponder.on("DepositRedemptionVault:RedemptionStarted", async ({ event, context })
   await getOrCreateDepositFacility(context, chainId, facilityAddress);
   await getDepositAsset(context, chainId, depositTokenAddress);
   // Increase in pending redemption amount
-  await updateFacilityAssetPendingRedemption(
+  await updateFacilityAssetSnapshotPendingRedemption(
     context,
     chainId,
     BigInt(event.block.number),
@@ -353,7 +353,7 @@ ponder.on("DepositRedemptionVault:RedemptionFinished", async ({ event, context }
   // Update facility asset snapshot with completed redemption
   await getDepositFacility(context, chainId, redemption.facility);
   // Reduction in pending redemption amount
-  await updateFacilityAssetPendingRedemption(
+  await updateFacilityAssetSnapshotPendingRedemption(
     context,
     chainId,
     BigInt(event.block.number),
@@ -363,7 +363,7 @@ ponder.on("DepositRedemptionVault:RedemptionFinished", async ({ event, context }
     -BigInt(event.args.amount), // Negative for completed redemption
   );
   // Reduction in deposited assets
-  await updateFacilityAssetDeposited(
+  await updateFacilityAssetSnapshotDeposited(
     context,
     chainId,
     BigInt(event.block.number),
@@ -426,7 +426,7 @@ ponder.on("DepositRedemptionVault:RedemptionCancelled", async ({ event, context 
   // Update facility asset snapshot with cancelled redemption
   await getDepositFacility(context, chainId, redemption.facility);
   // Reduce pending redemption amount (use the old amount before update)
-  await updateFacilityAssetPendingRedemption(
+  await updateFacilityAssetSnapshotPendingRedemption(
     context,
     chainId,
     BigInt(event.block.number),
@@ -503,7 +503,7 @@ ponder.on("DepositRedemptionVault:LoanCreated", async ({ event, context }) => {
   await getDepositFacility(context, chainId, facilityAddress);
   await getDepositAsset(context, chainId, redemption.depositAsset);
   // Positive delta for borrowed amount
-  await updateFacilityAssetBorrowedAmount(
+  await updateFacilityAssetSnapshotBorrowedAmount(
     context,
     chainId,
     BigInt(event.block.number),
@@ -513,7 +513,7 @@ ponder.on("DepositRedemptionVault:LoanCreated", async ({ event, context }) => {
     BigInt(event.args.amount), // Positive for new loan
   );
   // Reduce asset deposits
-  await updateFacilityAssetDeposited(
+  await updateFacilityAssetSnapshotDeposited(
     context,
     chainId,
     BigInt(event.block.number),
@@ -590,7 +590,7 @@ ponder.on("DepositRedemptionVault:LoanRepaid", async ({ event, context }) => {
 
   if (amountRepaid > BigInt(0)) {
     // Reduction in borrowed amount
-    await updateFacilityAssetBorrowedAmount(
+    await updateFacilityAssetSnapshotBorrowedAmount(
       context,
       chainId,
       BigInt(event.block.number),
@@ -600,7 +600,7 @@ ponder.on("DepositRedemptionVault:LoanRepaid", async ({ event, context }) => {
       -amountRepaid, // Negative for loan repayment
     );
     // Increase in deposited assets
-    await updateFacilityAssetDeposited(
+    await updateFacilityAssetSnapshotDeposited(
       context,
       chainId,
       BigInt(event.block.number),
@@ -666,7 +666,7 @@ ponder.on("DepositRedemptionVault:LoanDefaulted", async ({ event, context }) => 
   // Update facility asset snapshot with defaulted loan
   await getDepositFacility(context, chainId, redemption.facility);
   // Reduce loan amount
-  await updateFacilityAssetBorrowedAmount(
+  await updateFacilityAssetSnapshotBorrowedAmount(
     context,
     chainId,
     BigInt(event.block.number),

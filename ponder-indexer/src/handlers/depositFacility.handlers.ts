@@ -15,7 +15,7 @@ import {
 } from "../entities/depositFacility";
 import { getOrCreateDepositor } from "../entities/depositor";
 import { getOrCreatePosition, getPosition, updatePosition } from "../entities/position";
-import { updateFacilityAssetDeposited } from "../entities/snapshot";
+import { updateFacilityAssetSnapshotDeposited } from "../entities/snapshot";
 import { toBpsDecimal, toDecimal, toOhmDecimal } from "../utils/decimal";
 
 ponder.on("ConvertibleDepositFacility:Enabled", async ({ event, context }) => {
@@ -317,7 +317,7 @@ ponder.on("ConvertibleDepositFacility:CreatedDeposit", async ({ event, context }
   });
 
   // Update facility asset snapshot with deposit
-  await updateFacilityAssetDeposited(
+  await updateFacilityAssetSnapshotDeposited(
     context,
     chainId,
     BigInt(event.block.number),
@@ -364,7 +364,7 @@ ponder.on("ConvertibleDepositFacility:Reclaimed", async ({ event, context }) => 
   });
 
   // Update facility asset snapshot with withdrawal (negative delta for reclaimed amount)
-  await updateFacilityAssetDeposited(
+  await updateFacilityAssetSnapshotDeposited(
     context,
     chainId,
     BigInt(event.block.number),
@@ -479,7 +479,7 @@ ponder.on("ConvertibleDepositFacility:ConvertedDeposit", async ({ event, context
 
   // Update facility asset snapshot with converted deposits (negative delta for reduced deposits)
   if (totalDepositConverted > 0n) {
-    await updateFacilityAssetDeposited(
+    await updateFacilityAssetSnapshotDeposited(
       context,
       chainId,
       BigInt(event.block.number),

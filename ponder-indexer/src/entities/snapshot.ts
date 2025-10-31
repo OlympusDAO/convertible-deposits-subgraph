@@ -217,7 +217,7 @@ export async function getOrCreateDepositFacilityAssetSnapshot(
 /**
  * Update facility asset deposited amount (positive delta for deposit, negative for withdrawal)
  */
-export async function updateFacilityAssetDeposited(
+export async function updateFacilityAssetSnapshotDeposited(
   context: Context,
   chainId: number,
   blockNumber: bigint,
@@ -266,7 +266,7 @@ export async function updateFacilityAssetDeposited(
 /**
  * Update facility asset pending redemption (positive for new redemption, negative for redeemed/cancelled)
  */
-export async function updateFacilityAssetPendingRedemption(
+export async function updateFacilityAssetSnapshotPendingRedemption(
   context: Context,
   chainId: number,
   blockNumber: bigint,
@@ -306,7 +306,7 @@ export async function updateFacilityAssetPendingRedemption(
 /**
  * Update facility asset borrowed amount (positive for new loan, negative for repaid)
  */
-export async function updateFacilityAssetBorrowedAmount(
+export async function updateFacilityAssetSnapshotBorrowedAmount(
   context: Context,
   chainId: number,
   blockNumber: bigint,
