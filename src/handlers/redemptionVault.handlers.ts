@@ -5,12 +5,7 @@
 import { ponder } from "ponder:registry";
 import schema from "ponder:schema";
 import type { Address } from "viem";
-import {
-  getDepositAsset,
-  getDepositAssetPeriod,
-  getDepositAssetPeriodDecimals,
-} from "../entities/asset";
-import { getDepositFacility, getOrCreateDepositFacility } from "../entities/depositFacility";
+import { getOrCreateDepositFacility } from "../entities/depositFacility";
 import { updatePositionFromContract } from "../entities/position";
 import { getOrCreateRedemption, getRedemption, updateRedemption } from "../entities/redemption";
 import {
@@ -245,7 +240,7 @@ ponder.on("DepositRedemptionVault:RedemptionStarted", async ({ event, context })
   const userAddress = event.args.user as Address;
   const redemptionId = Number(event.args.redemptionId);
 
-  // Get or create redemption
+  // Get or create redemption (with nested asset relation)
   const redemption = await getOrCreateRedemption(
     context,
     chainId,
@@ -257,8 +252,8 @@ ponder.on("DepositRedemptionVault:RedemptionStarted", async ({ event, context })
     redemptionId,
   );
 
-  // Get asset decimals
-  const assetDecimals = await getDepositAssetPeriodDecimals(context, chainId, depositTokenAddress);
+  // Get asset decimals from nested relation
+  const assetDecimals = redemption.assetPeriod.depositAsset.asset.decimals;
 
   // Record event
   await context.db.insert(schema.depositRedemptionVaultRedemptionStarted).values({
@@ -290,7 +285,6 @@ ponder.on("DepositRedemptionVault:RedemptionStarted", async ({ event, context })
 
   // Update facility asset snapshot with pending redemption
   await getOrCreateDepositFacility(context, chainId, facilityAddress);
-  await getDepositAsset(context, chainId, depositTokenAddress);
   // Increase in pending redemption amount
   await updateFacilityAssetSnapshotPendingRedemption(
     context,
@@ -309,7 +303,7 @@ ponder.on("DepositRedemptionVault:RedemptionFinished", async ({ event, context }
   const userAddress = event.args.user as Address;
   const redemptionId = Number(event.args.redemptionId);
 
-  // Get redemption
+  // Get redemption (with nested asset relation)
   const redemption = await getRedemption(
     context,
     chainId,
@@ -318,12 +312,8 @@ ponder.on("DepositRedemptionVault:RedemptionFinished", async ({ event, context }
     redemptionId,
   );
 
-  // Get asset decimals
-  const assetDecimals = await getDepositAssetPeriodDecimals(
-    context,
-    chainId,
-    redemption.depositAsset,
-  );
+  // Get asset decimals from nested relation
+  const assetDecimals = redemption.assetPeriod.depositAsset.asset.decimals;
 
   // Record event
   await context.db.insert(schema.depositRedemptionVaultRedemptionFinished).values({
@@ -351,7 +341,6 @@ ponder.on("DepositRedemptionVault:RedemptionFinished", async ({ event, context }
   }
 
   // Update facility asset snapshot with completed redemption
-  await getDepositFacility(context, chainId, redemption.facility);
   // Reduction in pending redemption amount
   await updateFacilityAssetSnapshotPendingRedemption(
     context,
@@ -382,7 +371,7 @@ ponder.on("DepositRedemptionVault:RedemptionCancelled", async ({ event, context 
   const depositTokenAddress = event.args.depositToken as Address;
   const depositPeriod = Number(event.args.depositPeriod);
 
-  // Get redemption
+  // Get redemption (with nested asset relation)
   const redemption = await getRedemption(
     context,
     chainId,
@@ -391,8 +380,8 @@ ponder.on("DepositRedemptionVault:RedemptionCancelled", async ({ event, context 
     redemptionId,
   );
 
-  // Get asset decimals
-  const assetDecimals = await getDepositAssetPeriodDecimals(context, chainId, depositTokenAddress);
+  // Get asset decimals from nested relation
+  const assetDecimals = redemption.assetPeriod.depositAsset.asset.decimals;
 
   // Record event
   await context.db.insert(schema.depositRedemptionVaultRedemptionCancelled).values({
@@ -424,7 +413,6 @@ ponder.on("DepositRedemptionVault:RedemptionCancelled", async ({ event, context 
   }
 
   // Update facility asset snapshot with cancelled redemption
-  await getDepositFacility(context, chainId, redemption.facility);
   // Reduce pending redemption amount (use the old amount before update)
   await updateFacilityAssetSnapshotPendingRedemption(
     context,
@@ -446,7 +434,7 @@ ponder.on("DepositRedemptionVault:LoanCreated", async ({ event, context }) => {
   const userAddress = event.args.user as Address;
   const redemptionId = Number(event.args.redemptionId);
 
-  // Get redemption
+  // Get redemption (with nested asset relation)
   const redemption = await getRedemption(
     context,
     chainId,
@@ -454,17 +442,6 @@ ponder.on("DepositRedemptionVault:LoanCreated", async ({ event, context }) => {
     userAddress,
     redemptionId,
   );
-
-  // Get deposit asset period to find asset
-  await getDepositAssetPeriod(context, chainId, redemption.depositAsset, redemption.depositPeriod);
-  const asset = await context.db.find(schema.asset, {
-    chainId,
-    address: redemption.depositAsset,
-  });
-
-  if (!asset) {
-    throw new Error(`Asset not found: ${chainId}, ${redemption.depositAsset}`);
-  }
 
   // Create the RedemptionLoan record
   await getOrCreateRedemptionLoan(
@@ -491,17 +468,23 @@ ponder.on("DepositRedemptionVault:LoanCreated", async ({ event, context }) => {
     redemptionId,
     facility: facilityAddress.toLowerCase() as Address,
     amount: BigInt(event.args.amount),
-    amountDecimal: toDecimal(BigInt(event.args.amount), asset.decimals),
+    amountDecimal: toDecimal(
+      BigInt(event.args.amount),
+      redemption.assetPeriod.depositAsset.asset.decimals,
+    ),
   });
 
   // Update position amount if it exists
   if (redemption.positionId) {
-    await updatePositionFromContract(context, chainId, redemption.positionId, asset.decimals);
+    await updatePositionFromContract(
+      context,
+      chainId,
+      redemption.positionId,
+      redemption.assetPeriod.depositAsset.asset.decimals,
+    );
   }
 
   // Update facility asset snapshot with new loan
-  await getDepositFacility(context, chainId, facilityAddress);
-  await getDepositAsset(context, chainId, redemption.depositAsset);
   // Positive delta for borrowed amount
   await updateFacilityAssetSnapshotBorrowedAmount(
     context,
@@ -546,12 +529,8 @@ ponder.on("DepositRedemptionVault:LoanRepaid", async ({ event, context }) => {
     redemptionId,
   );
 
-  // Get asset decimals
-  const assetDecimals = await getDepositAssetPeriodDecimals(
-    context,
-    chainId,
-    redemption.depositAsset,
-  );
+  // Get asset decimals from nested relation
+  const assetDecimals = redemption.assetPeriod.depositAsset.asset.decimals;
 
   // Record event
   await context.db.insert(schema.depositRedemptionVaultLoanRepaid).values({
@@ -584,7 +563,6 @@ ponder.on("DepositRedemptionVault:LoanRepaid", async ({ event, context }) => {
   }
 
   // Update facility asset snapshot with repaid loan
-  await getDepositFacility(context, chainId, redemption.facility);
   // Calculate the amount repaid (old principal - new principal)
   const amountRepaid = redemptionLoan.principal - BigInt(event.args.principal);
 
@@ -626,14 +604,9 @@ ponder.on("DepositRedemptionVault:LoanDefaulted", async ({ event, context }) => 
     userAddress,
     redemptionId,
   );
-  await getRedemptionLoan(context, chainId, redemptionVaultAddress, userAddress, redemptionId);
 
-  // Get asset decimals
-  const assetDecimals = await getDepositAssetPeriodDecimals(
-    context,
-    chainId,
-    redemption.depositAsset,
-  );
+  // Get asset decimals from nested relation
+  const assetDecimals = redemption.assetPeriod.depositAsset.asset.decimals;
 
   // Record event
   await context.db.insert(schema.depositRedemptionVaultLoanDefaulted).values({
@@ -664,7 +637,6 @@ ponder.on("DepositRedemptionVault:LoanDefaulted", async ({ event, context }) => 
   }
 
   // Update facility asset snapshot with defaulted loan
-  await getDepositFacility(context, chainId, redemption.facility);
   // Reduce loan amount
   await updateFacilityAssetSnapshotBorrowedAmount(
     context,
@@ -692,14 +664,9 @@ ponder.on("DepositRedemptionVault:LoanExtended", async ({ event, context }) => {
     userAddress,
     redemptionId,
   );
-  await getRedemptionLoan(context, chainId, redemptionVaultAddress, userAddress, redemptionId);
 
-  // Get asset decimals
-  const assetDecimals = await getDepositAssetPeriodDecimals(
-    context,
-    chainId,
-    redemption.depositAsset,
-  );
+  // Get asset decimals from nested relation
+  const assetDecimals = redemption.assetPeriod.depositAsset.asset.decimals;
 
   // Record event
   await context.db.insert(schema.depositRedemptionVaultLoanExtended).values({

@@ -6,7 +6,7 @@ import schema from "ponder:schema";
 import type { Address } from "viem";
 import { fetchPosition } from "../contracts/position";
 import { toDecimal } from "../utils/decimal";
-import { getDepositAssetPeriod, getDepositAssetPeriodDecimals } from "./asset";
+import { getOrCreateDepositAssetPeriod } from "./asset";
 import { getOrCreateDepositFacility } from "./depositFacility";
 import { getOrCreateDepositor } from "./depositor";
 import { getOrCreateReceiptToken } from "./receiptToken";
@@ -43,13 +43,14 @@ export async function getOrCreatePosition(
   // Get or create related entities
   await getOrCreateDepositFacility(context, chainId, facilityAddress);
   await getOrCreateDepositor(context, chainId, depositorAddress);
-  const _depositAssetPeriod = await getDepositAssetPeriod(
+  // Get deposit asset period with nested asset relation for decimals
+  const depositAssetPeriod = await getOrCreateDepositAssetPeriod(
     context,
     chainId,
     depositAssetAddress,
     depositPeriod,
   );
-  const assetDecimals = await getDepositAssetPeriodDecimals(context, chainId, depositAssetAddress);
+  const assetDecimals = depositAssetPeriod.depositAsset.asset.decimals;
 
   // Fetch receipt token data
   const receiptToken = await getOrCreateReceiptToken(

@@ -3,6 +3,7 @@
 
 import type { Context } from "ponder:registry";
 import schema from "ponder:schema";
+import { and, eq } from "ponder";
 import type { Address } from "viem";
 import { fetchAssetDecimals, fetchAssetName, fetchAssetSymbol } from "../contracts/asset";
 
@@ -76,20 +77,34 @@ export async function getAssetDecimals(
 }
 
 /**
- * Get or create a DepositAsset
+ * Get or create a DepositAsset (with asset relation for decimals)
  */
 export async function getOrCreateDepositAsset(
   context: Context,
   chainId: number,
   assetAddress: Address,
-): Promise<typeof schema.depositAsset.$inferSelect> {
-  // Check if deposit asset exists
-  const existing = await context.db.find(schema.depositAsset, {
-    chainId,
-    asset: assetAddress.toLowerCase() as Address,
+): Promise<
+  typeof schema.depositAsset.$inferSelect & {
+    asset: typeof schema.asset.$inferSelect;
+  }
+> {
+  // Check if deposit asset exists with asset relation
+  const existing = await context.db.sql.query.depositAsset.findFirst({
+    where: and(
+      eq(schema.depositAsset.chainId, chainId),
+      eq(schema.depositAsset.assetAddress, assetAddress.toLowerCase() as Address),
+    ),
+    with: {
+      asset: true,
+    },
   });
 
   if (existing) {
+    // Ensure nested relations exist before returning
+    if (!existing.asset) {
+      throw new Error(`Asset or asset not found: ${chainId}, ${assetAddress}`);
+    }
+
     return existing;
   }
 
@@ -99,26 +114,57 @@ export async function getOrCreateDepositAsset(
   // Insert new deposit asset
   const newDepositAsset = {
     chainId,
-    asset: assetAddress.toLowerCase() as Address,
+    assetAddress: assetAddress.toLowerCase() as Address,
     enabled: true,
   };
 
   await context.db.insert(schema.depositAsset).values(newDepositAsset);
 
-  return newDepositAsset;
+  // Re-query with relation to return consistent type
+  const created = await context.db.sql.query.depositAsset.findFirst({
+    where: and(
+      eq(schema.depositAsset.chainId, chainId),
+      eq(schema.depositAsset.assetAddress, assetAddress.toLowerCase() as Address),
+    ),
+    with: {
+      asset: true,
+    },
+  });
+
+  if (!created) {
+    throw new Error(`Failed to create deposit asset: ${chainId}:${assetAddress}`);
+  }
+
+  // Ensure nested relations exist before returning
+  if (!created.asset) {
+    throw new Error(
+      `Deposit asset created but asset relation not found: ${chainId}, ${assetAddress}`,
+    );
+  }
+
+  return created;
 }
 
 /**
- * Get a DepositAsset record
+ * Get a DepositAsset record (with asset relation for decimals)
  */
 export async function getDepositAsset(
   context: Context,
   chainId: number,
   assetAddress: Address,
-): Promise<typeof schema.depositAsset.$inferSelect> {
-  const result = await context.db.find(schema.depositAsset, {
-    chainId,
-    asset: assetAddress.toLowerCase() as Address,
+): Promise<
+  typeof schema.depositAsset.$inferSelect & {
+    asset: typeof schema.asset.$inferSelect;
+  }
+> {
+  const result = await context.db.sql.query.depositAsset.findFirst({
+    where: and(
+      eq(schema.depositAsset.chainId, chainId),
+      eq(schema.depositAsset.assetAddress, assetAddress.toLowerCase() as Address),
+    ),
+    with: {
+      asset: true,
+    },
   });
 
   if (!result) {
@@ -140,26 +186,41 @@ export async function getDepositAssetDecimals(
 }
 
 /**
- * Get or create a DepositAssetPeriod
+ * Get or create a DepositAssetPeriod (with nested asset relation for decimals)
  */
 export async function getOrCreateDepositAssetPeriod(
   context: Context,
   chainId: number,
   depositAssetAddress: Address,
   depositPeriod: number,
-): Promise<typeof schema.depositAssetPeriod.$inferSelect> {
-  // Check if deposit asset period exists
-  const existing = await context.db.find(schema.depositAssetPeriod, {
-    chainId,
-    depositAsset: depositAssetAddress.toLowerCase() as Address,
-    depositPeriod,
+): Promise<
+  typeof schema.depositAssetPeriod.$inferSelect & {
+    depositAsset: typeof schema.depositAsset.$inferSelect & {
+      asset: typeof schema.asset.$inferSelect;
+    };
+  }
+> {
+  // Check if deposit asset period exists with nested relations
+  const existing = await context.db.sql.query.depositAssetPeriod.findFirst({
+    where: and(
+      eq(schema.depositAssetPeriod.chainId, chainId),
+      eq(schema.depositAssetPeriod.depositAsset, depositAssetAddress.toLowerCase() as Address),
+      eq(schema.depositAssetPeriod.depositPeriod, depositPeriod),
+    ),
+    with: {
+      depositAsset: {
+        with: {
+          asset: true,
+        },
+      },
+    },
   });
 
   if (existing) {
     return existing;
   }
 
-  // Create the underlying DepositAsset record
+  // Create the underlying DepositAsset record (ensures asset exists)
   await getOrCreateDepositAsset(context, chainId, depositAssetAddress);
 
   // Insert new deposit asset period
@@ -172,22 +233,59 @@ export async function getOrCreateDepositAssetPeriod(
 
   await context.db.insert(schema.depositAssetPeriod).values(newPeriod);
 
-  return newPeriod;
+  // Re-query with relations to return consistent type
+  const created = await context.db.sql.query.depositAssetPeriod.findFirst({
+    where: and(
+      eq(schema.depositAssetPeriod.chainId, chainId),
+      eq(schema.depositAssetPeriod.depositAsset, depositAssetAddress.toLowerCase() as Address),
+      eq(schema.depositAssetPeriod.depositPeriod, depositPeriod),
+    ),
+    with: {
+      depositAsset: {
+        with: {
+          asset: true,
+        },
+      },
+    },
+  });
+
+  if (!created) {
+    throw new Error(
+      `Failed to create deposit asset period: ${chainId}:${depositAssetAddress}:${depositPeriod}`,
+    );
+  }
+
+  return created;
 }
 
 /**
- * Get a DepositAssetPeriod record
+ * Get a DepositAssetPeriod record (with nested asset relation for decimals)
  */
 export async function getDepositAssetPeriod(
   context: Context,
   chainId: number,
   depositAssetAddress: Address,
   depositPeriod: number,
-): Promise<typeof schema.depositAssetPeriod.$inferSelect> {
-  const result = await context.db.find(schema.depositAssetPeriod, {
-    chainId,
-    depositAsset: depositAssetAddress.toLowerCase() as Address,
-    depositPeriod,
+): Promise<
+  typeof schema.depositAssetPeriod.$inferSelect & {
+    depositAsset: typeof schema.depositAsset.$inferSelect & {
+      asset: typeof schema.asset.$inferSelect;
+    };
+  }
+> {
+  const result = await context.db.sql.query.depositAssetPeriod.findFirst({
+    where: and(
+      eq(schema.depositAssetPeriod.chainId, chainId),
+      eq(schema.depositAssetPeriod.depositAsset, depositAssetAddress.toLowerCase() as Address),
+      eq(schema.depositAssetPeriod.depositPeriod, depositPeriod),
+    ),
+    with: {
+      depositAsset: {
+        with: {
+          asset: true,
+        },
+      },
+    },
   });
 
   if (!result) {

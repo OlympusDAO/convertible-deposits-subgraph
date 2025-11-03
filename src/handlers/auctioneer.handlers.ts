@@ -4,11 +4,7 @@ import { ponder } from "ponder:registry";
 import schema from "ponder:schema";
 import type { Address } from "viem";
 import { fetchAuctioneerCurrentTick } from "../contracts/auctioneer";
-import {
-  getDepositAssetDecimals,
-  getDepositAssetPeriodDecimals,
-  getOrCreateDepositAsset,
-} from "../entities/asset";
+import { getOrCreateDepositAsset } from "../entities/asset";
 import {
   getOrCreateAuctioneer,
   getOrCreateAuctioneerDepositPeriod,
@@ -268,7 +264,7 @@ ponder.on("ConvertibleDepositAuctioneer:Bid", async ({ event, context }) => {
 
   // Get or create entities
   await getOrCreateDepositFacility(context, chainId, auctioneerAddress);
-  await getOrCreateAuctioneerDepositPeriod(
+  const auctioneerDepositPeriod = await getOrCreateAuctioneerDepositPeriod(
     context,
     chainId,
     auctioneerAddress,
@@ -289,7 +285,8 @@ ponder.on("ConvertibleDepositAuctioneer:Bid", async ({ event, context }) => {
     BigInt(event.block.timestamp),
   );
 
-  const assetDecimals = await getDepositAssetPeriodDecimals(context, chainId, depositAssetAddress);
+  // Get asset decimals from nested relation
+  const assetDecimals = auctioneerDepositPeriod.assetPeriod.depositAsset.asset.decimals;
 
   // Fetch tick data from contract
   const tickData = await fetchAuctioneerCurrentTick(
@@ -347,8 +344,8 @@ ponder.on("ConvertibleDepositAuctioneer:AuctionParametersUpdated", async ({ even
 
   // Get or create entities
   await getOrCreateAuctioneer(context, chainId, auctioneerAddress);
-  await getOrCreateDepositAsset(context, chainId, depositAssetAddress);
-  const assetDecimals = await getDepositAssetDecimals(context, chainId, depositAssetAddress);
+  const depositAsset = await getOrCreateDepositAsset(context, chainId, depositAssetAddress);
+  const assetDecimals = depositAsset.asset.decimals;
 
   // Calculate decimals
   const target = event.args.newTarget;

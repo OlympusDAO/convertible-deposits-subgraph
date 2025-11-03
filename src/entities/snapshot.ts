@@ -11,8 +11,8 @@ import {
 } from "../contracts/auctioneer";
 import { fetchFacilityClaimableYield } from "../contracts/depositFacility";
 import { toDecimal, toOhmDecimal } from "../utils/decimal";
-import { getAssetDecimals, getDepositAssetPeriodDecimals } from "./asset";
-import { getAuctioneer } from "./auctioneer";
+import { getOrCreateAuctioneer } from "./auctioneer";
+import { getOrCreateDepositFacilityAsset } from "./depositFacility";
 
 /**
  * Get the most recent deposit facility asset snapshot for a given facility/asset before or at a specific block
@@ -69,11 +69,8 @@ export async function getOrCreateAuctioneerSnapshot(
     return existing;
   }
 
-  // Fetch auctioneer entity to get enabled status
-  const auctioneer = await getAuctioneer(context, chainId, auctioneerAddress);
-  if (!auctioneer) {
-    throw new Error(`Auctioneer not found: ${auctioneerAddress}`);
-  }
+  // Get or create auctioneer entity (with nested asset relation)
+  const auctioneer = await getOrCreateAuctioneer(context, chainId, auctioneerAddress);
 
   // Fetch day state and auction parameters from contract in a single multicall
   const { dayState, parameters: auctionParameters } = await fetchAuctioneerDayStateAndParameters(
@@ -81,8 +78,8 @@ export async function getOrCreateAuctioneerSnapshot(
     auctioneerAddress,
   );
 
-  // Get asset decimals for price conversion
-  const assetDecimals = await getAssetDecimals(context, chainId, auctioneer.depositAsset);
+  // Get asset decimals from nested relation
+  const assetDecimals = auctioneer.depositAsset.asset.decimals;
 
   // Create the main auctioneer snapshot
   await context.db.insert(schema.auctioneerSnapshot).values({
@@ -187,6 +184,10 @@ export async function refreshAuctionState(
   // Create the main auctioneer snapshot
   await getOrCreateAuctioneerSnapshot(context, chainId, blockNumber, timestamp, auctioneerAddress);
 
+  // Get or create auctioneer with nested asset relation for decimals (fetch once, use for all periods)
+  const auctioneer = await getOrCreateAuctioneer(context, chainId, auctioneerAddress);
+  const assetDecimals = auctioneer.depositAsset.asset.decimals;
+
   // Get all deposit periods for this auctioneer (enabled or not)
   const depositPeriods = await context.db.sql
     .select()
@@ -201,17 +202,11 @@ export async function refreshAuctionState(
   // Create period snapshots for all deposit periods
   for (const depositPeriod of depositPeriods) {
     // Fetch current tick data from contract for this period
+    // TODO shift this into a multicall
     const tickData = await fetchAuctioneerCurrentTick(
       context.client,
       auctioneerAddress,
       depositPeriod.depositPeriod,
-    );
-
-    // Get asset decimals for decimal conversion
-    const assetDecimals = await getDepositAssetPeriodDecimals(
-      context,
-      chainId,
-      depositPeriod.depositAsset,
     );
 
     // Calculate decimals
@@ -245,16 +240,40 @@ export async function getOrCreateDepositFacilityAssetSnapshot(
   timestamp: bigint,
   facilityAddress: Address,
   depositAssetAddress: Address,
-): Promise<typeof schema.depositFacilityAssetSnapshot.$inferSelect> {
-  // Check if snapshot already exists
-  const existing = await context.db.find(schema.depositFacilityAssetSnapshot, {
-    chainId,
-    block: blockNumber,
-    facility: facilityAddress.toLowerCase() as Address,
-    depositAsset: depositAssetAddress.toLowerCase() as Address,
+): Promise<
+  typeof schema.depositFacilityAssetSnapshot.$inferSelect & {
+    depositAsset: typeof schema.depositAsset.$inferSelect & {
+      asset: typeof schema.asset.$inferSelect;
+    };
+  }
+> {
+  // Check if snapshot already exists with nested asset relation
+  const existing = await context.db.sql.query.depositFacilityAssetSnapshot.findFirst({
+    where: and(
+      eq(schema.depositFacilityAssetSnapshot.chainId, chainId),
+      eq(schema.depositFacilityAssetSnapshot.block, blockNumber),
+      eq(schema.depositFacilityAssetSnapshot.facility, facilityAddress.toLowerCase() as Address),
+      eq(
+        schema.depositFacilityAssetSnapshot.depositAsset,
+        depositAssetAddress.toLowerCase() as Address,
+      ),
+    ),
+    with: {
+      depositAsset: {
+        with: {
+          asset: true,
+        },
+      },
+    },
   });
 
   if (existing) {
+    // Ensure nested relations exist before returning
+    if (!existing.depositAsset?.asset?.decimals) {
+      throw new Error(
+        `Deposit asset or asset not found for snapshot: ${chainId}, ${facilityAddress}, ${depositAssetAddress}`,
+      );
+    }
     return existing;
   }
 
@@ -272,14 +291,21 @@ export async function getOrCreateDepositFacilityAssetSnapshot(
   const pendingRedemption = previousSnapshot ? previousSnapshot.pendingRedemption : BigInt(0);
   const borrowedAmount = previousSnapshot ? previousSnapshot.borrowedAmount : BigInt(0);
 
+  // Get or create facility asset (required for snapshot, with nested asset relation for decimals)
+  const facilityAsset = await getOrCreateDepositFacilityAsset(
+    context,
+    chainId,
+    facilityAddress,
+    depositAssetAddress,
+  );
+  const assetDecimals = facilityAsset.depositAsset.asset.decimals;
+
   // Fetch claimable yield from contract
   const claimableYield = await fetchFacilityClaimableYield(
     context.client,
     facilityAddress,
     depositAssetAddress,
   );
-
-  const assetDecimals = await getAssetDecimals(context, chainId, depositAssetAddress);
 
   // Create new snapshot
   await context.db.insert(schema.depositFacilityAssetSnapshot).values({
@@ -298,15 +324,35 @@ export async function getOrCreateDepositFacilityAssetSnapshot(
     claimableYieldDecimal: toDecimal(claimableYield, assetDecimals),
   });
 
-  const snapshot = await context.db.find(schema.depositFacilityAssetSnapshot, {
-    chainId,
-    block: blockNumber,
-    facility: facilityAddress.toLowerCase() as Address,
-    depositAsset: depositAssetAddress.toLowerCase() as Address,
+  // Re-query with relations to return consistent type
+  const snapshot = await context.db.sql.query.depositFacilityAssetSnapshot.findFirst({
+    where: and(
+      eq(schema.depositFacilityAssetSnapshot.chainId, chainId),
+      eq(schema.depositFacilityAssetSnapshot.block, blockNumber),
+      eq(schema.depositFacilityAssetSnapshot.facility, facilityAddress.toLowerCase() as Address),
+      eq(
+        schema.depositFacilityAssetSnapshot.depositAsset,
+        depositAssetAddress.toLowerCase() as Address,
+      ),
+    ),
+    with: {
+      depositAsset: {
+        with: {
+          asset: true,
+        },
+      },
+    },
   });
 
   if (!snapshot) {
     throw new Error(`Failed to create deposit facility asset snapshot`);
+  }
+
+  // Ensure nested relations exist before returning
+  if (!snapshot.depositAsset?.asset?.decimals) {
+    throw new Error(
+      `Deposit asset or asset not found for snapshot: ${chainId}, ${facilityAddress}, ${depositAssetAddress}`,
+    );
   }
 
   return snapshot;
@@ -324,7 +370,7 @@ export async function updateFacilityAssetSnapshotDeposited(
   depositAssetAddress: Address,
   delta: bigint,
 ): Promise<void> {
-  // Get or create facility asset snapshot
+  // Get or create facility asset snapshot (with nested asset relation)
   const assetSnapshot = await getOrCreateDepositFacilityAssetSnapshot(
     context,
     chainId,
@@ -334,9 +380,11 @@ export async function updateFacilityAssetSnapshotDeposited(
     depositAssetAddress,
   );
 
+  // Get asset decimals from nested relation
+  const assetDecimals = assetSnapshot.depositAsset.asset.decimals;
+
   // Update totalDeposited
   const updatedTotalDeposited = assetSnapshot.totalDeposited + delta;
-  const assetDecimals = await getAssetDecimals(context, chainId, depositAssetAddress);
 
   // Re-fetch claimable yield from contract
   const claimableYield = await fetchFacilityClaimableYield(
@@ -373,7 +421,7 @@ export async function updateFacilityAssetSnapshotPendingRedemption(
   depositAssetAddress: Address,
   delta: bigint,
 ): Promise<void> {
-  // Get or create facility asset snapshot
+  // Get or create facility asset snapshot (with nested asset relation)
   const assetSnapshot = await getOrCreateDepositFacilityAssetSnapshot(
     context,
     chainId,
@@ -383,9 +431,11 @@ export async function updateFacilityAssetSnapshotPendingRedemption(
     depositAssetAddress,
   );
 
+  // Get asset decimals from nested relation
+  const assetDecimals = assetSnapshot.depositAsset.asset.decimals;
+
   // Update pendingRedemption
   const updatedPendingRedemption = assetSnapshot.pendingRedemption + delta;
-  const assetDecimals = await getAssetDecimals(context, chainId, depositAssetAddress);
 
   // Update snapshot
   await context.db
@@ -413,7 +463,7 @@ export async function updateFacilityAssetSnapshotBorrowedAmount(
   depositAssetAddress: Address,
   delta: bigint,
 ): Promise<void> {
-  // Get or create facility asset snapshot
+  // Get or create facility asset snapshot (with nested asset relation)
   const assetSnapshot = await getOrCreateDepositFacilityAssetSnapshot(
     context,
     chainId,
@@ -423,9 +473,11 @@ export async function updateFacilityAssetSnapshotBorrowedAmount(
     depositAssetAddress,
   );
 
+  // Get asset decimals from nested relation
+  const assetDecimals = assetSnapshot.depositAsset.asset.decimals;
+
   // Update borrowedAmount
   const updatedBorrowedAmount = assetSnapshot.borrowedAmount + delta;
-  const assetDecimals = await getAssetDecimals(context, chainId, depositAssetAddress);
 
   // Update snapshot
   await context.db
