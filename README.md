@@ -177,16 +177,17 @@ Ponder automatically generates a GraphQL API based on the schema. Example querie
 # Query deposit positions
 query GetPositions($depositor: String!) {
   convertibleDepositPositions(
-    where: { depositor: { address: { equals: $depositor } } }
+    where: { rDepositor: { address: { equals: $depositor } } }
   ) {
     positionId
     initialAmount
     remainingAmount
     conversionPrice
-    assetPeriod {
+    rAssetPeriod {
       depositPeriod
-      depositAsset {
-        asset {
+      rDepositAsset {
+        asset
+        rAsset {
           symbol
         }
       }
@@ -197,7 +198,7 @@ query GetPositions($depositor: String!) {
 # Query auction snapshots
 query GetAuctionSnapshots($auctioneer: String!, $limit: Int = 10) {
   auctioneerSnapshots(
-    where: { auctioneer: { address: { equals: $auctioneer } } }
+    where: { rAuctioneer: { address: { equals: $auctioneer } } }
     orderBy: timestamp
     orderDirection: desc
     limit: $limit
@@ -216,7 +217,7 @@ query GetAuctionSnapshots($auctioneer: String!, $limit: Int = 10) {
 
 # Query redemptions with loans
 query GetRedemptions($depositor: String!) {
-  redemptions(where: { depositor: { address: { equals: $depositor } } }) {
+  redemptions(where: { rDepositor: { address: { equals: $depositor } } }) {
     redemptionId
     amount
     redeemableAt
@@ -240,6 +241,29 @@ All entities use composite primary keys:
 - **Position-based**: `(chainId, positionId)` for positions
 - **Event-based**: `(chainId, block, logIndex)` for events
 - **Snapshot-based**: `(chainId, block, auctioneer)` or `(chainId, block, facility, depositAsset)` for snapshots
+
+### Relation Naming Convention
+
+All relation names use the `r` prefix (e.g., `rAsset`, `rDepositAsset`, `rFacility`, `rAssetPeriod`). This convention is necessary because:
+
+1. **Avoiding Naming Conflicts**: Database tables have columns with names like `asset`, `depositAsset`, `facility`, etc. If relations had the same names, Ponder's type system and query builder would have ambiguity issues when accessing these properties.
+
+2. **Type Safety**: The `r` prefix clearly distinguishes between:
+   - Database fields: `depositAsset.asset` (the address string)
+   - Relations: `depositAsset.rAsset` (the related Asset entity with decimals, symbol, etc.)
+
+3. **Field Length Limits**: Some database systems or ORMs have field length limitations, and the short `r` prefix keeps relation names concise while remaining clear.
+
+4. **Consistency**: All relations follow the same pattern, making the codebase easier to understand and maintain.
+
+Example usage:
+```typescript
+// Access the asset address (database field)
+const assetAddress = depositAsset.asset;
+
+// Access the full Asset entity with decimals (relation)
+const decimals = depositAsset.rAsset.decimals;
+```
 
 ### Data Type Conventions
 

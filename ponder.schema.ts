@@ -22,11 +22,11 @@ export const depositAsset = onchainTable(
   "deposit_asset",
   (t) => ({
     chainId: t.integer().notNull(),
-    assetAddress: t.hex().notNull(), // Asset address (same as asset.address)
+    asset: t.hex().notNull(), // Asset address (same as asset.address)
     enabled: t.boolean().notNull(),
   }),
   (table) => ({
-    pk: primaryKey({ columns: [table.chainId, table.assetAddress] }),
+    pk: primaryKey({ columns: [table.chainId, table.asset] }),
   }),
 );
 
@@ -34,7 +34,7 @@ export const depositAssetPeriod = onchainTable(
   "deposit_asset_period",
   (t) => ({
     chainId: t.integer().notNull(),
-    depositAsset: t.hex().notNull(), // Asset address (references depositAsset.assetAddress)
+    depositAsset: t.hex().notNull(), // Asset address (references depositAsset.asset)
     depositPeriod: t.integer().notNull(),
     enabled: t.boolean().notNull(),
   }),
@@ -50,7 +50,7 @@ export const auctioneer = onchainTable(
   (t) => ({
     chainId: t.integer().notNull(),
     address: t.hex().notNull(),
-    depositAsset: t.hex().notNull(), // Asset address (references depositAsset.assetAddress)
+    depositAsset: t.hex().notNull(), // Asset address (references depositAsset.asset)
     majorVersion: t.integer().notNull(),
     minorVersion: t.integer().notNull(),
     enabled: t.boolean().notNull(),
@@ -1081,11 +1081,11 @@ export const depositRedemptionVaultRelations = relations(depositRedemptionVault,
 }));
 
 export const receiptTokenRelations = relations(receiptToken, ({ one, many }) => ({
-  facility: one(depositFacility, {
+  rFacility: one(depositFacility, {
     fields: [receiptToken.chainId, receiptToken.facility],
     references: [depositFacility.chainId, depositFacility.address],
   }),
-  assetPeriod: one(depositAssetPeriod, {
+  rAssetPeriod: one(depositAssetPeriod, {
     fields: [receiptToken.chainId, receiptToken.depositAsset, receiptToken.depositPeriod],
     references: [
       depositAssetPeriod.chainId,
@@ -1100,26 +1100,26 @@ export const receiptTokenRelations = relations(receiptToken, ({ one, many }) => 
 export const depositRedemptionVaultAssetConfigurationRelations = relations(
   depositRedemptionVaultAssetConfiguration,
   ({ one, many }) => ({
-    redemptionVault: one(depositRedemptionVault, {
+    rRedemptionVault: one(depositRedemptionVault, {
       fields: [
         depositRedemptionVaultAssetConfiguration.chainId,
         depositRedemptionVaultAssetConfiguration.redemptionVault,
       ],
       references: [depositRedemptionVault.chainId, depositRedemptionVault.address],
     }),
-    facility: one(depositFacility, {
+    rFacility: one(depositFacility, {
       fields: [
         depositRedemptionVaultAssetConfiguration.chainId,
         depositRedemptionVaultAssetConfiguration.facility,
       ],
       references: [depositFacility.chainId, depositFacility.address],
     }),
-    depositAsset: one(depositAsset, {
+    rDepositAsset: one(depositAsset, {
       fields: [
         depositRedemptionVaultAssetConfiguration.chainId,
         depositRedemptionVaultAssetConfiguration.depositAsset,
       ],
-      references: [depositAsset.chainId, depositAsset.assetAddress],
+      references: [depositAsset.chainId, depositAsset.asset],
     }),
     annualInterestRateSetEvents: many(depositRedemptionVaultAnnualInterestRateSet),
     maxBorrowPercentageSetEvents: many(depositRedemptionVaultMaxBorrowPercentageSet),
@@ -1127,15 +1127,15 @@ export const depositRedemptionVaultAssetConfigurationRelations = relations(
 );
 
 export const redemptionRelations = relations(redemption, ({ one, many }) => ({
-  redemptionVault: one(depositRedemptionVault, {
+  rRedemptionVault: one(depositRedemptionVault, {
     fields: [redemption.chainId, redemption.redemptionVault],
     references: [depositRedemptionVault.chainId, depositRedemptionVault.address],
   }),
-  depositor: one(depositor, {
+  rDepositor: one(depositor, {
     fields: [redemption.chainId, redemption.depositor],
     references: [depositor.chainId, depositor.address],
   }),
-  assetPeriod: one(depositAssetPeriod, {
+  rAssetPeriod: one(depositAssetPeriod, {
     fields: [redemption.chainId, redemption.depositAsset, redemption.depositPeriod],
     references: [
       depositAssetPeriod.chainId,
@@ -1143,11 +1143,11 @@ export const redemptionRelations = relations(redemption, ({ one, many }) => ({
       depositAssetPeriod.depositPeriod,
     ],
   }),
-  facility: one(depositFacility, {
+  rFacility: one(depositFacility, {
     fields: [redemption.chainId, redemption.facility],
     references: [depositFacility.chainId, depositFacility.address],
   }),
-  receiptToken: one(receiptToken, {
+  rReceiptToken: one(receiptToken, {
     fields: [redemption.chainId, redemption.receiptTokenManager, redemption.receiptTokenId],
     references: [
       receiptToken.chainId,
@@ -1157,7 +1157,7 @@ export const redemptionRelations = relations(redemption, ({ one, many }) => ({
   }),
   // Position is optional (positionId can be null)
   // When positionId is null, this relation will be null
-  position: one(convertibleDepositPosition, {
+  rPosition: one(convertibleDepositPosition, {
     fields: [redemption.chainId, redemption.positionId],
     references: [convertibleDepositPosition.chainId, convertibleDepositPosition.positionId],
   }),
@@ -1168,7 +1168,7 @@ export const redemptionRelations = relations(redemption, ({ one, many }) => ({
 }));
 
 export const redemptionLoanRelations = relations(redemptionLoan, ({ one, many }) => ({
-  redemption: one(redemption, {
+  rRedemption: one(redemption, {
     fields: [
       redemptionLoan.chainId,
       redemptionLoan.redemptionVault,
@@ -1192,7 +1192,7 @@ export const redemptionLoanRelations = relations(redemptionLoan, ({ one, many })
 export const depositRedemptionVaultEnabledRelations = relations(
   depositRedemptionVaultEnabled,
   ({ one }) => ({
-    redemptionVault: one(depositRedemptionVault, {
+    rRedemptionVault: one(depositRedemptionVault, {
       fields: [
         depositRedemptionVaultEnabled.chainId,
         depositRedemptionVaultEnabled.redemptionVault,
@@ -1205,7 +1205,7 @@ export const depositRedemptionVaultEnabledRelations = relations(
 export const depositRedemptionVaultDisabledRelations = relations(
   depositRedemptionVaultDisabled,
   ({ one }) => ({
-    redemptionVault: one(depositRedemptionVault, {
+    rRedemptionVault: one(depositRedemptionVault, {
       fields: [
         depositRedemptionVaultDisabled.chainId,
         depositRedemptionVaultDisabled.redemptionVault,
@@ -1218,7 +1218,7 @@ export const depositRedemptionVaultDisabledRelations = relations(
 export const depositRedemptionVaultClaimDefaultRewardPercentageSetRelations = relations(
   depositRedemptionVaultClaimDefaultRewardPercentageSet,
   ({ one }) => ({
-    redemptionVault: one(depositRedemptionVault, {
+    rRedemptionVault: one(depositRedemptionVault, {
       fields: [
         depositRedemptionVaultClaimDefaultRewardPercentageSet.chainId,
         depositRedemptionVaultClaimDefaultRewardPercentageSet.redemptionVault,
@@ -1231,14 +1231,14 @@ export const depositRedemptionVaultClaimDefaultRewardPercentageSetRelations = re
 export const depositRedemptionVaultFacilityAuthorizedRelations = relations(
   depositRedemptionVaultFacilityAuthorized,
   ({ one }) => ({
-    redemptionVault: one(depositRedemptionVault, {
+    rRedemptionVault: one(depositRedemptionVault, {
       fields: [
         depositRedemptionVaultFacilityAuthorized.chainId,
         depositRedemptionVaultFacilityAuthorized.redemptionVault,
       ],
       references: [depositRedemptionVault.chainId, depositRedemptionVault.address],
     }),
-    facility: one(depositFacility, {
+    rFacility: one(depositFacility, {
       fields: [
         depositRedemptionVaultFacilityAuthorized.chainId,
         depositRedemptionVaultFacilityAuthorized.facility,
@@ -1251,14 +1251,14 @@ export const depositRedemptionVaultFacilityAuthorizedRelations = relations(
 export const depositRedemptionVaultFacilityDeauthorizedRelations = relations(
   depositRedemptionVaultFacilityDeauthorized,
   ({ one }) => ({
-    redemptionVault: one(depositRedemptionVault, {
+    rRedemptionVault: one(depositRedemptionVault, {
       fields: [
         depositRedemptionVaultFacilityDeauthorized.chainId,
         depositRedemptionVaultFacilityDeauthorized.redemptionVault,
       ],
       references: [depositRedemptionVault.chainId, depositRedemptionVault.address],
     }),
-    facility: one(depositFacility, {
+    rFacility: one(depositFacility, {
       fields: [
         depositRedemptionVaultFacilityDeauthorized.chainId,
         depositRedemptionVaultFacilityDeauthorized.facility,
@@ -1271,28 +1271,28 @@ export const depositRedemptionVaultFacilityDeauthorizedRelations = relations(
 export const depositRedemptionVaultAnnualInterestRateSetRelations = relations(
   depositRedemptionVaultAnnualInterestRateSet,
   ({ one }) => ({
-    redemptionVault: one(depositRedemptionVault, {
+    rRedemptionVault: one(depositRedemptionVault, {
       fields: [
         depositRedemptionVaultAnnualInterestRateSet.chainId,
         depositRedemptionVaultAnnualInterestRateSet.redemptionVault,
       ],
       references: [depositRedemptionVault.chainId, depositRedemptionVault.address],
     }),
-    facility: one(depositFacility, {
+    rFacility: one(depositFacility, {
       fields: [
         depositRedemptionVaultAnnualInterestRateSet.chainId,
         depositRedemptionVaultAnnualInterestRateSet.facility,
       ],
       references: [depositFacility.chainId, depositFacility.address],
     }),
-    depositAsset: one(depositAsset, {
+    rDepositAsset: one(depositAsset, {
       fields: [
         depositRedemptionVaultAnnualInterestRateSet.chainId,
         depositRedemptionVaultAnnualInterestRateSet.depositAsset,
       ],
-      references: [depositAsset.chainId, depositAsset.assetAddress],
+      references: [depositAsset.chainId, depositAsset.asset],
     }),
-    assetConfiguration: one(depositRedemptionVaultAssetConfiguration, {
+    rAssetConfiguration: one(depositRedemptionVaultAssetConfiguration, {
       fields: [
         depositRedemptionVaultAnnualInterestRateSet.chainId,
         depositRedemptionVaultAnnualInterestRateSet.redemptionVault,
@@ -1312,28 +1312,28 @@ export const depositRedemptionVaultAnnualInterestRateSetRelations = relations(
 export const depositRedemptionVaultMaxBorrowPercentageSetRelations = relations(
   depositRedemptionVaultMaxBorrowPercentageSet,
   ({ one }) => ({
-    redemptionVault: one(depositRedemptionVault, {
+    rRedemptionVault: one(depositRedemptionVault, {
       fields: [
         depositRedemptionVaultMaxBorrowPercentageSet.chainId,
         depositRedemptionVaultMaxBorrowPercentageSet.redemptionVault,
       ],
       references: [depositRedemptionVault.chainId, depositRedemptionVault.address],
     }),
-    facility: one(depositFacility, {
+    rFacility: one(depositFacility, {
       fields: [
         depositRedemptionVaultMaxBorrowPercentageSet.chainId,
         depositRedemptionVaultMaxBorrowPercentageSet.facility,
       ],
       references: [depositFacility.chainId, depositFacility.address],
     }),
-    depositAsset: one(depositAsset, {
+    rDepositAsset: one(depositAsset, {
       fields: [
         depositRedemptionVaultMaxBorrowPercentageSet.chainId,
         depositRedemptionVaultMaxBorrowPercentageSet.depositAsset,
       ],
-      references: [depositAsset.chainId, depositAsset.assetAddress],
+      references: [depositAsset.chainId, depositAsset.asset],
     }),
-    assetConfiguration: one(depositRedemptionVaultAssetConfiguration, {
+    rAssetConfiguration: one(depositRedemptionVaultAssetConfiguration, {
       fields: [
         depositRedemptionVaultMaxBorrowPercentageSet.chainId,
         depositRedemptionVaultMaxBorrowPercentageSet.redemptionVault,
@@ -1353,21 +1353,21 @@ export const depositRedemptionVaultMaxBorrowPercentageSetRelations = relations(
 export const depositRedemptionVaultRedemptionStartedRelations = relations(
   depositRedemptionVaultRedemptionStarted,
   ({ one }) => ({
-    redemptionVault: one(depositRedemptionVault, {
+    rRedemptionVault: one(depositRedemptionVault, {
       fields: [
         depositRedemptionVaultRedemptionStarted.chainId,
         depositRedemptionVaultRedemptionStarted.redemptionVault,
       ],
       references: [depositRedemptionVault.chainId, depositRedemptionVault.address],
     }),
-    depositor: one(depositor, {
+    rDepositor: one(depositor, {
       fields: [
         depositRedemptionVaultRedemptionStarted.chainId,
         depositRedemptionVaultRedemptionStarted.depositor,
       ],
       references: [depositor.chainId, depositor.address],
     }),
-    redemption: one(redemption, {
+    rRedemption: one(redemption, {
       fields: [
         depositRedemptionVaultRedemptionStarted.chainId,
         depositRedemptionVaultRedemptionStarted.redemptionVault,
@@ -1381,19 +1381,19 @@ export const depositRedemptionVaultRedemptionStartedRelations = relations(
         redemption.redemptionId,
       ],
     }),
-    facility: one(depositFacility, {
+    rFacility: one(depositFacility, {
       fields: [
         depositRedemptionVaultRedemptionStarted.chainId,
         depositRedemptionVaultRedemptionStarted.facility,
       ],
       references: [depositFacility.chainId, depositFacility.address],
     }),
-    depositAsset: one(depositAsset, {
+    rDepositAsset: one(depositAsset, {
       fields: [
         depositRedemptionVaultRedemptionStarted.chainId,
         depositRedemptionVaultRedemptionStarted.depositAsset,
       ],
-      references: [depositAsset.chainId, depositAsset.assetAddress],
+      references: [depositAsset.chainId, depositAsset.asset],
     }),
   }),
 );
@@ -1401,21 +1401,21 @@ export const depositRedemptionVaultRedemptionStartedRelations = relations(
 export const depositRedemptionVaultRedemptionFinishedRelations = relations(
   depositRedemptionVaultRedemptionFinished,
   ({ one }) => ({
-    redemptionVault: one(depositRedemptionVault, {
+    rRedemptionVault: one(depositRedemptionVault, {
       fields: [
         depositRedemptionVaultRedemptionFinished.chainId,
         depositRedemptionVaultRedemptionFinished.redemptionVault,
       ],
       references: [depositRedemptionVault.chainId, depositRedemptionVault.address],
     }),
-    depositor: one(depositor, {
+    rDepositor: one(depositor, {
       fields: [
         depositRedemptionVaultRedemptionFinished.chainId,
         depositRedemptionVaultRedemptionFinished.depositor,
       ],
       references: [depositor.chainId, depositor.address],
     }),
-    redemption: one(redemption, {
+    rRedemption: one(redemption, {
       fields: [
         depositRedemptionVaultRedemptionFinished.chainId,
         depositRedemptionVaultRedemptionFinished.redemptionVault,
@@ -1435,21 +1435,21 @@ export const depositRedemptionVaultRedemptionFinishedRelations = relations(
 export const depositRedemptionVaultRedemptionCancelledRelations = relations(
   depositRedemptionVaultRedemptionCancelled,
   ({ one }) => ({
-    redemptionVault: one(depositRedemptionVault, {
+    rRedemptionVault: one(depositRedemptionVault, {
       fields: [
         depositRedemptionVaultRedemptionCancelled.chainId,
         depositRedemptionVaultRedemptionCancelled.redemptionVault,
       ],
       references: [depositRedemptionVault.chainId, depositRedemptionVault.address],
     }),
-    depositor: one(depositor, {
+    rDepositor: one(depositor, {
       fields: [
         depositRedemptionVaultRedemptionCancelled.chainId,
         depositRedemptionVaultRedemptionCancelled.depositor,
       ],
       references: [depositor.chainId, depositor.address],
     }),
-    redemption: one(redemption, {
+    rRedemption: one(redemption, {
       fields: [
         depositRedemptionVaultRedemptionCancelled.chainId,
         depositRedemptionVaultRedemptionCancelled.redemptionVault,
@@ -1463,12 +1463,12 @@ export const depositRedemptionVaultRedemptionCancelledRelations = relations(
         redemption.redemptionId,
       ],
     }),
-    depositAsset: one(depositAsset, {
+    rDepositAsset: one(depositAsset, {
       fields: [
         depositRedemptionVaultRedemptionCancelled.chainId,
         depositRedemptionVaultRedemptionCancelled.depositAsset,
       ],
-      references: [depositAsset.chainId, depositAsset.assetAddress],
+      references: [depositAsset.chainId, depositAsset.asset],
     }),
   }),
 );
@@ -1476,21 +1476,21 @@ export const depositRedemptionVaultRedemptionCancelledRelations = relations(
 export const depositRedemptionVaultLoanCreatedRelations = relations(
   depositRedemptionVaultLoanCreated,
   ({ one }) => ({
-    redemptionVault: one(depositRedemptionVault, {
+    rRedemptionVault: one(depositRedemptionVault, {
       fields: [
         depositRedemptionVaultLoanCreated.chainId,
         depositRedemptionVaultLoanCreated.redemptionVault,
       ],
       references: [depositRedemptionVault.chainId, depositRedemptionVault.address],
     }),
-    depositor: one(depositor, {
+    rDepositor: one(depositor, {
       fields: [
         depositRedemptionVaultLoanCreated.chainId,
         depositRedemptionVaultLoanCreated.depositor,
       ],
       references: [depositor.chainId, depositor.address],
     }),
-    redemption: one(redemption, {
+    rRedemption: one(redemption, {
       fields: [
         depositRedemptionVaultLoanCreated.chainId,
         depositRedemptionVaultLoanCreated.redemptionVault,
@@ -1504,7 +1504,7 @@ export const depositRedemptionVaultLoanCreatedRelations = relations(
         redemption.redemptionId,
       ],
     }),
-    redemptionLoan: one(redemptionLoan, {
+    rRedemptionLoan: one(redemptionLoan, {
       fields: [
         depositRedemptionVaultLoanCreated.chainId,
         depositRedemptionVaultLoanCreated.redemptionVault,
@@ -1518,7 +1518,7 @@ export const depositRedemptionVaultLoanCreatedRelations = relations(
         redemptionLoan.redemptionId,
       ],
     }),
-    facility: one(depositFacility, {
+    rFacility: one(depositFacility, {
       fields: [
         depositRedemptionVaultLoanCreated.chainId,
         depositRedemptionVaultLoanCreated.facility,
@@ -1531,21 +1531,21 @@ export const depositRedemptionVaultLoanCreatedRelations = relations(
 export const depositRedemptionVaultLoanRepaidRelations = relations(
   depositRedemptionVaultLoanRepaid,
   ({ one }) => ({
-    redemptionVault: one(depositRedemptionVault, {
+    rRedemptionVault: one(depositRedemptionVault, {
       fields: [
         depositRedemptionVaultLoanRepaid.chainId,
         depositRedemptionVaultLoanRepaid.redemptionVault,
       ],
       references: [depositRedemptionVault.chainId, depositRedemptionVault.address],
     }),
-    depositor: one(depositor, {
+    rDepositor: one(depositor, {
       fields: [
         depositRedemptionVaultLoanRepaid.chainId,
         depositRedemptionVaultLoanRepaid.depositor,
       ],
       references: [depositor.chainId, depositor.address],
     }),
-    redemption: one(redemption, {
+    rRedemption: one(redemption, {
       fields: [
         depositRedemptionVaultLoanRepaid.chainId,
         depositRedemptionVaultLoanRepaid.redemptionVault,
@@ -1559,7 +1559,7 @@ export const depositRedemptionVaultLoanRepaidRelations = relations(
         redemption.redemptionId,
       ],
     }),
-    redemptionLoan: one(redemptionLoan, {
+    rRedemptionLoan: one(redemptionLoan, {
       fields: [
         depositRedemptionVaultLoanRepaid.chainId,
         depositRedemptionVaultLoanRepaid.redemptionVault,
@@ -1579,21 +1579,21 @@ export const depositRedemptionVaultLoanRepaidRelations = relations(
 export const depositRedemptionVaultLoanDefaultedRelations = relations(
   depositRedemptionVaultLoanDefaulted,
   ({ one }) => ({
-    redemptionVault: one(depositRedemptionVault, {
+    rRedemptionVault: one(depositRedemptionVault, {
       fields: [
         depositRedemptionVaultLoanDefaulted.chainId,
         depositRedemptionVaultLoanDefaulted.redemptionVault,
       ],
       references: [depositRedemptionVault.chainId, depositRedemptionVault.address],
     }),
-    depositor: one(depositor, {
+    rDepositor: one(depositor, {
       fields: [
         depositRedemptionVaultLoanDefaulted.chainId,
         depositRedemptionVaultLoanDefaulted.depositor,
       ],
       references: [depositor.chainId, depositor.address],
     }),
-    redemption: one(redemption, {
+    rRedemption: one(redemption, {
       fields: [
         depositRedemptionVaultLoanDefaulted.chainId,
         depositRedemptionVaultLoanDefaulted.redemptionVault,
@@ -1607,7 +1607,7 @@ export const depositRedemptionVaultLoanDefaultedRelations = relations(
         redemption.redemptionId,
       ],
     }),
-    redemptionLoan: one(redemptionLoan, {
+    rRedemptionLoan: one(redemptionLoan, {
       fields: [
         depositRedemptionVaultLoanDefaulted.chainId,
         depositRedemptionVaultLoanDefaulted.redemptionVault,
@@ -1627,21 +1627,21 @@ export const depositRedemptionVaultLoanDefaultedRelations = relations(
 export const depositRedemptionVaultLoanExtendedRelations = relations(
   depositRedemptionVaultLoanExtended,
   ({ one }) => ({
-    redemptionVault: one(depositRedemptionVault, {
+    rRedemptionVault: one(depositRedemptionVault, {
       fields: [
         depositRedemptionVaultLoanExtended.chainId,
         depositRedemptionVaultLoanExtended.redemptionVault,
       ],
       references: [depositRedemptionVault.chainId, depositRedemptionVault.address],
     }),
-    depositor: one(depositor, {
+    rDepositor: one(depositor, {
       fields: [
         depositRedemptionVaultLoanExtended.chainId,
         depositRedemptionVaultLoanExtended.depositor,
       ],
       references: [depositor.chainId, depositor.address],
     }),
-    redemption: one(redemption, {
+    rRedemption: one(redemption, {
       fields: [
         depositRedemptionVaultLoanExtended.chainId,
         depositRedemptionVaultLoanExtended.redemptionVault,
@@ -1655,7 +1655,7 @@ export const depositRedemptionVaultLoanExtendedRelations = relations(
         redemption.redemptionId,
       ],
     }),
-    redemptionLoan: one(redemptionLoan, {
+    rRedemptionLoan: one(redemptionLoan, {
       fields: [
         depositRedemptionVaultLoanExtended.chainId,
         depositRedemptionVaultLoanExtended.redemptionVault,
@@ -1674,7 +1674,7 @@ export const depositRedemptionVaultLoanExtendedRelations = relations(
 
 // Snapshot Relations
 export const auctioneerSnapshotRelations = relations(auctioneerSnapshot, ({ one, many }) => ({
-  auctioneer: one(auctioneer, {
+  rAuctioneer: one(auctioneer, {
     fields: [auctioneerSnapshot.chainId, auctioneerSnapshot.auctioneer],
     references: [auctioneer.chainId, auctioneer.address],
   }),
@@ -1684,7 +1684,7 @@ export const auctioneerSnapshotRelations = relations(auctioneerSnapshot, ({ one,
 export const auctioneerDepositPeriodSnapshotRelations = relations(
   auctioneerDepositPeriodSnapshot,
   ({ one }) => ({
-    auctioneerSnapshot: one(auctioneerSnapshot, {
+    rAuctioneerSnapshot: one(auctioneerSnapshot, {
       fields: [
         auctioneerDepositPeriodSnapshot.chainId,
         auctioneerDepositPeriodSnapshot.block,
@@ -1696,11 +1696,11 @@ export const auctioneerDepositPeriodSnapshotRelations = relations(
         auctioneerSnapshot.auctioneer,
       ],
     }),
-    auctioneer: one(auctioneer, {
+    rAuctioneer: one(auctioneer, {
       fields: [auctioneerDepositPeriodSnapshot.chainId, auctioneerDepositPeriodSnapshot.auctioneer],
       references: [auctioneer.chainId, auctioneer.address],
     }),
-    assetPeriod: one(depositAssetPeriod, {
+    rAssetPeriod: one(depositAssetPeriod, {
       fields: [
         auctioneerDepositPeriodSnapshot.chainId,
         auctioneerDepositPeriodSnapshot.depositAsset,
@@ -1712,7 +1712,7 @@ export const auctioneerDepositPeriodSnapshotRelations = relations(
         depositAssetPeriod.depositPeriod,
       ],
     }),
-    auctioneerDepositPeriod: one(auctioneerDepositPeriod, {
+    rAuctioneerDepositPeriod: one(auctioneerDepositPeriod, {
       fields: [
         auctioneerDepositPeriodSnapshot.chainId,
         auctioneerDepositPeriodSnapshot.auctioneer,
@@ -1732,13 +1732,13 @@ export const auctioneerDepositPeriodSnapshotRelations = relations(
 export const depositFacilityAssetSnapshotRelations = relations(
   depositFacilityAssetSnapshot,
   ({ one }) => ({
-    facility: one(depositFacility, {
+    rFacility: one(depositFacility, {
       fields: [depositFacilityAssetSnapshot.chainId, depositFacilityAssetSnapshot.facility],
       references: [depositFacility.chainId, depositFacility.address],
     }),
-    depositAsset: one(depositAsset, {
+    rDepositAsset: one(depositAsset, {
       fields: [depositFacilityAssetSnapshot.chainId, depositFacilityAssetSnapshot.depositAsset],
-      references: [depositAsset.chainId, depositAsset.assetAddress],
+      references: [depositAsset.chainId, depositAsset.asset],
     }),
   }),
 );
@@ -1752,8 +1752,8 @@ export const assetRelations = relations(asset, ({ many }) => ({
 }));
 
 export const depositAssetRelations = relations(depositAsset, ({ one, many }) => ({
-  asset: one(asset, {
-    fields: [depositAsset.chainId, depositAsset.assetAddress],
+  rAsset: one(asset, {
+    fields: [depositAsset.chainId, depositAsset.asset],
     references: [asset.chainId, asset.address],
   }),
   periods: many(depositAssetPeriod),
@@ -1761,9 +1761,9 @@ export const depositAssetRelations = relations(depositAsset, ({ one, many }) => 
 }));
 
 export const depositAssetPeriodRelations = relations(depositAssetPeriod, ({ one, many }) => ({
-  depositAsset: one(depositAsset, {
+  rDepositAsset: one(depositAsset, {
     fields: [depositAssetPeriod.chainId, depositAssetPeriod.depositAsset],
-    references: [depositAsset.chainId, depositAsset.assetAddress],
+    references: [depositAsset.chainId, depositAsset.asset],
   }),
   positions: many(convertibleDepositPosition),
   auctioneerDepositPeriods: many(auctioneerDepositPeriod),
@@ -1772,9 +1772,9 @@ export const depositAssetPeriodRelations = relations(depositAssetPeriod, ({ one,
 }));
 
 export const auctioneerRelations = relations(auctioneer, ({ one, many }) => ({
-  depositAsset: one(depositAsset, {
+  rDepositAsset: one(depositAsset, {
     fields: [auctioneer.chainId, auctioneer.depositAsset],
-    references: [depositAsset.chainId, depositAsset.assetAddress],
+    references: [depositAsset.chainId, depositAsset.asset],
   }),
   depositPeriods: many(auctioneerDepositPeriod),
   enabledEvents: many(convertibleDepositAuctioneerEnabled),
@@ -1795,11 +1795,11 @@ export const auctioneerRelations = relations(auctioneer, ({ one, many }) => ({
 export const auctioneerDepositPeriodRelations = relations(
   auctioneerDepositPeriod,
   ({ one, many }) => ({
-    auctioneer: one(auctioneer, {
+    rAuctioneer: one(auctioneer, {
       fields: [auctioneerDepositPeriod.chainId, auctioneerDepositPeriod.auctioneer],
       references: [auctioneer.chainId, auctioneer.address],
     }),
-    assetPeriod: one(depositAssetPeriod, {
+    rAssetPeriod: one(depositAssetPeriod, {
       fields: [
         auctioneerDepositPeriod.chainId,
         auctioneerDepositPeriod.depositAsset,
@@ -1829,13 +1829,13 @@ export const depositFacilityRelations = relations(depositFacility, ({ many }) =>
 }));
 
 export const depositFacilityAssetRelations = relations(depositFacilityAsset, ({ one, many }) => ({
-  facility: one(depositFacility, {
+  rFacility: one(depositFacility, {
     fields: [depositFacilityAsset.chainId, depositFacilityAsset.facility],
     references: [depositFacility.chainId, depositFacility.address],
   }),
-  depositAsset: one(depositAsset, {
+  rDepositAsset: one(depositAsset, {
     fields: [depositFacilityAsset.chainId, depositFacilityAsset.depositAsset],
-    references: [depositAsset.chainId, depositAsset.assetAddress],
+    references: [depositAsset.chainId, depositAsset.asset],
   }),
   periods: many(depositFacilityAssetPeriod),
   commitCancelledEvents: many(convertibleDepositFacilityAssetCommitCancelled),
@@ -1847,7 +1847,7 @@ export const depositFacilityAssetRelations = relations(depositFacilityAsset, ({ 
 export const depositFacilityAssetPeriodRelations = relations(
   depositFacilityAssetPeriod,
   ({ one, many }) => ({
-    facilityAsset: one(depositFacilityAsset, {
+    rFacilityAsset: one(depositFacilityAsset, {
       fields: [
         depositFacilityAssetPeriod.chainId,
         depositFacilityAssetPeriod.facility,
@@ -1859,11 +1859,11 @@ export const depositFacilityAssetPeriodRelations = relations(
         depositFacilityAsset.depositAsset,
       ],
     }),
-    facility: one(depositFacility, {
+    rFacility: one(depositFacility, {
       fields: [depositFacilityAssetPeriod.chainId, depositFacilityAssetPeriod.facility],
       references: [depositFacility.chainId, depositFacility.address],
     }),
-    assetPeriod: one(depositAssetPeriod, {
+    rAssetPeriod: one(depositAssetPeriod, {
       fields: [
         depositFacilityAssetPeriod.chainId,
         depositFacilityAssetPeriod.depositAsset,
@@ -1900,15 +1900,15 @@ export const depositorRelations = relations(depositor, ({ many }) => ({
 export const convertibleDepositPositionRelations = relations(
   convertibleDepositPosition,
   ({ one, many }) => ({
-    facility: one(depositFacility, {
+    rFacility: one(depositFacility, {
       fields: [convertibleDepositPosition.chainId, convertibleDepositPosition.facility],
       references: [depositFacility.chainId, depositFacility.address],
     }),
-    depositor: one(depositor, {
+    rDepositor: one(depositor, {
       fields: [convertibleDepositPosition.chainId, convertibleDepositPosition.depositor],
       references: [depositor.chainId, depositor.address],
     }),
-    assetPeriod: one(depositAssetPeriod, {
+    rAssetPeriod: one(depositAssetPeriod, {
       fields: [
         convertibleDepositPosition.chainId,
         convertibleDepositPosition.depositAsset,
@@ -1920,7 +1920,7 @@ export const convertibleDepositPositionRelations = relations(
         depositAssetPeriod.depositPeriod,
       ],
     }),
-    receiptToken: one(receiptToken, {
+    rReceiptToken: one(receiptToken, {
       fields: [
         convertibleDepositPosition.chainId,
         convertibleDepositPosition.receiptTokenManager,
@@ -1944,7 +1944,7 @@ export const convertibleDepositPositionRelations = relations(
 export const convertibleDepositAuctioneerEnabledRelations = relations(
   convertibleDepositAuctioneerEnabled,
   ({ one }) => ({
-    auctioneer: one(auctioneer, {
+    rAuctioneer: one(auctioneer, {
       fields: [
         convertibleDepositAuctioneerEnabled.chainId,
         convertibleDepositAuctioneerEnabled.auctioneer,
@@ -1957,7 +1957,7 @@ export const convertibleDepositAuctioneerEnabledRelations = relations(
 export const convertibleDepositAuctioneerDisabledRelations = relations(
   convertibleDepositAuctioneerDisabled,
   ({ one }) => ({
-    auctioneer: one(auctioneer, {
+    rAuctioneer: one(auctioneer, {
       fields: [
         convertibleDepositAuctioneerDisabled.chainId,
         convertibleDepositAuctioneerDisabled.auctioneer,
@@ -1970,7 +1970,7 @@ export const convertibleDepositAuctioneerDisabledRelations = relations(
 export const convertibleDepositFacilityEnabledRelations = relations(
   convertibleDepositFacilityEnabled,
   ({ one }) => ({
-    facility: one(depositFacility, {
+    rFacility: one(depositFacility, {
       fields: [
         convertibleDepositFacilityEnabled.chainId,
         convertibleDepositFacilityEnabled.facility,
@@ -1983,7 +1983,7 @@ export const convertibleDepositFacilityEnabledRelations = relations(
 export const convertibleDepositFacilityDisabledRelations = relations(
   convertibleDepositFacilityDisabled,
   ({ one }) => ({
-    facility: one(depositFacility, {
+    rFacility: one(depositFacility, {
       fields: [
         convertibleDepositFacilityDisabled.chainId,
         convertibleDepositFacilityDisabled.facility,
@@ -1996,7 +1996,7 @@ export const convertibleDepositFacilityDisabledRelations = relations(
 export const convertibleDepositAuctioneerTickStepUpdatedRelations = relations(
   convertibleDepositAuctioneerTickStepUpdated,
   ({ one }) => ({
-    auctioneer: one(auctioneer, {
+    rAuctioneer: one(auctioneer, {
       fields: [
         convertibleDepositAuctioneerTickStepUpdated.chainId,
         convertibleDepositAuctioneerTickStepUpdated.auctioneer,
@@ -2009,7 +2009,7 @@ export const convertibleDepositAuctioneerTickStepUpdatedRelations = relations(
 export const convertibleDepositAuctioneerAuctionTrackingPeriodUpdatedRelations = relations(
   convertibleDepositAuctioneerAuctionTrackingPeriodUpdated,
   ({ one }) => ({
-    auctioneer: one(auctioneer, {
+    rAuctioneer: one(auctioneer, {
       fields: [
         convertibleDepositAuctioneerAuctionTrackingPeriodUpdated.chainId,
         convertibleDepositAuctioneerAuctionTrackingPeriodUpdated.auctioneer,
@@ -2022,7 +2022,7 @@ export const convertibleDepositAuctioneerAuctionTrackingPeriodUpdatedRelations =
 export const convertibleDepositFacilityOperatorAuthorizedRelations = relations(
   convertibleDepositFacilityOperatorAuthorized,
   ({ one }) => ({
-    facility: one(depositFacility, {
+    rFacility: one(depositFacility, {
       fields: [
         convertibleDepositFacilityOperatorAuthorized.chainId,
         convertibleDepositFacilityOperatorAuthorized.facility,
@@ -2035,7 +2035,7 @@ export const convertibleDepositFacilityOperatorAuthorizedRelations = relations(
 export const convertibleDepositFacilityOperatorDeauthorizedRelations = relations(
   convertibleDepositFacilityOperatorDeauthorized,
   ({ one }) => ({
-    facility: one(depositFacility, {
+    rFacility: one(depositFacility, {
       fields: [
         convertibleDepositFacilityOperatorDeauthorized.chainId,
         convertibleDepositFacilityOperatorDeauthorized.facility,
@@ -2048,14 +2048,14 @@ export const convertibleDepositFacilityOperatorDeauthorizedRelations = relations
 export const convertibleDepositAuctioneerDepositPeriodDisableQueuedRelations = relations(
   convertibleDepositAuctioneerDepositPeriodDisableQueued,
   ({ one }) => ({
-    auctioneer: one(auctioneer, {
+    rAuctioneer: one(auctioneer, {
       fields: [
         convertibleDepositAuctioneerDepositPeriodDisableQueued.chainId,
         convertibleDepositAuctioneerDepositPeriodDisableQueued.auctioneer,
       ],
       references: [auctioneer.chainId, auctioneer.address],
     }),
-    assetPeriod: one(depositAssetPeriod, {
+    rAssetPeriod: one(depositAssetPeriod, {
       fields: [
         convertibleDepositAuctioneerDepositPeriodDisableQueued.chainId,
         convertibleDepositAuctioneerDepositPeriodDisableQueued.depositAsset,
@@ -2073,14 +2073,14 @@ export const convertibleDepositAuctioneerDepositPeriodDisableQueuedRelations = r
 export const convertibleDepositAuctioneerDepositPeriodDisabledRelations = relations(
   convertibleDepositAuctioneerDepositPeriodDisabled,
   ({ one }) => ({
-    auctioneer: one(auctioneer, {
+    rAuctioneer: one(auctioneer, {
       fields: [
         convertibleDepositAuctioneerDepositPeriodDisabled.chainId,
         convertibleDepositAuctioneerDepositPeriodDisabled.auctioneer,
       ],
       references: [auctioneer.chainId, auctioneer.address],
     }),
-    assetPeriod: one(depositAssetPeriod, {
+    rAssetPeriod: one(depositAssetPeriod, {
       fields: [
         convertibleDepositAuctioneerDepositPeriodDisabled.chainId,
         convertibleDepositAuctioneerDepositPeriodDisabled.depositAsset,
@@ -2098,14 +2098,14 @@ export const convertibleDepositAuctioneerDepositPeriodDisabledRelations = relati
 export const convertibleDepositAuctioneerDepositPeriodEnableQueuedRelations = relations(
   convertibleDepositAuctioneerDepositPeriodEnableQueued,
   ({ one }) => ({
-    auctioneer: one(auctioneer, {
+    rAuctioneer: one(auctioneer, {
       fields: [
         convertibleDepositAuctioneerDepositPeriodEnableQueued.chainId,
         convertibleDepositAuctioneerDepositPeriodEnableQueued.auctioneer,
       ],
       references: [auctioneer.chainId, auctioneer.address],
     }),
-    assetPeriod: one(depositAssetPeriod, {
+    rAssetPeriod: one(depositAssetPeriod, {
       fields: [
         convertibleDepositAuctioneerDepositPeriodEnableQueued.chainId,
         convertibleDepositAuctioneerDepositPeriodEnableQueued.depositAsset,
@@ -2123,14 +2123,14 @@ export const convertibleDepositAuctioneerDepositPeriodEnableQueuedRelations = re
 export const convertibleDepositAuctioneerDepositPeriodEnabledRelations = relations(
   convertibleDepositAuctioneerDepositPeriodEnabled,
   ({ one }) => ({
-    auctioneer: one(auctioneer, {
+    rAuctioneer: one(auctioneer, {
       fields: [
         convertibleDepositAuctioneerDepositPeriodEnabled.chainId,
         convertibleDepositAuctioneerDepositPeriodEnabled.auctioneer,
       ],
       references: [auctioneer.chainId, auctioneer.address],
     }),
-    assetPeriod: one(depositAssetPeriod, {
+    rAssetPeriod: one(depositAssetPeriod, {
       fields: [
         convertibleDepositAuctioneerDepositPeriodEnabled.chainId,
         convertibleDepositAuctioneerDepositPeriodEnabled.depositAsset,
@@ -2148,21 +2148,21 @@ export const convertibleDepositAuctioneerDepositPeriodEnabledRelations = relatio
 export const convertibleDepositFacilityAssetCommitCancelledRelations = relations(
   convertibleDepositFacilityAssetCommitCancelled,
   ({ one }) => ({
-    facility: one(depositFacility, {
+    rFacility: one(depositFacility, {
       fields: [
         convertibleDepositFacilityAssetCommitCancelled.chainId,
         convertibleDepositFacilityAssetCommitCancelled.facility,
       ],
       references: [depositFacility.chainId, depositFacility.address],
     }),
-    depositAsset: one(depositAsset, {
+    rDepositAsset: one(depositAsset, {
       fields: [
         convertibleDepositFacilityAssetCommitCancelled.chainId,
         convertibleDepositFacilityAssetCommitCancelled.depositAsset,
       ],
-      references: [depositAsset.chainId, depositAsset.assetAddress],
+      references: [depositAsset.chainId, depositAsset.asset],
     }),
-    facilityAsset: one(depositFacilityAsset, {
+    rFacilityAsset: one(depositFacilityAsset, {
       fields: [
         convertibleDepositFacilityAssetCommitCancelled.chainId,
         convertibleDepositFacilityAssetCommitCancelled.facility,
@@ -2180,21 +2180,21 @@ export const convertibleDepositFacilityAssetCommitCancelledRelations = relations
 export const convertibleDepositFacilityAssetCommitWithdrawnRelations = relations(
   convertibleDepositFacilityAssetCommitWithdrawn,
   ({ one }) => ({
-    facility: one(depositFacility, {
+    rFacility: one(depositFacility, {
       fields: [
         convertibleDepositFacilityAssetCommitWithdrawn.chainId,
         convertibleDepositFacilityAssetCommitWithdrawn.facility,
       ],
       references: [depositFacility.chainId, depositFacility.address],
     }),
-    depositAsset: one(depositAsset, {
+    rDepositAsset: one(depositAsset, {
       fields: [
         convertibleDepositFacilityAssetCommitWithdrawn.chainId,
         convertibleDepositFacilityAssetCommitWithdrawn.depositAsset,
       ],
-      references: [depositAsset.chainId, depositAsset.assetAddress],
+      references: [depositAsset.chainId, depositAsset.asset],
     }),
-    facilityAsset: one(depositFacilityAsset, {
+    rFacilityAsset: one(depositFacilityAsset, {
       fields: [
         convertibleDepositFacilityAssetCommitWithdrawn.chainId,
         convertibleDepositFacilityAssetCommitWithdrawn.facility,
@@ -2212,21 +2212,21 @@ export const convertibleDepositFacilityAssetCommitWithdrawnRelations = relations
 export const convertibleDepositFacilityAssetCommittedRelations = relations(
   convertibleDepositFacilityAssetCommitted,
   ({ one }) => ({
-    facility: one(depositFacility, {
+    rFacility: one(depositFacility, {
       fields: [
         convertibleDepositFacilityAssetCommitted.chainId,
         convertibleDepositFacilityAssetCommitted.facility,
       ],
       references: [depositFacility.chainId, depositFacility.address],
     }),
-    depositAsset: one(depositAsset, {
+    rDepositAsset: one(depositAsset, {
       fields: [
         convertibleDepositFacilityAssetCommitted.chainId,
         convertibleDepositFacilityAssetCommitted.depositAsset,
       ],
-      references: [depositAsset.chainId, depositAsset.assetAddress],
+      references: [depositAsset.chainId, depositAsset.asset],
     }),
-    facilityAsset: one(depositFacilityAsset, {
+    rFacilityAsset: one(depositFacilityAsset, {
       fields: [
         convertibleDepositFacilityAssetCommitted.chainId,
         convertibleDepositFacilityAssetCommitted.facility,
@@ -2244,19 +2244,19 @@ export const convertibleDepositFacilityAssetCommittedRelations = relations(
 export const convertibleDepositFacilityAssetPeriodReclaimRateSetRelations = relations(
   convertibleDepositFacilityAssetPeriodReclaimRateSet,
   ({ one }) => ({
-    facility: one(depositFacility, {
+    rFacility: one(depositFacility, {
       fields: [
         convertibleDepositFacilityAssetPeriodReclaimRateSet.chainId,
         convertibleDepositFacilityAssetPeriodReclaimRateSet.facility,
       ],
       references: [depositFacility.chainId, depositFacility.address],
     }),
-    depositAsset: one(depositAsset, {
+    rDepositAsset: one(depositAsset, {
       fields: [
         convertibleDepositFacilityAssetPeriodReclaimRateSet.chainId,
         convertibleDepositFacilityAssetPeriodReclaimRateSet.depositAsset,
       ],
-      references: [depositAsset.chainId, depositAsset.assetAddress],
+      references: [depositAsset.chainId, depositAsset.asset],
     }),
     facilityAssetPeriod: one(depositFacilityAssetPeriod, {
       fields: [
@@ -2278,19 +2278,19 @@ export const convertibleDepositFacilityAssetPeriodReclaimRateSetRelations = rela
 export const convertibleDepositFacilityCreatedDepositRelations = relations(
   convertibleDepositFacilityCreatedDeposit,
   ({ one }) => ({
-    facility: one(depositFacility, {
+    rFacility: one(depositFacility, {
       fields: [
         convertibleDepositFacilityCreatedDeposit.chainId,
         convertibleDepositFacilityCreatedDeposit.facility,
       ],
       references: [depositFacility.chainId, depositFacility.address],
     }),
-    depositAsset: one(depositAsset, {
+    rDepositAsset: one(depositAsset, {
       fields: [
         convertibleDepositFacilityCreatedDeposit.chainId,
         convertibleDepositFacilityCreatedDeposit.depositAsset,
       ],
-      references: [depositAsset.chainId, depositAsset.assetAddress],
+      references: [depositAsset.chainId, depositAsset.asset],
     }),
     facilityAssetPeriod: one(depositFacilityAssetPeriod, {
       fields: [
@@ -2306,14 +2306,14 @@ export const convertibleDepositFacilityCreatedDepositRelations = relations(
         depositFacilityAssetPeriod.depositPeriod,
       ],
     }),
-    depositor: one(depositor, {
+    rDepositor: one(depositor, {
       fields: [
         convertibleDepositFacilityCreatedDeposit.chainId,
         convertibleDepositFacilityCreatedDeposit.depositor,
       ],
       references: [depositor.chainId, depositor.address],
     }),
-    position: one(convertibleDepositPosition, {
+    rPosition: one(convertibleDepositPosition, {
       fields: [
         convertibleDepositFacilityCreatedDeposit.chainId,
         convertibleDepositFacilityCreatedDeposit.positionId,
@@ -2326,19 +2326,19 @@ export const convertibleDepositFacilityCreatedDepositRelations = relations(
 export const convertibleDepositFacilityReclaimedRelations = relations(
   convertibleDepositFacilityReclaimed,
   ({ one }) => ({
-    facility: one(depositFacility, {
+    rFacility: one(depositFacility, {
       fields: [
         convertibleDepositFacilityReclaimed.chainId,
         convertibleDepositFacilityReclaimed.facility,
       ],
       references: [depositFacility.chainId, depositFacility.address],
     }),
-    depositAsset: one(depositAsset, {
+    rDepositAsset: one(depositAsset, {
       fields: [
         convertibleDepositFacilityReclaimed.chainId,
         convertibleDepositFacilityReclaimed.depositAsset,
       ],
-      references: [depositAsset.chainId, depositAsset.assetAddress],
+      references: [depositAsset.chainId, depositAsset.asset],
     }),
     facilityAssetPeriod: one(depositFacilityAssetPeriod, {
       fields: [
@@ -2354,7 +2354,7 @@ export const convertibleDepositFacilityReclaimedRelations = relations(
         depositFacilityAssetPeriod.depositPeriod,
       ],
     }),
-    depositor: one(depositor, {
+    rDepositor: one(depositor, {
       fields: [
         convertibleDepositFacilityReclaimed.chainId,
         convertibleDepositFacilityReclaimed.depositor,
@@ -2367,11 +2367,11 @@ export const convertibleDepositFacilityReclaimedRelations = relations(
 export const convertibleDepositAuctioneerBidRelations = relations(
   convertibleDepositAuctioneerBid,
   ({ one }) => ({
-    auctioneer: one(auctioneer, {
+    rAuctioneer: one(auctioneer, {
       fields: [convertibleDepositAuctioneerBid.chainId, convertibleDepositAuctioneerBid.auctioneer],
       references: [auctioneer.chainId, auctioneer.address],
     }),
-    auctioneerDepositPeriod: one(auctioneerDepositPeriod, {
+    rAuctioneerDepositPeriod: one(auctioneerDepositPeriod, {
       fields: [
         convertibleDepositAuctioneerBid.chainId,
         convertibleDepositAuctioneerBid.auctioneer,
@@ -2385,7 +2385,7 @@ export const convertibleDepositAuctioneerBidRelations = relations(
         auctioneerDepositPeriod.depositPeriod,
       ],
     }),
-    assetPeriod: one(depositAssetPeriod, {
+    rAssetPeriod: one(depositAssetPeriod, {
       fields: [
         convertibleDepositAuctioneerBid.chainId,
         convertibleDepositAuctioneerBid.depositAsset,
@@ -2397,11 +2397,11 @@ export const convertibleDepositAuctioneerBidRelations = relations(
         depositAssetPeriod.depositPeriod,
       ],
     }),
-    depositor: one(depositor, {
+    rDepositor: one(depositor, {
       fields: [convertibleDepositAuctioneerBid.chainId, convertibleDepositAuctioneerBid.depositor],
       references: [depositor.chainId, depositor.address],
     }),
-    position: one(convertibleDepositPosition, {
+    rPosition: one(convertibleDepositPosition, {
       fields: [convertibleDepositAuctioneerBid.chainId, convertibleDepositAuctioneerBid.positionId],
       references: [convertibleDepositPosition.chainId, convertibleDepositPosition.positionId],
     }),
@@ -2411,19 +2411,19 @@ export const convertibleDepositAuctioneerBidRelations = relations(
 export const convertibleDepositFacilityConvertedDepositsRelations = relations(
   convertibleDepositFacilityConvertedDeposits,
   ({ one, many }) => ({
-    facility: one(depositFacility, {
+    rFacility: one(depositFacility, {
       fields: [
         convertibleDepositFacilityConvertedDeposits.chainId,
         convertibleDepositFacilityConvertedDeposits.facility,
       ],
       references: [depositFacility.chainId, depositFacility.address],
     }),
-    depositAsset: one(depositAsset, {
+    rDepositAsset: one(depositAsset, {
       fields: [
         convertibleDepositFacilityConvertedDeposits.chainId,
         convertibleDepositFacilityConvertedDeposits.depositAsset,
       ],
-      references: [depositAsset.chainId, depositAsset.assetAddress],
+      references: [depositAsset.chainId, depositAsset.asset],
     }),
     facilityAssetPeriod: one(depositFacilityAssetPeriod, {
       fields: [
@@ -2446,19 +2446,19 @@ export const convertibleDepositFacilityConvertedDepositsRelations = relations(
 export const convertibleDepositAuctioneerAuctionParametersUpdatedRelations = relations(
   convertibleDepositAuctioneerAuctionParametersUpdated,
   ({ one }) => ({
-    auctioneer: one(auctioneer, {
+    rAuctioneer: one(auctioneer, {
       fields: [
         convertibleDepositAuctioneerAuctionParametersUpdated.chainId,
         convertibleDepositAuctioneerAuctionParametersUpdated.auctioneer,
       ],
       references: [auctioneer.chainId, auctioneer.address],
     }),
-    depositAsset: one(depositAsset, {
+    rDepositAsset: one(depositAsset, {
       fields: [
         convertibleDepositAuctioneerAuctionParametersUpdated.chainId,
         convertibleDepositAuctioneerAuctionParametersUpdated.depositAsset,
       ],
-      references: [depositAsset.chainId, depositAsset.assetAddress],
+      references: [depositAsset.chainId, depositAsset.asset],
     }),
   }),
 );
@@ -2466,19 +2466,19 @@ export const convertibleDepositAuctioneerAuctionParametersUpdatedRelations = rel
 export const convertibleDepositAuctioneerAuctionResultRelations = relations(
   convertibleDepositAuctioneerAuctionResult,
   ({ one }) => ({
-    auctioneer: one(auctioneer, {
+    rAuctioneer: one(auctioneer, {
       fields: [
         convertibleDepositAuctioneerAuctionResult.chainId,
         convertibleDepositAuctioneerAuctionResult.auctioneer,
       ],
       references: [auctioneer.chainId, auctioneer.address],
     }),
-    depositAsset: one(depositAsset, {
+    rDepositAsset: one(depositAsset, {
       fields: [
         convertibleDepositAuctioneerAuctionResult.chainId,
         convertibleDepositAuctioneerAuctionResult.depositAsset,
       ],
-      references: [depositAsset.chainId, depositAsset.assetAddress],
+      references: [depositAsset.chainId, depositAsset.asset],
     }),
   }),
 );
@@ -2486,21 +2486,21 @@ export const convertibleDepositAuctioneerAuctionResultRelations = relations(
 export const convertibleDepositFacilityClaimedYieldRelations = relations(
   convertibleDepositFacilityClaimedYield,
   ({ one }) => ({
-    facility: one(depositFacility, {
+    rFacility: one(depositFacility, {
       fields: [
         convertibleDepositFacilityClaimedYield.chainId,
         convertibleDepositFacilityClaimedYield.facility,
       ],
       references: [depositFacility.chainId, depositFacility.address],
     }),
-    depositAsset: one(depositAsset, {
+    rDepositAsset: one(depositAsset, {
       fields: [
         convertibleDepositFacilityClaimedYield.chainId,
         convertibleDepositFacilityClaimedYield.depositAsset,
       ],
-      references: [depositAsset.chainId, depositAsset.assetAddress],
+      references: [depositAsset.chainId, depositAsset.asset],
     }),
-    facilityAsset: one(depositFacilityAsset, {
+    rFacilityAsset: one(depositFacilityAsset, {
       fields: [
         convertibleDepositFacilityClaimedYield.chainId,
         convertibleDepositFacilityClaimedYield.facility,
@@ -2518,19 +2518,19 @@ export const convertibleDepositFacilityClaimedYieldRelations = relations(
 export const convertibleDepositFacilityConvertedDepositRelations = relations(
   convertibleDepositFacilityConvertedDeposit,
   ({ one }) => ({
-    facility: one(depositFacility, {
+    rFacility: one(depositFacility, {
       fields: [
         convertibleDepositFacilityConvertedDeposit.chainId,
         convertibleDepositFacilityConvertedDeposit.facility,
       ],
       references: [depositFacility.chainId, depositFacility.address],
     }),
-    depositAsset: one(depositAsset, {
+    rDepositAsset: one(depositAsset, {
       fields: [
         convertibleDepositFacilityConvertedDeposit.chainId,
         convertibleDepositFacilityConvertedDeposit.depositAsset,
       ],
-      references: [depositAsset.chainId, depositAsset.assetAddress],
+      references: [depositAsset.chainId, depositAsset.asset],
     }),
     facilityAssetPeriod: one(depositFacilityAssetPeriod, {
       fields: [
@@ -2546,21 +2546,21 @@ export const convertibleDepositFacilityConvertedDepositRelations = relations(
         depositFacilityAssetPeriod.depositPeriod,
       ],
     }),
-    depositor: one(depositor, {
+    rDepositor: one(depositor, {
       fields: [
         convertibleDepositFacilityConvertedDeposit.chainId,
         convertibleDepositFacilityConvertedDeposit.depositor,
       ],
       references: [depositor.chainId, depositor.address],
     }),
-    position: one(convertibleDepositPosition, {
+    rPosition: one(convertibleDepositPosition, {
       fields: [
         convertibleDepositFacilityConvertedDeposit.chainId,
         convertibleDepositFacilityConvertedDeposit.positionId,
       ],
       references: [convertibleDepositPosition.chainId, convertibleDepositPosition.positionId],
     }),
-    parentEvent: one(convertibleDepositFacilityConvertedDeposits, {
+    rParentEvent: one(convertibleDepositFacilityConvertedDeposits, {
       fields: [
         convertibleDepositFacilityConvertedDeposit.parentEventChainId,
         convertibleDepositFacilityConvertedDeposit.parentEventBlock,

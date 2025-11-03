@@ -109,7 +109,7 @@ ponder.on("ConvertibleDepositFacility:AssetCommitCancelled", async ({ event, con
     facilityAddress,
     assetAddress,
   );
-  const assetDecimals = facilityAsset.depositAsset.asset.decimals;
+  const assetDecimals = facilityAsset.rDepositAsset.rAsset.decimals;
 
   // Calculate committed amount
   const committedAmount = facilityAsset.committedAmount - BigInt(event.args.amount);
@@ -149,7 +149,7 @@ ponder.on("ConvertibleDepositFacility:AssetCommitWithdrawn", async ({ event, con
     facilityAddress,
     assetAddress,
   );
-  const assetDecimals = facilityAsset.depositAsset.asset.decimals;
+  const assetDecimals = facilityAsset.rDepositAsset.rAsset.decimals;
 
   // Calculate committed amount
   const committedAmount = facilityAsset.committedAmount - BigInt(event.args.amount);
@@ -189,7 +189,7 @@ ponder.on("ConvertibleDepositFacility:AssetCommitted", async ({ event, context }
     facilityAddress,
     assetAddress,
   );
-  const assetDecimals = facilityAsset.depositAsset.asset.decimals;
+  const assetDecimals = facilityAsset.rDepositAsset.rAsset.decimals;
 
   // Calculate committed amount
   const committedAmount = facilityAsset.committedAmount + BigInt(event.args.amount);
@@ -290,7 +290,7 @@ ponder.on("ConvertibleDepositFacility:CreatedDeposit", async ({ event, context }
     BigInt(event.block.timestamp),
   );
   // Get asset decimals from nested relation
-  const assetDecimals = facilityAssetPeriod.assetPeriod.depositAsset.asset.decimals;
+  const assetDecimals = facilityAssetPeriod.rAssetPeriod.rDepositAsset.rAsset.decimals;
 
   // Record event
   await context.db.insert(schema.convertibleDepositFacilityCreatedDeposit).values({
@@ -345,7 +345,7 @@ ponder.on("ConvertibleDepositFacility:Reclaimed", async ({ event, context }) => 
   );
   await getOrCreateDepositor(context, chainId, depositorAddress);
   // Get asset decimals from nested relation
-  const assetDecimals = facilityAssetPeriod.assetPeriod.depositAsset.asset.decimals;
+  const assetDecimals = facilityAssetPeriod.rAssetPeriod.rDepositAsset.rAsset.decimals;
 
   // Record event
   await context.db.insert(schema.convertibleDepositFacilityReclaimed).values({
@@ -393,7 +393,7 @@ ponder.on("ConvertibleDepositFacility:ConvertedDeposit", async ({ event, context
     depositPeriod,
   );
   // Get asset decimals from nested relation
-  const assetDecimals = facilityAssetPeriod.assetPeriod.depositAsset.asset.decimals;
+  const assetDecimals = facilityAssetPeriod.rAssetPeriod.rDepositAsset.rAsset.decimals;
 
   // Create record for the parent event
   await context.db.insert(schema.convertibleDepositFacilityConvertedDeposits).values({
@@ -505,7 +505,7 @@ ponder.on("ConvertibleDepositFacility:ClaimedYield", async ({ event, context }) 
     facilityAddress,
     assetAddress,
   );
-  const assetDecimals = facilityAsset.depositAsset.asset.decimals;
+  const assetDecimals = facilityAsset.rDepositAsset.rAsset.decimals;
 
   // Record event
   await context.db.insert(schema.convertibleDepositFacilityClaimedYield).values({

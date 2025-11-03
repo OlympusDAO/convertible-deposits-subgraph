@@ -286,7 +286,7 @@ ponder.on("ConvertibleDepositAuctioneer:Bid", async ({ event, context }) => {
   );
 
   // Get asset decimals from nested relation
-  const assetDecimals = auctioneerDepositPeriod.assetPeriod.depositAsset.asset.decimals;
+  const assetDecimals = auctioneerDepositPeriod.rAssetPeriod.rDepositAsset.rAsset.decimals;
 
   // Fetch tick data from contract
   const tickData = await fetchAuctioneerCurrentTick(
@@ -345,7 +345,7 @@ ponder.on("ConvertibleDepositAuctioneer:AuctionParametersUpdated", async ({ even
   // Get or create entities
   await getOrCreateAuctioneer(context, chainId, auctioneerAddress);
   const depositAsset = await getOrCreateDepositAsset(context, chainId, depositAssetAddress);
-  const assetDecimals = depositAsset.asset.decimals;
+  const assetDecimals = depositAsset.rAsset.decimals;
 
   // Calculate decimals
   const target = event.args.newTarget;

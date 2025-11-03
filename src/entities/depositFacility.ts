@@ -89,8 +89,8 @@ export async function getOrCreateDepositFacilityAsset(
   depositAssetAddress: Address,
 ): Promise<
   typeof schema.depositFacilityAsset.$inferSelect & {
-    depositAsset: typeof schema.depositAsset.$inferSelect & {
-      asset: typeof schema.asset.$inferSelect;
+    rDepositAsset: typeof schema.depositAsset.$inferSelect & {
+      rAsset: typeof schema.asset.$inferSelect;
     };
   }
 > {
@@ -102,9 +102,9 @@ export async function getOrCreateDepositFacilityAsset(
       eq(schema.depositFacilityAsset.depositAsset, depositAssetAddress.toLowerCase() as Address),
     ),
     with: {
-      depositAsset: {
+      rDepositAsset: {
         with: {
-          asset: true,
+          rAsset: true,
         },
       },
     },
@@ -112,7 +112,7 @@ export async function getOrCreateDepositFacilityAsset(
 
   if (existing) {
     // Ensure nested relations exist before returning
-    if (!existing.depositAsset?.asset?.decimals) {
+    if (!existing.rDepositAsset?.rAsset?.decimals) {
       throw new Error(
         `Deposit asset or asset not found: ${chainId}, ${facilityAddress}, ${depositAssetAddress}`,
       );
@@ -132,7 +132,7 @@ export async function getOrCreateDepositFacilityAsset(
   );
 
   // Use decimals from relation
-  const assetDecimals = depositAsset.asset.decimals;
+  const assetDecimals = depositAsset.rAsset.decimals;
 
   // Insert new facility asset
   const newAsset = {
@@ -153,9 +153,9 @@ export async function getOrCreateDepositFacilityAsset(
       eq(schema.depositFacilityAsset.depositAsset, depositAssetAddress.toLowerCase() as Address),
     ),
     with: {
-      depositAsset: {
+      rDepositAsset: {
         with: {
-          asset: true,
+          rAsset: true,
         },
       },
     },
@@ -168,7 +168,7 @@ export async function getOrCreateDepositFacilityAsset(
   }
 
   // Ensure nested relations exist before returning
-  if (!created.depositAsset) {
+  if (!created.rDepositAsset) {
     throw new Error(
       `Deposit asset or asset not found: ${chainId}, ${facilityAddress}, ${depositAssetAddress}`,
     );
@@ -188,9 +188,9 @@ export async function getOrCreateDepositFacilityAssetPeriod(
   depositPeriod: number,
 ): Promise<
   typeof schema.depositFacilityAssetPeriod.$inferSelect & {
-    assetPeriod: typeof schema.depositAssetPeriod.$inferSelect & {
-      depositAsset: typeof schema.depositAsset.$inferSelect & {
-        asset: typeof schema.asset.$inferSelect;
+    rAssetPeriod: typeof schema.depositAssetPeriod.$inferSelect & {
+      rDepositAsset: typeof schema.depositAsset.$inferSelect & {
+        rAsset: typeof schema.asset.$inferSelect;
       };
     };
   }
@@ -207,11 +207,11 @@ export async function getOrCreateDepositFacilityAssetPeriod(
       eq(schema.depositFacilityAssetPeriod.depositPeriod, depositPeriod),
     ),
     with: {
-      assetPeriod: {
+      rAssetPeriod: {
         with: {
-          depositAsset: {
+          rDepositAsset: {
             with: {
-              asset: true,
+              rAsset: true,
             },
           },
         },
@@ -261,11 +261,11 @@ export async function getOrCreateDepositFacilityAssetPeriod(
       eq(schema.depositFacilityAssetPeriod.depositPeriod, depositPeriod),
     ),
     with: {
-      assetPeriod: {
+      rAssetPeriod: {
         with: {
-          depositAsset: {
+          rDepositAsset: {
             with: {
-              asset: true,
+              rAsset: true,
             },
           },
         },

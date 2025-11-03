@@ -85,23 +85,23 @@ export async function getOrCreateDepositAsset(
   assetAddress: Address,
 ): Promise<
   typeof schema.depositAsset.$inferSelect & {
-    asset: typeof schema.asset.$inferSelect;
+    rAsset: typeof schema.asset.$inferSelect;
   }
 > {
   // Check if deposit asset exists with asset relation
   const existing = await context.db.sql.query.depositAsset.findFirst({
     where: and(
       eq(schema.depositAsset.chainId, chainId),
-      eq(schema.depositAsset.assetAddress, assetAddress.toLowerCase() as Address),
+      eq(schema.depositAsset.asset, assetAddress.toLowerCase() as Address),
     ),
     with: {
-      asset: true,
+      rAsset: true,
     },
   });
 
   if (existing) {
     // Ensure nested relations exist before returning
-    if (!existing.asset) {
+    if (!existing.rAsset) {
       throw new Error(`Asset or asset not found: ${chainId}, ${assetAddress}`);
     }
 
@@ -114,7 +114,7 @@ export async function getOrCreateDepositAsset(
   // Insert new deposit asset
   const newDepositAsset = {
     chainId,
-    assetAddress: assetAddress.toLowerCase() as Address,
+    asset: assetAddress.toLowerCase() as Address,
     enabled: true,
   };
 
@@ -124,10 +124,10 @@ export async function getOrCreateDepositAsset(
   const created = await context.db.sql.query.depositAsset.findFirst({
     where: and(
       eq(schema.depositAsset.chainId, chainId),
-      eq(schema.depositAsset.assetAddress, assetAddress.toLowerCase() as Address),
+      eq(schema.depositAsset.asset, assetAddress.toLowerCase() as Address),
     ),
     with: {
-      asset: true,
+      rAsset: true,
     },
   });
 
@@ -136,7 +136,7 @@ export async function getOrCreateDepositAsset(
   }
 
   // Ensure nested relations exist before returning
-  if (!created.asset) {
+  if (!created.rAsset) {
     throw new Error(
       `Deposit asset created but asset relation not found: ${chainId}, ${assetAddress}`,
     );
@@ -154,16 +154,16 @@ export async function getDepositAsset(
   assetAddress: Address,
 ): Promise<
   typeof schema.depositAsset.$inferSelect & {
-    asset: typeof schema.asset.$inferSelect;
+    rAsset: typeof schema.asset.$inferSelect;
   }
 > {
   const result = await context.db.sql.query.depositAsset.findFirst({
     where: and(
       eq(schema.depositAsset.chainId, chainId),
-      eq(schema.depositAsset.assetAddress, assetAddress.toLowerCase() as Address),
+      eq(schema.depositAsset.asset, assetAddress.toLowerCase() as Address),
     ),
     with: {
-      asset: true,
+      rAsset: true,
     },
   });
 
@@ -195,8 +195,8 @@ export async function getOrCreateDepositAssetPeriod(
   depositPeriod: number,
 ): Promise<
   typeof schema.depositAssetPeriod.$inferSelect & {
-    depositAsset: typeof schema.depositAsset.$inferSelect & {
-      asset: typeof schema.asset.$inferSelect;
+    rDepositAsset: typeof schema.depositAsset.$inferSelect & {
+      rAsset: typeof schema.asset.$inferSelect;
     };
   }
 > {
@@ -208,9 +208,9 @@ export async function getOrCreateDepositAssetPeriod(
       eq(schema.depositAssetPeriod.depositPeriod, depositPeriod),
     ),
     with: {
-      depositAsset: {
+      rDepositAsset: {
         with: {
-          asset: true,
+          rAsset: true,
         },
       },
     },
@@ -241,9 +241,9 @@ export async function getOrCreateDepositAssetPeriod(
       eq(schema.depositAssetPeriod.depositPeriod, depositPeriod),
     ),
     with: {
-      depositAsset: {
+      rDepositAsset: {
         with: {
-          asset: true,
+          rAsset: true,
         },
       },
     },
@@ -268,8 +268,8 @@ export async function getDepositAssetPeriod(
   depositPeriod: number,
 ): Promise<
   typeof schema.depositAssetPeriod.$inferSelect & {
-    depositAsset: typeof schema.depositAsset.$inferSelect & {
-      asset: typeof schema.asset.$inferSelect;
+    rDepositAsset: typeof schema.depositAsset.$inferSelect & {
+      rAsset: typeof schema.asset.$inferSelect;
     };
   }
 > {
@@ -280,9 +280,9 @@ export async function getDepositAssetPeriod(
       eq(schema.depositAssetPeriod.depositPeriod, depositPeriod),
     ),
     with: {
-      depositAsset: {
+      rDepositAsset: {
         with: {
-          asset: true,
+          rAsset: true,
         },
       },
     },

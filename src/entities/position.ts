@@ -50,7 +50,7 @@ export async function getOrCreatePosition(
     depositAssetAddress,
     depositPeriod,
   );
-  const assetDecimals = depositAssetPeriod.depositAsset.asset.decimals;
+  const assetDecimals = depositAssetPeriod.rDepositAsset.rAsset.decimals;
 
   // Fetch receipt token data
   const receiptToken = await getOrCreateReceiptToken(

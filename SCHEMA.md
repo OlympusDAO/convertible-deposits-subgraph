@@ -85,7 +85,7 @@ erDiagram
 - **Primary Key**: `(chainId, asset)`
 - **Fields**: `enabled`
 - **Relations**:
-  - `asset` (many-to-one → Asset)
+  - `rAsset` (many-to-one → Asset)
   - `periods` (one-to-many → DepositAssetPeriod)
   - `auctioneers` (one-to-many → Auctioneer)
 
@@ -93,7 +93,7 @@ erDiagram
 - **Primary Key**: `(chainId, depositAsset, depositPeriod)`
 - **Fields**: `enabled`
 - **Relations**:
-  - `depositAsset` (many-to-one → DepositAsset)
+  - `rDepositAsset` (many-to-one → DepositAsset)
   - `positions` (one-to-many → ConvertibleDepositPosition)
   - `receiptTokens` (one-to-many → ReceiptToken)
   - `redemptions` (one-to-many → Redemption)
@@ -102,7 +102,7 @@ erDiagram
 - **Primary Key**: `(chainId, address)`
 - **Fields**: `depositAsset`, `majorVersion`, `minorVersion`, `enabled`, `auctionTrackingPeriod`, `tickStep`, `tickStepDecimal`
 - **Relations**:
-  - `depositAsset` (many-to-one → DepositAsset)
+  - `rDepositAsset` (many-to-one → DepositAsset)
   - `depositPeriods` (one-to-many → AuctioneerDepositPeriod)
   - `snapshots` (one-to-many → AuctioneerSnapshot)
 
@@ -111,8 +111,8 @@ erDiagram
 - **Fields**: `enabled`
 - **Note**: Current tick data is stored in `AuctioneerDepositPeriodSnapshot`, updated on each bid
 - **Relations**:
-  - `auctioneer` (many-to-one → Auctioneer)
-  - `assetPeriod` (many-to-one → DepositAssetPeriod)
+  - `rAuctioneer` (many-to-one → Auctioneer)
+  - `rAssetPeriod` (many-to-one → DepositAssetPeriod)
   - `bidEvents` (one-to-many → ConvertibleDepositAuctioneerBid)
   - `snapshots` (one-to-many → AuctioneerDepositPeriodSnapshot)
 
@@ -127,17 +127,20 @@ erDiagram
 ### DepositFacilityAsset
 - **Primary Key**: `(chainId, facility, depositAsset)`
 - **Relations**:
-  - `facility` (many-to-one → DepositFacility)
-  - `depositAsset` (many-to-one → DepositAsset)
+  - `rFacility` (many-to-one → DepositFacility)
+  - `rDepositAsset` (many-to-one → DepositAsset)
   - `periods` (one-to-many → DepositFacilityAssetPeriod)
 
 ### DepositFacilityAssetPeriod
 - **Primary Key**: `(chainId, facility, depositAsset, depositPeriod)`
 - **Fields**: `reclaimRate`, `reclaimRateDecimal`
 - **Relations**:
-  - `facilityAsset` (many-to-one → DepositFacilityAsset)
-  - `assetPeriod` (many-to-one → DepositAssetPeriod)
-  - `positions` (one-to-many → ConvertibleDepositPosition)
+  - `rFacilityAsset` (many-to-one → DepositFacilityAsset)
+  - `rFacility` (many-to-one → DepositFacility)
+  - `rAssetPeriod` (many-to-one → DepositAssetPeriod)
+  - `createdDepositEvents` (one-to-many → ConvertibleDepositFacilityCreatedDeposit)
+  - `reclaimedEvents` (one-to-many → ConvertibleDepositFacilityReclaimed)
+  - `convertedDepositsEvents` (one-to-many → ConvertibleDepositFacilityConvertedDeposits)
 
 ### DepositRedemptionVault
 - **Primary Key**: `(chainId, address)`
@@ -150,16 +153,16 @@ erDiagram
 - **Primary Key**: `(chainId, redemptionVault, facility, depositAsset)`
 - **Fields**: `interestRate`, `interestRateDecimal`, `maxBorrowPercentage`, `maxBorrowPercentageDecimal`
 - **Relations**:
-  - `redemptionVault` (many-to-one → DepositRedemptionVault)
-  - `facility` (many-to-one → DepositFacility)
-  - `depositAsset` (many-to-one → DepositAsset)
+  - `rRedemptionVault` (many-to-one → DepositRedemptionVault)
+  - `rFacility` (many-to-one → DepositFacility)
+  - `rDepositAsset` (many-to-one → DepositAsset)
 
 ### ReceiptToken
 - **Primary Key**: `(chainId, receiptTokenManager, receiptTokenId)`
 - **Fields**: `facility`, `depositAsset`, `depositPeriod`
 - **Relations**:
-  - `facility` (many-to-one → DepositFacility)
-  - `assetPeriod` (many-to-one → DepositAssetPeriod)
+  - `rFacility` (many-to-one → DepositFacility)
+  - `rAssetPeriod` (many-to-one → DepositAssetPeriod)
   - `positions` (one-to-many → ConvertibleDepositPosition)
   - `redemptions` (one-to-many → Redemption)
 
@@ -174,30 +177,30 @@ erDiagram
 - **Primary Key**: `(chainId, positionId)`
 - **Fields**: `txHash`, `block`, `timestamp`, `facility`, `depositor`, `depositAsset`, `depositPeriod`, `receiptTokenManager`, `receiptTokenId`, `initialAmount`, `initialAmountDecimal`, `remainingAmount`, `remainingAmountDecimal`, `conversionPrice`, `conversionPriceDecimal`
 - **Relations**:
-  - `facility` (many-to-one → DepositFacility)
-  - `depositor` (many-to-one → Depositor)
-  - `assetPeriod` (many-to-one → DepositAssetPeriod)
-  - `receiptToken` (many-to-one → ReceiptToken)
+  - `rFacility` (many-to-one → DepositFacility)
+  - `rDepositor` (many-to-one → Depositor)
+  - `rAssetPeriod` (many-to-one → DepositAssetPeriod)
+  - `rReceiptToken` (many-to-one → ReceiptToken)
 
 ### Redemption
 - **Primary Key**: `(chainId, redemptionVault, depositor, redemptionId)`
 - **Fields**: `depositAsset`, `depositPeriod`, `facility`, `receiptTokenManager`, `receiptTokenId`, `positionId` (nullable), `amount`, `amountDecimal`, `redeemableAt`
 - **Relations**:
-  - `redemptionVault` (many-to-one → DepositRedemptionVault)
-  - `depositor` (many-to-one → Depositor)
-  - `assetPeriod` (many-to-one → DepositAssetPeriod)
-  - `facility` (many-to-one → DepositFacility)
-  - `receiptToken` (many-to-one → ReceiptToken)
-  - `position` (many-to-one → ConvertibleDepositPosition, nullable)
+  - `rRedemptionVault` (many-to-one → DepositRedemptionVault)
+  - `rDepositor` (many-to-one → Depositor)
+  - `rAssetPeriod` (many-to-one → DepositAssetPeriod)
+  - `rFacility` (many-to-one → DepositFacility)
+  - `rReceiptToken` (many-to-one → ReceiptToken)
+  - `rPosition` (many-to-one → ConvertibleDepositPosition, nullable)
   - `loans` (one-to-many → RedemptionLoan)
 
 ### RedemptionLoan
 - **Primary Key**: `(chainId, redemptionVault, depositor, redemptionId)`
 - **Fields**: `depositAsset`, `depositPeriod`, `facility`, `receiptTokenManager`, `receiptTokenId`, `initialPrincipal`, `initialPrincipalDecimal`, `principal`, `principalDecimal`, `interest`, `interestDecimal`, `createdAt`, `dueDate`, `status`
 - **Relations**:
-  - `redemption` (many-to-one → Redemption)
-  - `redemptionVault` (many-to-one → DepositRedemptionVault)
-  - `depositor` (many-to-one → Depositor)
+  - `rRedemption` (many-to-one → Redemption)
+  - `rRedemptionVault` (many-to-one → DepositRedemptionVault)
+  - `rDepositor` (many-to-one → Depositor)
 
 ## Snapshot Entities
 
@@ -205,24 +208,24 @@ erDiagram
 - **Primary Key**: `(chainId, block, auctioneer)`
 - **Fields**: `timestamp`, `dayInitTimestamp`, `ohmSold`, `ohmSoldDecimal`, `isAuctionActive`, `target`, `targetDecimal`, `tickSize`, `tickSizeDecimal`, `minPrice`, `minPriceDecimal`
 - **Relations**:
-  - `auctioneer` (many-to-one → Auctioneer)
+  - `rAuctioneer` (many-to-one → Auctioneer)
   - `depositPeriodSnapshots` (one-to-many → AuctioneerDepositPeriodSnapshot)
 
 ### AuctioneerDepositPeriodSnapshot
 - **Primary Key**: `(chainId, block, auctioneer, depositAsset, depositPeriod)`
 - **Fields**: `timestamp`, `currentTickPrice`, `currentTickPriceDecimal`, `currentTickCapacity`, `currentTickCapacityDecimal`
 - **Relations**:
-  - `auctioneerSnapshot` (many-to-one → AuctioneerSnapshot)
-  - `auctioneer` (many-to-one → Auctioneer)
-  - `assetPeriod` (many-to-one → DepositAssetPeriod)
-  - `auctioneerDepositPeriod` (many-to-one → AuctioneerDepositPeriod)
+  - `rAuctioneerSnapshot` (many-to-one → AuctioneerSnapshot)
+  - `rAuctioneer` (many-to-one → Auctioneer)
+  - `rAssetPeriod` (many-to-one → DepositAssetPeriod)
+  - `rAuctioneerDepositPeriod` (many-to-one → AuctioneerDepositPeriod)
 
 ### DepositFacilityAssetSnapshot
 - **Primary Key**: `(chainId, block, facility, depositAsset)`
 - **Fields**: `timestamp`, `totalDeposited`, `totalDepositedDecimal`, `pendingRedemption`, `pendingRedemptionDecimal`, `borrowedAmount`, `borrowedAmountDecimal`, `claimableYield`, `claimableYieldDecimal`
 - **Relations**:
-  - `facility` (many-to-one → DepositFacility)
-  - `depositAsset` (many-to-one → DepositAsset)
+  - `rFacility` (many-to-one → DepositFacility)
+  - `rDepositAsset` (many-to-one → DepositAsset)
 
 ## Event Entities
 
@@ -315,29 +318,33 @@ Foreign keys that reference composite primary keys use matching column sets:
 
 ```
 Core Entity Relations:
-Asset (1) → (many) DepositAsset
+Asset (1) → (many) DepositAsset [via rAsset]
 DepositAsset (1) → (many) DepositAssetPeriod
-DepositAsset (1) → (many) Auctioneer
+DepositAsset (1) → (many) Auctioneer [via rDepositAsset]
 DepositAssetPeriod (1) → (many) ConvertibleDepositPosition
-DepositAssetPeriod (1) → (many) ReceiptToken
-DepositAssetPeriod (1) → (many) Redemption
-DepositFacility (1) → (many) ConvertibleDepositPosition
-DepositFacility (1) → (many) DepositFacilityAsset
-DepositFacilityAsset (1) → (many) DepositFacilityAssetPeriod
-DepositFacilityAssetPeriod (1) → (many) ConvertibleDepositPosition
-Depositor (1) → (many) ConvertibleDepositPosition
-Depositor (1) → (many) Redemption
-Auctioneer (1) → (many) AuctioneerDepositPeriod
-Auctioneer (1) → (many) AuctioneerSnapshot
-AuctioneerDepositPeriod (1) → (many) AuctioneerDepositPeriodSnapshot
+DepositAssetPeriod (1) → (many) ReceiptToken [via rAssetPeriod]
+DepositAssetPeriod (1) → (many) Redemption [via rAssetPeriod]
+DepositFacility (1) → (many) ConvertibleDepositPosition [via rFacility]
+DepositFacility (1) → (many) DepositFacilityAsset [via rFacility]
+DepositFacilityAsset (1) → (many) DepositFacilityAssetPeriod [via rFacilityAsset]
+DepositFacilityAssetPeriod (1) → (many) ConvertibleDepositPosition [via rAssetPeriod]
+Depositor (1) → (many) ConvertibleDepositPosition [via rDepositor]
+Depositor (1) → (many) Redemption [via rDepositor]
+Auctioneer (1) → (many) AuctioneerDepositPeriod [via rAuctioneer]
+Auctioneer (1) → (many) AuctioneerSnapshot [via rAuctioneer]
+AuctioneerDepositPeriod (1) → (many) AuctioneerDepositPeriodSnapshot [via rAuctioneerDepositPeriod]
 
 Snapshot Relations:
-AuctioneerSnapshot (1) → (many) AuctioneerDepositPeriodSnapshot
+AuctioneerSnapshot (1) → (many) AuctioneerDepositPeriodSnapshot [via rAuctioneerSnapshot]
 
 Redemption Relations:
-Redemption (1) → (many) RedemptionLoan
-Redemption (0..1) → (1) ConvertibleDepositPosition (nullable FK)
+Redemption (1) → (many) RedemptionLoan [via rRedemption]
+Redemption (0..1) → (1) ConvertibleDepositPosition (nullable FK) [via rPosition]
 ```
+
+### Relation Naming Convention
+
+All relation names use the `r` prefix (e.g., `rAsset`, `rDepositAsset`, `rFacility`) to avoid naming conflicts with database field names. This convention ensures that relation names don't collide with the actual column names in the database tables, which is important for Ponder's type system and query builder.
 
 ## Querying Snapshots
 
@@ -347,8 +354,8 @@ To query the latest snapshot for a facility asset:
 query LatestFacilityAssetSnapshot($facility: String!, $asset: String!) {
   depositFacilityAssetSnapshots(
     where: {
-      facility: { address: { equals: $facility } }
-      depositAsset: { asset: { equals: $asset } }
+      rFacility: { address: { equals: $facility } }
+      rDepositAsset: { asset: { equals: $asset } }
     }
     orderBy: timestamp
     orderDirection: desc
@@ -370,7 +377,7 @@ To query auctioneer snapshot with period snapshots:
 query AuctioneerSnapshotWithPeriods($auctioneer: String!, $block: BigInt!) {
   auctioneerSnapshot(
     where: {
-      auctioneer: { address: { equals: $auctioneer } }
+      rAuctioneer: { address: { equals: $auctioneer } }
       block: { equals: $block }
     }
   ) {

@@ -253,7 +253,7 @@ ponder.on("DepositRedemptionVault:RedemptionStarted", async ({ event, context })
   );
 
   // Get asset decimals from nested relation
-  const assetDecimals = redemption.assetPeriod.depositAsset.asset.decimals;
+  const assetDecimals = redemption.rAssetPeriod.rDepositAsset.rAsset.decimals;
 
   // Record event
   await context.db.insert(schema.depositRedemptionVaultRedemptionStarted).values({
@@ -313,7 +313,7 @@ ponder.on("DepositRedemptionVault:RedemptionFinished", async ({ event, context }
   );
 
   // Get asset decimals from nested relation
-  const assetDecimals = redemption.assetPeriod.depositAsset.asset.decimals;
+  const assetDecimals = redemption.rAssetPeriod.rDepositAsset.rAsset.decimals;
 
   // Record event
   await context.db.insert(schema.depositRedemptionVaultRedemptionFinished).values({
@@ -381,7 +381,7 @@ ponder.on("DepositRedemptionVault:RedemptionCancelled", async ({ event, context 
   );
 
   // Get asset decimals from nested relation
-  const assetDecimals = redemption.assetPeriod.depositAsset.asset.decimals;
+  const assetDecimals = redemption.rAssetPeriod.rDepositAsset.rAsset.decimals;
 
   // Record event
   await context.db.insert(schema.depositRedemptionVaultRedemptionCancelled).values({
@@ -470,7 +470,7 @@ ponder.on("DepositRedemptionVault:LoanCreated", async ({ event, context }) => {
     amount: BigInt(event.args.amount),
     amountDecimal: toDecimal(
       BigInt(event.args.amount),
-      redemption.assetPeriod.depositAsset.asset.decimals,
+      redemption.rAssetPeriod.rDepositAsset.rAsset.decimals,
     ),
   });
 
@@ -480,7 +480,7 @@ ponder.on("DepositRedemptionVault:LoanCreated", async ({ event, context }) => {
       context,
       chainId,
       redemption.positionId,
-      redemption.assetPeriod.depositAsset.asset.decimals,
+      redemption.rAssetPeriod.rDepositAsset.rAsset.decimals,
     );
   }
 
@@ -530,7 +530,7 @@ ponder.on("DepositRedemptionVault:LoanRepaid", async ({ event, context }) => {
   );
 
   // Get asset decimals from nested relation
-  const assetDecimals = redemption.assetPeriod.depositAsset.asset.decimals;
+  const assetDecimals = redemption.rAssetPeriod.rDepositAsset.rAsset.decimals;
 
   // Record event
   await context.db.insert(schema.depositRedemptionVaultLoanRepaid).values({
@@ -606,7 +606,7 @@ ponder.on("DepositRedemptionVault:LoanDefaulted", async ({ event, context }) => 
   );
 
   // Get asset decimals from nested relation
-  const assetDecimals = redemption.assetPeriod.depositAsset.asset.decimals;
+  const assetDecimals = redemption.rAssetPeriod.rDepositAsset.rAsset.decimals;
 
   // Record event
   await context.db.insert(schema.depositRedemptionVaultLoanDefaulted).values({
@@ -666,7 +666,7 @@ ponder.on("DepositRedemptionVault:LoanExtended", async ({ event, context }) => {
   );
 
   // Get asset decimals from nested relation
-  const assetDecimals = redemption.assetPeriod.depositAsset.asset.decimals;
+  const assetDecimals = redemption.rAssetPeriod.rDepositAsset.rAsset.decimals;
 
   // Record event
   await context.db.insert(schema.depositRedemptionVaultLoanExtended).values({

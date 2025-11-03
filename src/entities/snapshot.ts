@@ -79,7 +79,7 @@ export async function getOrCreateAuctioneerSnapshot(
   );
 
   // Get asset decimals from nested relation
-  const assetDecimals = auctioneer.depositAsset.asset.decimals;
+  const assetDecimals = auctioneer.rDepositAsset.rAsset.decimals;
 
   // Create the main auctioneer snapshot
   await context.db.insert(schema.auctioneerSnapshot).values({
@@ -186,7 +186,7 @@ export async function refreshAuctionState(
 
   // Get or create auctioneer with nested asset relation for decimals (fetch once, use for all periods)
   const auctioneer = await getOrCreateAuctioneer(context, chainId, auctioneerAddress);
-  const assetDecimals = auctioneer.depositAsset.asset.decimals;
+  const assetDecimals = auctioneer.rDepositAsset.rAsset.decimals;
 
   // Get all deposit periods for this auctioneer (enabled or not)
   const depositPeriods = await context.db.sql
@@ -242,8 +242,8 @@ export async function getOrCreateDepositFacilityAssetSnapshot(
   depositAssetAddress: Address,
 ): Promise<
   typeof schema.depositFacilityAssetSnapshot.$inferSelect & {
-    depositAsset: typeof schema.depositAsset.$inferSelect & {
-      asset: typeof schema.asset.$inferSelect;
+    rDepositAsset: typeof schema.depositAsset.$inferSelect & {
+      rAsset: typeof schema.asset.$inferSelect;
     };
   }
 > {
@@ -259,9 +259,9 @@ export async function getOrCreateDepositFacilityAssetSnapshot(
       ),
     ),
     with: {
-      depositAsset: {
+      rDepositAsset: {
         with: {
-          asset: true,
+          rAsset: true,
         },
       },
     },
@@ -269,7 +269,7 @@ export async function getOrCreateDepositFacilityAssetSnapshot(
 
   if (existing) {
     // Ensure nested relations exist before returning
-    if (!existing.depositAsset?.asset?.decimals) {
+    if (!existing.rDepositAsset?.rAsset?.decimals) {
       throw new Error(
         `Deposit asset or asset not found for snapshot: ${chainId}, ${facilityAddress}, ${depositAssetAddress}`,
       );
@@ -298,7 +298,7 @@ export async function getOrCreateDepositFacilityAssetSnapshot(
     facilityAddress,
     depositAssetAddress,
   );
-  const assetDecimals = facilityAsset.depositAsset.asset.decimals;
+  const assetDecimals = facilityAsset.rDepositAsset.rAsset.decimals;
 
   // Fetch claimable yield from contract
   const claimableYield = await fetchFacilityClaimableYield(
@@ -336,9 +336,9 @@ export async function getOrCreateDepositFacilityAssetSnapshot(
       ),
     ),
     with: {
-      depositAsset: {
+      rDepositAsset: {
         with: {
-          asset: true,
+          rAsset: true,
         },
       },
     },
@@ -349,7 +349,7 @@ export async function getOrCreateDepositFacilityAssetSnapshot(
   }
 
   // Ensure nested relations exist before returning
-  if (!snapshot.depositAsset?.asset?.decimals) {
+  if (!snapshot.rDepositAsset?.rAsset?.decimals) {
     throw new Error(
       `Deposit asset or asset not found for snapshot: ${chainId}, ${facilityAddress}, ${depositAssetAddress}`,
     );
@@ -381,7 +381,7 @@ export async function updateFacilityAssetSnapshotDeposited(
   );
 
   // Get asset decimals from nested relation
-  const assetDecimals = assetSnapshot.depositAsset.asset.decimals;
+  const assetDecimals = assetSnapshot.rDepositAsset.rAsset.decimals;
 
   // Update totalDeposited
   const updatedTotalDeposited = assetSnapshot.totalDeposited + delta;
@@ -432,7 +432,7 @@ export async function updateFacilityAssetSnapshotPendingRedemption(
   );
 
   // Get asset decimals from nested relation
-  const assetDecimals = assetSnapshot.depositAsset.asset.decimals;
+  const assetDecimals = assetSnapshot.rDepositAsset.rAsset.decimals;
 
   // Update pendingRedemption
   const updatedPendingRedemption = assetSnapshot.pendingRedemption + delta;
@@ -474,7 +474,7 @@ export async function updateFacilityAssetSnapshotBorrowedAmount(
   );
 
   // Get asset decimals from nested relation
-  const assetDecimals = assetSnapshot.depositAsset.asset.decimals;
+  const assetDecimals = assetSnapshot.rDepositAsset.rAsset.decimals;
 
   // Update borrowedAmount
   const updatedBorrowedAmount = assetSnapshot.borrowedAmount + delta;

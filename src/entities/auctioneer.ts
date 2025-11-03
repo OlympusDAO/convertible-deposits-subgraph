@@ -18,8 +18,8 @@ export async function getOrCreateAuctioneer(
   address: Address,
 ): Promise<
   typeof schema.auctioneer.$inferSelect & {
-    depositAsset: typeof schema.depositAsset.$inferSelect & {
-      asset: typeof schema.asset.$inferSelect;
+    rDepositAsset: typeof schema.depositAsset.$inferSelect & {
+      rAsset: typeof schema.asset.$inferSelect;
     };
   }
 > {
@@ -30,9 +30,9 @@ export async function getOrCreateAuctioneer(
       eq(schema.auctioneer.address, address.toLowerCase() as Address),
     ),
     with: {
-      depositAsset: {
+      rDepositAsset: {
         with: {
-          asset: true,
+          rAsset: true,
         },
       },
     },
@@ -70,9 +70,9 @@ export async function getOrCreateAuctioneer(
       eq(schema.auctioneer.address, address.toLowerCase() as Address),
     ),
     with: {
-      depositAsset: {
+      rDepositAsset: {
         with: {
-          asset: true,
+          rAsset: true,
         },
       },
     },
@@ -83,7 +83,7 @@ export async function getOrCreateAuctioneer(
   }
 
   // Ensure nested relations exist before returning
-  if (!created.depositAsset?.asset?.decimals) {
+  if (!created.rDepositAsset?.rAsset?.decimals) {
     throw new Error(`Deposit asset or asset not found for auctioneer: ${chainId}, ${address}`);
   }
 
@@ -99,8 +99,8 @@ export async function getAuctioneer(
   address: Address,
 ): Promise<
   typeof schema.auctioneer.$inferSelect & {
-    depositAsset: typeof schema.depositAsset.$inferSelect & {
-      asset: typeof schema.asset.$inferSelect;
+    rDepositAsset: typeof schema.depositAsset.$inferSelect & {
+      rAsset: typeof schema.asset.$inferSelect;
     };
   }
 > {
@@ -110,9 +110,9 @@ export async function getAuctioneer(
       eq(schema.auctioneer.address, address.toLowerCase() as Address),
     ),
     with: {
-      depositAsset: {
+      rDepositAsset: {
         with: {
-          asset: true,
+          rAsset: true,
         },
       },
     },
@@ -153,9 +153,9 @@ export async function getOrCreateAuctioneerDepositPeriod(
   depositPeriod: number,
 ): Promise<
   typeof schema.auctioneerDepositPeriod.$inferSelect & {
-    assetPeriod: typeof schema.depositAssetPeriod.$inferSelect & {
-      depositAsset: typeof schema.depositAsset.$inferSelect & {
-        asset: typeof schema.asset.$inferSelect;
+    rAssetPeriod: typeof schema.depositAssetPeriod.$inferSelect & {
+      rDepositAsset: typeof schema.depositAsset.$inferSelect & {
+        rAsset: typeof schema.asset.$inferSelect;
       };
     };
   }
@@ -169,11 +169,11 @@ export async function getOrCreateAuctioneerDepositPeriod(
       eq(schema.auctioneerDepositPeriod.depositPeriod, depositPeriod),
     ),
     with: {
-      assetPeriod: {
+      rAssetPeriod: {
         with: {
-          depositAsset: {
+          rDepositAsset: {
             with: {
-              asset: true,
+              rAsset: true,
             },
           },
         },
@@ -211,11 +211,11 @@ export async function getOrCreateAuctioneerDepositPeriod(
       eq(schema.auctioneerDepositPeriod.depositPeriod, depositPeriod),
     ),
     with: {
-      assetPeriod: {
+      rAssetPeriod: {
         with: {
-          depositAsset: {
+          rDepositAsset: {
             with: {
-              asset: true,
+              rAsset: true,
             },
           },
         },

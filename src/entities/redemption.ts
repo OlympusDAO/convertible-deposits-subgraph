@@ -24,9 +24,9 @@ export async function getOrCreateRedemption(
   redemptionId: number,
 ): Promise<
   typeof schema.redemption.$inferSelect & {
-    assetPeriod: typeof schema.depositAssetPeriod.$inferSelect & {
-      depositAsset: typeof schema.depositAsset.$inferSelect & {
-        asset: typeof schema.asset.$inferSelect;
+    rAssetPeriod: typeof schema.depositAssetPeriod.$inferSelect & {
+      rDepositAsset: typeof schema.depositAsset.$inferSelect & {
+        rAsset: typeof schema.asset.$inferSelect;
       };
     };
   }
@@ -40,11 +40,11 @@ export async function getOrCreateRedemption(
       eq(schema.redemption.redemptionId, redemptionId),
     ),
     with: {
-      assetPeriod: {
+      rAssetPeriod: {
         with: {
-          depositAsset: {
+          rDepositAsset: {
             with: {
-              asset: true,
+              rAsset: true,
             },
           },
         },
@@ -95,7 +95,10 @@ export async function getOrCreateRedemption(
     receiptTokenId: receiptToken.receiptTokenId,
     positionId: redemptionData.positionId,
     amount: redemptionData.amount,
-    amountDecimal: toDecimal(redemptionData.amount, depositAssetPeriod.depositAsset.asset.decimals),
+    amountDecimal: toDecimal(
+      redemptionData.amount,
+      depositAssetPeriod.rDepositAsset.rAsset.decimals,
+    ),
     redeemableAt: redemptionData.redeemableAt,
   });
 
@@ -108,11 +111,11 @@ export async function getOrCreateRedemption(
       eq(schema.redemption.redemptionId, redemptionId),
     ),
     with: {
-      assetPeriod: {
+      rAssetPeriod: {
         with: {
-          depositAsset: {
+          rDepositAsset: {
             with: {
-              asset: true,
+              rAsset: true,
             },
           },
         },
@@ -140,9 +143,9 @@ export async function getRedemption(
   redemptionId: number,
 ): Promise<
   typeof schema.redemption.$inferSelect & {
-    assetPeriod: typeof schema.depositAssetPeriod.$inferSelect & {
-      depositAsset: typeof schema.depositAsset.$inferSelect & {
-        asset: typeof schema.asset.$inferSelect;
+    rAssetPeriod: typeof schema.depositAssetPeriod.$inferSelect & {
+      rDepositAsset: typeof schema.depositAsset.$inferSelect & {
+        rAsset: typeof schema.asset.$inferSelect;
       };
     };
   }
@@ -155,11 +158,11 @@ export async function getRedemption(
       eq(schema.redemption.redemptionId, redemptionId),
     ),
     with: {
-      assetPeriod: {
+      rAssetPeriod: {
         with: {
-          depositAsset: {
+          rDepositAsset: {
             with: {
-              asset: true,
+              rAsset: true,
             },
           },
         },
