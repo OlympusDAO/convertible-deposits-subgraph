@@ -4,7 +4,7 @@
 import type { Context } from "ponder:registry";
 import schema from "ponder:schema";
 import type { Address } from "viem";
-import { fetchAssetDecimals, fetchAssetName, fetchAssetSymbol } from "../contracts/asset";
+import { fetchAssetDataBatch } from "../contracts/asset";
 
 /**
  * Get or create an Asset
@@ -24,10 +24,8 @@ export async function getOrCreateAsset(
     return existing;
   }
 
-  // Fetch asset details from contract
-  const decimals = await fetchAssetDecimals(context.client, address);
-  const name = await fetchAssetName(context.client, address);
-  const symbol = await fetchAssetSymbol(context.client, address);
+  // Fetch asset details from contract (batched for efficiency)
+  const { decimals, name, symbol } = await fetchAssetDataBatch(context.client, address);
 
   // Insert new asset
   const newAsset = {
