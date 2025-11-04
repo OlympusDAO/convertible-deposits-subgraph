@@ -269,6 +269,8 @@ ponder.on("ConvertibleDepositFacility:CreatedDeposit", async ({ event, context }
   const depositorAddress = event.args.depositor as Address;
 
   // Create/fetch records
+  // Note: getOrCreateDepositAssetPeriod is called internally by getOrCreateDepositFacilityAssetPeriod,
+  // so we skip calling it here to avoid duplicate database queries
   const facilityAssetPeriod = await getOrCreateDepositFacilityAssetPeriod(
     context,
     chainId,
@@ -276,7 +278,8 @@ ponder.on("ConvertibleDepositFacility:CreatedDeposit", async ({ event, context }
     assetAddress,
     depositPeriod,
   );
-  await getOrCreateDepositor(context, chainId, depositorAddress);
+  // Note: getOrCreateDepositor is called internally by getOrCreatePosition,
+  // so we skip calling it here to avoid duplicate database queries
   await getOrCreatePosition(
     context,
     chainId,
@@ -385,6 +388,8 @@ ponder.on("ConvertibleDepositFacility:ConvertedDeposit", async ({ event, context
 
   // Create/fetch records
   await getOrCreateDepositor(context, chainId, depositorAddress);
+  // Note: getOrCreateDepositAssetPeriod is called internally by getOrCreateDepositFacilityAssetPeriod,
+  // so we skip calling it here to avoid duplicate database queries
   const facilityAssetPeriod = await getOrCreateDepositFacilityAssetPeriod(
     context,
     chainId,

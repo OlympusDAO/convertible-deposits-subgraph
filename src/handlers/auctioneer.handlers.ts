@@ -11,8 +11,6 @@ import {
   updateAuctioneer,
   updateAuctioneerDepositPeriod,
 } from "../entities/auctioneer";
-import { getOrCreateDepositFacility } from "../entities/depositFacility";
-import { getOrCreateDepositor } from "../entities/depositor";
 import { getOrCreatePosition } from "../entities/position";
 import { refreshAuctionState } from "../entities/snapshot";
 import { toBpsDecimal, toDecimal, toOhmDecimal } from "../utils/decimal";
@@ -263,16 +261,9 @@ ponder.on("ConvertibleDepositAuctioneer:Bid", async ({ event, context }) => {
   const bidderAddress = event.args.bidder as Address;
 
   // Get or create entities
-  await getOrCreateDepositFacility(context, chainId, auctioneerAddress);
-  const auctioneerDepositPeriod = await getOrCreateAuctioneerDepositPeriod(
-    context,
-    chainId,
-    auctioneerAddress,
-    depositAssetAddress,
-    depositPeriod,
-  );
-  await getOrCreateDepositor(context, chainId, bidderAddress);
-  await getOrCreatePosition(
+  // Note: getOrCreateDepositFacility, getOrCreateDepositor and getOrCreateDepositAssetPeriod are called internally by getOrCreatePosition,
+  // so we skip calling them here to avoid duplicate database queries
+  const position = await getOrCreatePosition(
     context,
     chainId,
     auctioneerAddress, // Facility address (same as auctioneer in this case)
@@ -285,8 +276,9 @@ ponder.on("ConvertibleDepositAuctioneer:Bid", async ({ event, context }) => {
     BigInt(event.block.timestamp),
   );
 
-  // Get asset decimals from nested relation
-  const assetDecimals = auctioneerDepositPeriod.rAssetPeriod.rDepositAsset.rAsset.decimals;
+  // Get asset decimals from position's related deposit asset period (which includes nested asset relation)
+  // This avoids needing to fetch auctioneerDepositPeriod just for decimals
+  const assetDecimals = position.rAssetPeriod.rDepositAsset.rAsset.decimals;
 
   // Fetch tick data from contract
   const tickData = await fetchAuctioneerCurrentTick(

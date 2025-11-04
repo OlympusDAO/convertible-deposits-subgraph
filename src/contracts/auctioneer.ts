@@ -202,3 +202,53 @@ export async function fetchAuctioneerEnabledPeriods(
 
   return [...result];
 }
+
+/**
+ * Batch fetch current tick data for multiple deposit periods in a single multicall
+ * This is more efficient than making separate calls for each period
+ * Returns a Map keyed by deposit period for efficient lookup
+ */
+export async function fetchAuctioneerCurrentTickBatch(
+  client: PonderClient,
+  address: Address,
+  depositPeriods: number[],
+): Promise<Map<number, { price: bigint; capacity: bigint; lastUpdate: number }>> {
+  if (depositPeriods.length === 0) {
+    return new Map();
+  }
+
+  const results = await client.multicall({
+    contracts: depositPeriods.map((period) => ({
+      address,
+      abi: ConvertibleDepositAuctioneerAbi,
+      functionName: "getCurrentTick",
+      args: [period],
+    })),
+  });
+
+  const tickDataMap = new Map<number, { price: bigint; capacity: bigint; lastUpdate: number }>();
+  for (let i = 0; i < results.length; i++) {
+    const result = results[i];
+    const period = depositPeriods[i];
+    if (!period) {
+      throw new Error(`Missing period at index ${i}`);
+    }
+    if (!result) {
+      throw new Error(`No result returned for period ${period} at index ${i}`);
+    }
+    if (result.status === "failure") {
+      throw new Error(`Failed to fetch current tick for period ${period}: ${result.error}`);
+    }
+    const tickResult = result.result as unknown as {
+      price: bigint;
+      capacity: bigint;
+      lastUpdate: number;
+    };
+    tickDataMap.set(period, {
+      price: tickResult.price,
+      capacity: tickResult.capacity,
+      lastUpdate: tickResult.lastUpdate,
+    });
+  }
+  return tickDataMap;
+}

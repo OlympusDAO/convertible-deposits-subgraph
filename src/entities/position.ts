@@ -3,6 +3,7 @@
 
 import type { Context } from "ponder:registry";
 import schema from "ponder:schema";
+import { and, eq } from "ponder";
 import type { Address } from "viem";
 import { fetchPosition } from "../contracts/position";
 import { toDecimal } from "../utils/decimal";
@@ -16,7 +17,7 @@ const UINT256_MAX = BigInt(
 );
 
 /**
- * Get or create a ConvertibleDepositPosition
+ * Get or create a ConvertibleDepositPosition (with nested asset relation for decimals)
  */
 export async function getOrCreatePosition(
   context: Context,
@@ -29,11 +30,32 @@ export async function getOrCreatePosition(
   txHash: Address,
   block: bigint,
   timestamp: bigint,
-): Promise<typeof schema.convertibleDepositPosition.$inferSelect> {
-  // Check if position exists
-  const existing = await context.db.find(schema.convertibleDepositPosition, {
-    chainId,
-    positionId,
+): Promise<
+  typeof schema.convertibleDepositPosition.$inferSelect & {
+    rAssetPeriod: typeof schema.depositAssetPeriod.$inferSelect & {
+      rDepositAsset: typeof schema.depositAsset.$inferSelect & {
+        rAsset: typeof schema.asset.$inferSelect;
+      };
+    };
+  }
+> {
+  // Check if position exists with nested relations
+  const existing = await context.db.sql.query.convertibleDepositPosition.findFirst({
+    where: and(
+      eq(schema.convertibleDepositPosition.chainId, chainId),
+      eq(schema.convertibleDepositPosition.positionId, positionId),
+    ),
+    with: {
+      rAssetPeriod: {
+        with: {
+          rDepositAsset: {
+            with: {
+              rAsset: true,
+            },
+          },
+        },
+      },
+    },
   });
 
   if (existing) {
@@ -95,7 +117,37 @@ export async function getOrCreatePosition(
 
   await context.db.insert(schema.convertibleDepositPosition).values(newPosition);
 
-  return newPosition;
+  // Re-query with relations to return consistent type
+  const created = await context.db.sql.query.convertibleDepositPosition.findFirst({
+    where: and(
+      eq(schema.convertibleDepositPosition.chainId, chainId),
+      eq(schema.convertibleDepositPosition.positionId, positionId),
+    ),
+    with: {
+      rAssetPeriod: {
+        with: {
+          rDepositAsset: {
+            with: {
+              rAsset: true,
+            },
+          },
+        },
+      },
+    },
+  });
+
+  if (!created) {
+    throw new Error(`Failed to create position: ${chainId}:${positionId}`);
+  }
+
+  // Ensure nested relations exist before returning
+  if (!created.rAssetPeriod?.rDepositAsset?.rAsset?.decimals) {
+    throw new Error(
+      `Deposit asset period or asset not found for position: ${chainId}, ${positionId}`,
+    );
+  }
+
+  return created;
 }
 
 /**

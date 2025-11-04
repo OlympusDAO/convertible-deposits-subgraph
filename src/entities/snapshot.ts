@@ -6,7 +6,7 @@ import schema from "ponder:schema";
 import { and, desc, eq, lte } from "ponder";
 import type { Address } from "viem";
 import {
-  fetchAuctioneerCurrentTick,
+  fetchAuctioneerCurrentTickBatch,
   fetchAuctioneerDayStateAndParameters,
 } from "../contracts/auctioneer";
 import { fetchFacilityClaimableYield } from "../contracts/depositFacility";
@@ -199,15 +199,23 @@ export async function refreshAuctionState(
       ),
     );
 
+  // Batch fetch current tick data for all periods in a single multicall
+  // This is much more efficient than individual calls, especially when there are many periods
+  const depositPeriodNumbers = depositPeriods.map((p) => p.depositPeriod);
+  const tickDataMap = await fetchAuctioneerCurrentTickBatch(
+    context.client,
+    auctioneerAddress,
+    depositPeriodNumbers,
+  );
+
   // Create period snapshots for all deposit periods
   for (const depositPeriod of depositPeriods) {
-    // Fetch current tick data from contract for this period
-    // TODO shift this into a multicall
-    const tickData = await fetchAuctioneerCurrentTick(
-      context.client,
-      auctioneerAddress,
-      depositPeriod.depositPeriod,
-    );
+    const tickData = tickDataMap.get(depositPeriod.depositPeriod);
+    if (!tickData) {
+      throw new Error(
+        `Tick data not found for period ${depositPeriod.depositPeriod} in batch results`,
+      );
+    }
 
     // Calculate decimals
     const tickPriceDecimal = toDecimal(tickData.price, assetDecimals);
