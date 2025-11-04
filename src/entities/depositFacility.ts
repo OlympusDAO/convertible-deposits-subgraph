@@ -3,14 +3,13 @@
 
 import type { Context } from "ponder:registry";
 import schema from "ponder:schema";
-import { and, eq } from "ponder";
 import type { Address } from "viem";
 import {
   fetchDepositFacilityAssetCommittedAmount,
   fetchDepositFacilityAssetPeriodReclaimRate,
 } from "../contracts/depositFacility";
 import { toBpsDecimal, toDecimal } from "../utils/decimal";
-import { getOrCreateDepositAsset, getOrCreateDepositAssetPeriod } from "./asset";
+import { getAssetDecimals, getOrCreateDepositAsset, getOrCreateDepositAssetPeriod } from "./asset";
 
 /**
  * Get or create a DepositFacility
@@ -80,49 +79,28 @@ export async function updateDepositFacility(
 }
 
 /**
- * Get or create a DepositFacilityAsset (with nested asset relation for decimals)
+ * Get or create a DepositFacilityAsset
  */
 export async function getOrCreateDepositFacilityAsset(
   context: Context,
   chainId: number,
   facilityAddress: Address,
   depositAssetAddress: Address,
-): Promise<
-  typeof schema.depositFacilityAsset.$inferSelect & {
-    rDepositAsset: typeof schema.depositAsset.$inferSelect & {
-      rAsset: typeof schema.asset.$inferSelect;
-    };
-  }
-> {
-  // Check if it exists with nested relations
-  const existing = await context.db.sql.query.depositFacilityAsset.findFirst({
-    where: and(
-      eq(schema.depositFacilityAsset.chainId, chainId),
-      eq(schema.depositFacilityAsset.facility, facilityAddress.toLowerCase() as Address),
-      eq(schema.depositFacilityAsset.depositAsset, depositAssetAddress.toLowerCase() as Address),
-    ),
-    with: {
-      rDepositAsset: {
-        with: {
-          rAsset: true,
-        },
-      },
-    },
+): Promise<typeof schema.depositFacilityAsset.$inferSelect> {
+  // Check if it exists
+  const existing = await context.db.find(schema.depositFacilityAsset, {
+    chainId,
+    facility: facilityAddress.toLowerCase() as Address,
+    depositAsset: depositAssetAddress.toLowerCase() as Address,
   });
 
   if (existing) {
-    // Ensure nested relations exist before returning
-    if (!existing.rDepositAsset?.rAsset?.decimals) {
-      throw new Error(
-        `Deposit asset or asset not found: ${chainId}, ${facilityAddress}, ${depositAssetAddress}`,
-      );
-    }
     return existing;
   }
 
   // Get or create facility and deposit asset
   await getOrCreateDepositFacility(context, chainId, facilityAddress);
-  const depositAsset = await getOrCreateDepositAsset(context, chainId, depositAssetAddress);
+  await getOrCreateDepositAsset(context, chainId, depositAssetAddress);
 
   // Fetch committed amount from contract
   const committedAmount = await fetchDepositFacilityAssetCommittedAmount(
@@ -131,8 +109,8 @@ export async function getOrCreateDepositFacilityAsset(
     depositAssetAddress,
   );
 
-  // Use decimals from relation
-  const assetDecimals = depositAsset.rAsset.decimals;
+  // Get asset decimals
+  const assetDecimals = await getAssetDecimals(context, chainId, depositAssetAddress);
 
   // Insert new facility asset
   const newAsset = {
@@ -145,40 +123,11 @@ export async function getOrCreateDepositFacilityAsset(
 
   await context.db.insert(schema.depositFacilityAsset).values(newAsset);
 
-  // Re-query with relations to return consistent type
-  const created = await context.db.sql.query.depositFacilityAsset.findFirst({
-    where: and(
-      eq(schema.depositFacilityAsset.chainId, chainId),
-      eq(schema.depositFacilityAsset.facility, facilityAddress.toLowerCase() as Address),
-      eq(schema.depositFacilityAsset.depositAsset, depositAssetAddress.toLowerCase() as Address),
-    ),
-    with: {
-      rDepositAsset: {
-        with: {
-          rAsset: true,
-        },
-      },
-    },
-  });
-
-  if (!created) {
-    throw new Error(
-      `Failed to create deposit facility asset: ${chainId}:${facilityAddress}:${depositAssetAddress}`,
-    );
-  }
-
-  // Ensure nested relations exist before returning
-  if (!created.rDepositAsset) {
-    throw new Error(
-      `Deposit asset or asset not found: ${chainId}, ${facilityAddress}, ${depositAssetAddress}`,
-    );
-  }
-
-  return created;
+  return newAsset;
 }
 
 /**
- * Get or create a DepositFacilityAssetPeriod (with nested asset relation for decimals)
+ * Get or create a DepositFacilityAssetPeriod
  */
 export async function getOrCreateDepositFacilityAssetPeriod(
   context: Context,
@@ -186,37 +135,13 @@ export async function getOrCreateDepositFacilityAssetPeriod(
   facilityAddress: Address,
   depositAssetAddress: Address,
   depositPeriod: number,
-): Promise<
-  typeof schema.depositFacilityAssetPeriod.$inferSelect & {
-    rAssetPeriod: typeof schema.depositAssetPeriod.$inferSelect & {
-      rDepositAsset: typeof schema.depositAsset.$inferSelect & {
-        rAsset: typeof schema.asset.$inferSelect;
-      };
-    };
-  }
-> {
-  // Check if it exists with nested relations
-  const existing = await context.db.sql.query.depositFacilityAssetPeriod.findFirst({
-    where: and(
-      eq(schema.depositFacilityAssetPeriod.chainId, chainId),
-      eq(schema.depositFacilityAssetPeriod.facility, facilityAddress.toLowerCase() as Address),
-      eq(
-        schema.depositFacilityAssetPeriod.depositAsset,
-        depositAssetAddress.toLowerCase() as Address,
-      ),
-      eq(schema.depositFacilityAssetPeriod.depositPeriod, depositPeriod),
-    ),
-    with: {
-      rAssetPeriod: {
-        with: {
-          rDepositAsset: {
-            with: {
-              rAsset: true,
-            },
-          },
-        },
-      },
-    },
+): Promise<typeof schema.depositFacilityAssetPeriod.$inferSelect> {
+  // Check if it exists
+  const existing = await context.db.find(schema.depositFacilityAssetPeriod, {
+    chainId,
+    facility: facilityAddress.toLowerCase() as Address,
+    depositAsset: depositAssetAddress.toLowerCase() as Address,
+    depositPeriod,
   });
 
   if (existing) {
@@ -249,37 +174,7 @@ export async function getOrCreateDepositFacilityAssetPeriod(
 
   await context.db.insert(schema.depositFacilityAssetPeriod).values(newPeriod);
 
-  // Re-query with relations to return consistent type
-  const created = await context.db.sql.query.depositFacilityAssetPeriod.findFirst({
-    where: and(
-      eq(schema.depositFacilityAssetPeriod.chainId, chainId),
-      eq(schema.depositFacilityAssetPeriod.facility, facilityAddress.toLowerCase() as Address),
-      eq(
-        schema.depositFacilityAssetPeriod.depositAsset,
-        depositAssetAddress.toLowerCase() as Address,
-      ),
-      eq(schema.depositFacilityAssetPeriod.depositPeriod, depositPeriod),
-    ),
-    with: {
-      rAssetPeriod: {
-        with: {
-          rDepositAsset: {
-            with: {
-              rAsset: true,
-            },
-          },
-        },
-      },
-    },
-  });
-
-  if (!created) {
-    throw new Error(
-      `Failed to create deposit facility asset period: ${chainId}:${facilityAddress}:${depositAssetAddress}:${depositPeriod}`,
-    );
-  }
-
-  return created;
+  return newPeriod;
 }
 
 /**

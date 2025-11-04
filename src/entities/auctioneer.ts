@@ -3,39 +3,23 @@
 
 import type { Context } from "ponder:registry";
 import schema from "ponder:schema";
-import { and, eq } from "ponder";
 import type { Address } from "viem";
 import { fetchAuctioneerConfigBatch } from "../contracts/auctioneer";
 import { toBpsDecimal } from "../utils/decimal";
 import { getOrCreateDepositAsset, getOrCreateDepositAssetPeriod } from "./asset";
 
 /**
- * Get or create an Auctioneer (with nested asset relation for decimals)
+ * Get or create an Auctioneer
  */
 export async function getOrCreateAuctioneer(
   context: Context,
   chainId: number,
   address: Address,
-): Promise<
-  typeof schema.auctioneer.$inferSelect & {
-    rDepositAsset: typeof schema.depositAsset.$inferSelect & {
-      rAsset: typeof schema.asset.$inferSelect;
-    };
-  }
-> {
-  // Check if auctioneer exists with nested relations
-  const existing = await context.db.sql.query.auctioneer.findFirst({
-    where: and(
-      eq(schema.auctioneer.chainId, chainId),
-      eq(schema.auctioneer.address, address.toLowerCase() as Address),
-    ),
-    with: {
-      rDepositAsset: {
-        with: {
-          rAsset: true,
-        },
-      },
-    },
+): Promise<typeof schema.auctioneer.$inferSelect> {
+  // Check if auctioneer exists
+  const existing = await context.db.find(schema.auctioneer, {
+    chainId,
+    address: address.toLowerCase() as Address,
   });
 
   if (existing) {
@@ -45,7 +29,7 @@ export async function getOrCreateAuctioneer(
   // Fetch auctioneer details from contract using batched multicall for efficiency
   const config = await fetchAuctioneerConfigBatch(context.client, address);
 
-  // Create the deposit asset (with nested asset relation)
+  // Create the deposit asset
   await getOrCreateDepositAsset(context, chainId, config.depositAsset);
 
   // Insert new auctioneer
@@ -63,59 +47,20 @@ export async function getOrCreateAuctioneer(
 
   await context.db.insert(schema.auctioneer).values(newAuctioneer);
 
-  // Re-query with relations to return consistent type
-  const created = await context.db.sql.query.auctioneer.findFirst({
-    where: and(
-      eq(schema.auctioneer.chainId, chainId),
-      eq(schema.auctioneer.address, address.toLowerCase() as Address),
-    ),
-    with: {
-      rDepositAsset: {
-        with: {
-          rAsset: true,
-        },
-      },
-    },
-  });
-
-  if (!created) {
-    throw new Error(`Failed to create auctioneer: ${chainId}:${address}`);
-  }
-
-  // Ensure nested relations exist before returning
-  if (!created.rDepositAsset?.rAsset?.decimals) {
-    throw new Error(`Deposit asset or asset not found for auctioneer: ${chainId}, ${address}`);
-  }
-
-  return created;
+  return newAuctioneer;
 }
 
 /**
- * Get an Auctioneer record (with nested asset relation for decimals)
+ * Get an Auctioneer record
  */
 export async function getAuctioneer(
   context: Context,
   chainId: number,
   address: Address,
-): Promise<
-  typeof schema.auctioneer.$inferSelect & {
-    rDepositAsset: typeof schema.depositAsset.$inferSelect & {
-      rAsset: typeof schema.asset.$inferSelect;
-    };
-  }
-> {
-  const result = await context.db.sql.query.auctioneer.findFirst({
-    where: and(
-      eq(schema.auctioneer.chainId, chainId),
-      eq(schema.auctioneer.address, address.toLowerCase() as Address),
-    ),
-    with: {
-      rDepositAsset: {
-        with: {
-          rAsset: true,
-        },
-      },
-    },
+): Promise<typeof schema.auctioneer.$inferSelect> {
+  const result = await context.db.find(schema.auctioneer, {
+    chainId,
+    address: address.toLowerCase() as Address,
   });
 
   if (!result) {
@@ -143,7 +88,7 @@ export async function updateAuctioneer(
 }
 
 /**
- * Get or create an AuctioneerDepositPeriod (with nested asset relation for decimals)
+ * Get or create an AuctioneerDepositPeriod
  */
 export async function getOrCreateAuctioneerDepositPeriod(
   context: Context,
@@ -151,34 +96,13 @@ export async function getOrCreateAuctioneerDepositPeriod(
   auctioneerAddress: Address,
   depositAssetAddress: Address,
   depositPeriod: number,
-): Promise<
-  typeof schema.auctioneerDepositPeriod.$inferSelect & {
-    rAssetPeriod: typeof schema.depositAssetPeriod.$inferSelect & {
-      rDepositAsset: typeof schema.depositAsset.$inferSelect & {
-        rAsset: typeof schema.asset.$inferSelect;
-      };
-    };
-  }
-> {
-  // Check if it exists with nested relations
-  const existing = await context.db.sql.query.auctioneerDepositPeriod.findFirst({
-    where: and(
-      eq(schema.auctioneerDepositPeriod.chainId, chainId),
-      eq(schema.auctioneerDepositPeriod.auctioneer, auctioneerAddress.toLowerCase() as Address),
-      eq(schema.auctioneerDepositPeriod.depositAsset, depositAssetAddress.toLowerCase() as Address),
-      eq(schema.auctioneerDepositPeriod.depositPeriod, depositPeriod),
-    ),
-    with: {
-      rAssetPeriod: {
-        with: {
-          rDepositAsset: {
-            with: {
-              rAsset: true,
-            },
-          },
-        },
-      },
-    },
+): Promise<typeof schema.auctioneerDepositPeriod.$inferSelect> {
+  // Check if it exists
+  const existing = await context.db.find(schema.auctioneerDepositPeriod, {
+    chainId,
+    auctioneer: auctioneerAddress.toLowerCase() as Address,
+    depositAsset: depositAssetAddress.toLowerCase() as Address,
+    depositPeriod,
   });
 
   if (existing) {
@@ -202,34 +126,7 @@ export async function getOrCreateAuctioneerDepositPeriod(
 
   await context.db.insert(schema.auctioneerDepositPeriod).values(newPeriod);
 
-  // Re-query with relations to return consistent type
-  const created = await context.db.sql.query.auctioneerDepositPeriod.findFirst({
-    where: and(
-      eq(schema.auctioneerDepositPeriod.chainId, chainId),
-      eq(schema.auctioneerDepositPeriod.auctioneer, auctioneerAddress.toLowerCase() as Address),
-      eq(schema.auctioneerDepositPeriod.depositAsset, depositAssetAddress.toLowerCase() as Address),
-      eq(schema.auctioneerDepositPeriod.depositPeriod, depositPeriod),
-    ),
-    with: {
-      rAssetPeriod: {
-        with: {
-          rDepositAsset: {
-            with: {
-              rAsset: true,
-            },
-          },
-        },
-      },
-    },
-  });
-
-  if (!created) {
-    throw new Error(
-      `Failed to create auctioneer deposit period: ${chainId}:${auctioneerAddress}:${depositAssetAddress}:${depositPeriod}`,
-    );
-  }
-
-  return created;
+  return newPeriod;
 }
 
 /**

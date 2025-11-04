@@ -4,6 +4,7 @@ import { ponder } from "ponder:registry";
 import schema from "ponder:schema";
 import type { Address } from "viem";
 import { fetchPositions, fetchUserPositionIds } from "../contracts/position";
+import { getAssetDecimals } from "../entities/asset";
 import {
   getOrCreateDepositFacility,
   getOrCreateDepositFacilityAsset,
@@ -109,7 +110,7 @@ ponder.on("ConvertibleDepositFacility:AssetCommitCancelled", async ({ event, con
     facilityAddress,
     assetAddress,
   );
-  const assetDecimals = facilityAsset.rDepositAsset.rAsset.decimals;
+  const assetDecimals = await getAssetDecimals(context, chainId, assetAddress);
 
   // Calculate committed amount
   const committedAmount = facilityAsset.committedAmount - BigInt(event.args.amount);
@@ -149,7 +150,7 @@ ponder.on("ConvertibleDepositFacility:AssetCommitWithdrawn", async ({ event, con
     facilityAddress,
     assetAddress,
   );
-  const assetDecimals = facilityAsset.rDepositAsset.rAsset.decimals;
+  const assetDecimals = await getAssetDecimals(context, chainId, assetAddress);
 
   // Calculate committed amount
   const committedAmount = facilityAsset.committedAmount - BigInt(event.args.amount);
@@ -189,7 +190,7 @@ ponder.on("ConvertibleDepositFacility:AssetCommitted", async ({ event, context }
     facilityAddress,
     assetAddress,
   );
-  const assetDecimals = facilityAsset.rDepositAsset.rAsset.decimals;
+  const assetDecimals = await getAssetDecimals(context, chainId, assetAddress);
 
   // Calculate committed amount
   const committedAmount = facilityAsset.committedAmount + BigInt(event.args.amount);
@@ -271,7 +272,7 @@ ponder.on("ConvertibleDepositFacility:CreatedDeposit", async ({ event, context }
   // Create/fetch records
   // Note: getOrCreateDepositAssetPeriod is called internally by getOrCreateDepositFacilityAssetPeriod,
   // so we skip calling it here to avoid duplicate database queries
-  const facilityAssetPeriod = await getOrCreateDepositFacilityAssetPeriod(
+  await getOrCreateDepositFacilityAssetPeriod(
     context,
     chainId,
     facilityAddress,
@@ -293,7 +294,7 @@ ponder.on("ConvertibleDepositFacility:CreatedDeposit", async ({ event, context }
     BigInt(event.block.timestamp),
   );
   // Get asset decimals from nested relation
-  const assetDecimals = facilityAssetPeriod.rAssetPeriod.rDepositAsset.rAsset.decimals;
+  const assetDecimals = await getAssetDecimals(context, chainId, assetAddress);
 
   // Record event
   await context.db.insert(schema.convertibleDepositFacilityCreatedDeposit).values({
@@ -339,7 +340,7 @@ ponder.on("ConvertibleDepositFacility:Reclaimed", async ({ event, context }) => 
   const depositorAddress = event.args.user as Address;
 
   // Create/fetch records
-  const facilityAssetPeriod = await getOrCreateDepositFacilityAssetPeriod(
+  await getOrCreateDepositFacilityAssetPeriod(
     context,
     chainId,
     facilityAddress,
@@ -348,7 +349,7 @@ ponder.on("ConvertibleDepositFacility:Reclaimed", async ({ event, context }) => 
   );
   await getOrCreateDepositor(context, chainId, depositorAddress);
   // Get asset decimals from nested relation
-  const assetDecimals = facilityAssetPeriod.rAssetPeriod.rDepositAsset.rAsset.decimals;
+  const assetDecimals = await getAssetDecimals(context, chainId, assetAddress);
 
   // Record event
   await context.db.insert(schema.convertibleDepositFacilityReclaimed).values({
@@ -390,7 +391,7 @@ ponder.on("ConvertibleDepositFacility:ConvertedDeposit", async ({ event, context
   await getOrCreateDepositor(context, chainId, depositorAddress);
   // Note: getOrCreateDepositAssetPeriod is called internally by getOrCreateDepositFacilityAssetPeriod,
   // so we skip calling it here to avoid duplicate database queries
-  const facilityAssetPeriod = await getOrCreateDepositFacilityAssetPeriod(
+  await getOrCreateDepositFacilityAssetPeriod(
     context,
     chainId,
     facilityAddress,
@@ -398,7 +399,7 @@ ponder.on("ConvertibleDepositFacility:ConvertedDeposit", async ({ event, context
     depositPeriod,
   );
   // Get asset decimals from nested relation
-  const assetDecimals = facilityAssetPeriod.rAssetPeriod.rDepositAsset.rAsset.decimals;
+  const assetDecimals = await getAssetDecimals(context, chainId, assetAddress);
 
   // Create record for the parent event
   await context.db.insert(schema.convertibleDepositFacilityConvertedDeposits).values({
@@ -504,13 +505,8 @@ ponder.on("ConvertibleDepositFacility:ClaimedYield", async ({ event, context }) 
   const assetAddress = event.args.asset as Address;
 
   // Create/fetch records
-  const facilityAsset = await getOrCreateDepositFacilityAsset(
-    context,
-    chainId,
-    facilityAddress,
-    assetAddress,
-  );
-  const assetDecimals = facilityAsset.rDepositAsset.rAsset.decimals;
+  await getOrCreateDepositFacilityAsset(context, chainId, facilityAddress, assetAddress);
+  const assetDecimals = await getAssetDecimals(context, chainId, assetAddress);
 
   // Record event
   await context.db.insert(schema.convertibleDepositFacilityClaimedYield).values({

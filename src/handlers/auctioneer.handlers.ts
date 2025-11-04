@@ -4,7 +4,7 @@ import { ponder } from "ponder:registry";
 import schema from "ponder:schema";
 import type { Address } from "viem";
 import { fetchAuctioneerCurrentTick } from "../contracts/auctioneer";
-import { getOrCreateDepositAsset } from "../entities/asset";
+import { getAssetDecimals, getOrCreateDepositAsset } from "../entities/asset";
 import {
   getOrCreateAuctioneer,
   getOrCreateAuctioneerDepositPeriod,
@@ -263,7 +263,7 @@ ponder.on("ConvertibleDepositAuctioneer:Bid", async ({ event, context }) => {
   // Get or create entities
   // Note: getOrCreateDepositFacility, getOrCreateDepositor and getOrCreateDepositAssetPeriod are called internally by getOrCreatePosition,
   // so we skip calling them here to avoid duplicate database queries
-  const position = await getOrCreatePosition(
+  await getOrCreatePosition(
     context,
     chainId,
     auctioneerAddress, // Facility address (same as auctioneer in this case)
@@ -276,9 +276,8 @@ ponder.on("ConvertibleDepositAuctioneer:Bid", async ({ event, context }) => {
     BigInt(event.block.timestamp),
   );
 
-  // Get asset decimals from position's related deposit asset period (which includes nested asset relation)
-  // This avoids needing to fetch auctioneerDepositPeriod just for decimals
-  const assetDecimals = position.rAssetPeriod.rDepositAsset.rAsset.decimals;
+  // Get asset decimals
+  const assetDecimals = await getAssetDecimals(context, chainId, depositAssetAddress);
 
   // Fetch tick data from contract
   const tickData = await fetchAuctioneerCurrentTick(
@@ -336,8 +335,8 @@ ponder.on("ConvertibleDepositAuctioneer:AuctionParametersUpdated", async ({ even
 
   // Get or create entities
   await getOrCreateAuctioneer(context, chainId, auctioneerAddress);
-  const depositAsset = await getOrCreateDepositAsset(context, chainId, depositAssetAddress);
-  const assetDecimals = depositAsset.rAsset.decimals;
+  await getOrCreateDepositAsset(context, chainId, depositAssetAddress);
+  const assetDecimals = await getAssetDecimals(context, chainId, depositAssetAddress);
 
   // Calculate decimals
   const target = event.args.newTarget;

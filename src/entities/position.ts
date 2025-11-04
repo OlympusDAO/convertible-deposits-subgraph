@@ -3,11 +3,10 @@
 
 import type { Context } from "ponder:registry";
 import schema from "ponder:schema";
-import { and, eq } from "ponder";
 import type { Address } from "viem";
 import { fetchPosition } from "../contracts/position";
 import { toDecimal } from "../utils/decimal";
-import { getOrCreateDepositAssetPeriod } from "./asset";
+import { getAssetDecimals, getOrCreateDepositAssetPeriod } from "./asset";
 import { getOrCreateDepositFacility } from "./depositFacility";
 import { getOrCreateDepositor } from "./depositor";
 import { getOrCreateReceiptToken } from "./receiptToken";
@@ -17,7 +16,7 @@ const UINT256_MAX = BigInt(
 );
 
 /**
- * Get or create a ConvertibleDepositPosition (with nested asset relation for decimals)
+ * Get or create a ConvertibleDepositPosition
  */
 export async function getOrCreatePosition(
   context: Context,
@@ -30,32 +29,11 @@ export async function getOrCreatePosition(
   txHash: Address,
   block: bigint,
   timestamp: bigint,
-): Promise<
-  typeof schema.convertibleDepositPosition.$inferSelect & {
-    rAssetPeriod: typeof schema.depositAssetPeriod.$inferSelect & {
-      rDepositAsset: typeof schema.depositAsset.$inferSelect & {
-        rAsset: typeof schema.asset.$inferSelect;
-      };
-    };
-  }
-> {
-  // Check if position exists with nested relations
-  const existing = await context.db.sql.query.convertibleDepositPosition.findFirst({
-    where: and(
-      eq(schema.convertibleDepositPosition.chainId, chainId),
-      eq(schema.convertibleDepositPosition.positionId, positionId),
-    ),
-    with: {
-      rAssetPeriod: {
-        with: {
-          rDepositAsset: {
-            with: {
-              rAsset: true,
-            },
-          },
-        },
-      },
-    },
+): Promise<typeof schema.convertibleDepositPosition.$inferSelect> {
+  // Check if position exists
+  const existing = await context.db.find(schema.convertibleDepositPosition, {
+    chainId,
+    positionId,
   });
 
   if (existing) {
@@ -65,14 +43,10 @@ export async function getOrCreatePosition(
   // Get or create related entities
   await getOrCreateDepositFacility(context, chainId, facilityAddress);
   await getOrCreateDepositor(context, chainId, depositorAddress);
-  // Get deposit asset period with nested asset relation for decimals
-  const depositAssetPeriod = await getOrCreateDepositAssetPeriod(
-    context,
-    chainId,
-    depositAssetAddress,
-    depositPeriod,
-  );
-  const assetDecimals = depositAssetPeriod.rDepositAsset.rAsset.decimals;
+  await getOrCreateDepositAssetPeriod(context, chainId, depositAssetAddress, depositPeriod);
+
+  // Get asset decimals
+  const assetDecimals = await getAssetDecimals(context, chainId, depositAssetAddress);
 
   // Fetch receipt token data
   const receiptToken = await getOrCreateReceiptToken(
@@ -117,37 +91,7 @@ export async function getOrCreatePosition(
 
   await context.db.insert(schema.convertibleDepositPosition).values(newPosition);
 
-  // Re-query with relations to return consistent type
-  const created = await context.db.sql.query.convertibleDepositPosition.findFirst({
-    where: and(
-      eq(schema.convertibleDepositPosition.chainId, chainId),
-      eq(schema.convertibleDepositPosition.positionId, positionId),
-    ),
-    with: {
-      rAssetPeriod: {
-        with: {
-          rDepositAsset: {
-            with: {
-              rAsset: true,
-            },
-          },
-        },
-      },
-    },
-  });
-
-  if (!created) {
-    throw new Error(`Failed to create position: ${chainId}:${positionId}`);
-  }
-
-  // Ensure nested relations exist before returning
-  if (!created.rAssetPeriod?.rDepositAsset?.rAsset?.decimals) {
-    throw new Error(
-      `Deposit asset period or asset not found for position: ${chainId}, ${positionId}`,
-    );
-  }
-
-  return created;
+  return newPosition;
 }
 
 /**

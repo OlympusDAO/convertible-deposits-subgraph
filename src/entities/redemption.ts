@@ -1,17 +1,16 @@
 import type { Context } from "ponder:registry";
 import schema from "ponder:schema";
-import { and, eq } from "ponder";
 import type { Address } from "viem";
 import { fetchRedemption } from "../contracts/redemptionVault";
 import { toDecimal } from "../utils/decimal";
-import { getOrCreateDepositAssetPeriod } from "./asset";
+import { getAssetDecimals, getOrCreateDepositAssetPeriod } from "./asset";
 import { getOrCreateDepositFacility } from "./depositFacility";
 import { getOrCreateDepositor } from "./depositor";
 import { getOrCreateReceiptToken } from "./receiptToken";
 import { getOrCreateRedemptionVault } from "./redemptionVault";
 
 /**
- * Get or create a Redemption entity (with nested asset relation for decimals)
+ * Get or create a Redemption entity
  */
 export async function getOrCreateRedemption(
   context: Context,
@@ -22,34 +21,13 @@ export async function getOrCreateRedemption(
   depositAssetPeriodMonths: number,
   userAddress: Address,
   redemptionId: number,
-): Promise<
-  typeof schema.redemption.$inferSelect & {
-    rAssetPeriod: typeof schema.depositAssetPeriod.$inferSelect & {
-      rDepositAsset: typeof schema.depositAsset.$inferSelect & {
-        rAsset: typeof schema.asset.$inferSelect;
-      };
-    };
-  }
-> {
-  // Check if redemption already exists with nested relations
-  const existing = await context.db.sql.query.redemption.findFirst({
-    where: and(
-      eq(schema.redemption.chainId, chainId),
-      eq(schema.redemption.redemptionVault, redemptionVaultAddress.toLowerCase() as Address),
-      eq(schema.redemption.depositor, userAddress.toLowerCase() as Address),
-      eq(schema.redemption.redemptionId, redemptionId),
-    ),
-    with: {
-      rAssetPeriod: {
-        with: {
-          rDepositAsset: {
-            with: {
-              rAsset: true,
-            },
-          },
-        },
-      },
-    },
+): Promise<typeof schema.redemption.$inferSelect> {
+  // Check if redemption already exists
+  const existing = await context.db.find(schema.redemption, {
+    chainId,
+    redemptionVault: redemptionVaultAddress.toLowerCase() as Address,
+    depositor: userAddress.toLowerCase() as Address,
+    redemptionId,
   });
 
   if (existing) {
@@ -67,7 +45,7 @@ export async function getOrCreateRedemption(
   );
   await getOrCreateRedemptionVault(context, chainId, redemptionVaultAddress);
   await getOrCreateDepositFacility(context, chainId, facilityAddress);
-  const depositAssetPeriod = await getOrCreateDepositAssetPeriod(
+  await getOrCreateDepositAssetPeriod(
     context,
     chainId,
     depositAssetAddress,
@@ -82,8 +60,11 @@ export async function getOrCreateRedemption(
     redemptionId,
   );
 
+  // Get asset decimals
+  const assetDecimals = await getAssetDecimals(context, chainId, depositAssetAddress);
+
   // Create redemption record
-  await context.db.insert(schema.redemption).values({
+  const newRedemption = {
     chainId,
     redemptionVault: redemptionVaultAddress.toLowerCase() as Address,
     depositor: userAddress.toLowerCase() as Address,
@@ -95,45 +76,17 @@ export async function getOrCreateRedemption(
     receiptTokenId: receiptToken.receiptTokenId,
     positionId: redemptionData.positionId,
     amount: redemptionData.amount,
-    amountDecimal: toDecimal(
-      redemptionData.amount,
-      depositAssetPeriod.rDepositAsset.rAsset.decimals,
-    ),
+    amountDecimal: toDecimal(redemptionData.amount, assetDecimals),
     redeemableAt: redemptionData.redeemableAt,
-  });
+  };
 
-  // Re-query with relations to return consistent type
-  const created = await context.db.sql.query.redemption.findFirst({
-    where: and(
-      eq(schema.redemption.chainId, chainId),
-      eq(schema.redemption.redemptionVault, redemptionVaultAddress.toLowerCase() as Address),
-      eq(schema.redemption.depositor, userAddress.toLowerCase() as Address),
-      eq(schema.redemption.redemptionId, redemptionId),
-    ),
-    with: {
-      rAssetPeriod: {
-        with: {
-          rDepositAsset: {
-            with: {
-              rAsset: true,
-            },
-          },
-        },
-      },
-    },
-  });
+  await context.db.insert(schema.redemption).values(newRedemption);
 
-  if (!created) {
-    throw new Error(
-      `Failed to create redemption: ${chainId}, ${redemptionVaultAddress}, ${userAddress}, ${redemptionId}`,
-    );
-  }
-
-  return created;
+  return newRedemption;
 }
 
 /**
- * Get an existing Redemption entity with nested asset relation (throws if not found)
+ * Get an existing Redemption entity (throws if not found)
  */
 export async function getRedemption(
   context: Context,
@@ -141,33 +94,12 @@ export async function getRedemption(
   redemptionVaultAddress: Address,
   userAddress: Address,
   redemptionId: number,
-): Promise<
-  typeof schema.redemption.$inferSelect & {
-    rAssetPeriod: typeof schema.depositAssetPeriod.$inferSelect & {
-      rDepositAsset: typeof schema.depositAsset.$inferSelect & {
-        rAsset: typeof schema.asset.$inferSelect;
-      };
-    };
-  }
-> {
-  const redemption = await context.db.sql.query.redemption.findFirst({
-    where: and(
-      eq(schema.redemption.chainId, chainId),
-      eq(schema.redemption.redemptionVault, redemptionVaultAddress.toLowerCase() as Address),
-      eq(schema.redemption.depositor, userAddress.toLowerCase() as Address),
-      eq(schema.redemption.redemptionId, redemptionId),
-    ),
-    with: {
-      rAssetPeriod: {
-        with: {
-          rDepositAsset: {
-            with: {
-              rAsset: true,
-            },
-          },
-        },
-      },
-    },
+): Promise<typeof schema.redemption.$inferSelect> {
+  const redemption = await context.db.find(schema.redemption, {
+    chainId,
+    redemptionVault: redemptionVaultAddress.toLowerCase() as Address,
+    depositor: userAddress.toLowerCase() as Address,
+    redemptionId,
   });
 
   if (!redemption) {
