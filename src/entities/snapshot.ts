@@ -241,6 +241,7 @@ export async function refreshAuctionState(
 
 /**
  * Get or create a DepositFacilityAssetSnapshot for the given facility and asset
+ * @param claimableYield - Optional pre-fetched claimable yield. If not provided, will be fetched from contract.
  */
 export async function getOrCreateDepositFacilityAssetSnapshot(
   context: Context,
@@ -249,6 +250,7 @@ export async function getOrCreateDepositFacilityAssetSnapshot(
   timestamp: bigint,
   facilityAddress: Address,
   depositAssetAddress: Address,
+  claimableYield?: bigint,
 ): Promise<typeof schema.depositFacilityAssetSnapshot.$inferSelect> {
   // Check if snapshot already exists
   const existing = await context.db.find(schema.depositFacilityAssetSnapshot, {
@@ -282,12 +284,10 @@ export async function getOrCreateDepositFacilityAssetSnapshot(
   // Get asset decimals
   const assetDecimals = await getAssetDecimals(context, chainId, depositAssetAddress);
 
-  // Fetch claimable yield from contract
-  const claimableYield = await fetchFacilityClaimableYield(
-    context.client,
-    facilityAddress,
-    depositAssetAddress,
-  );
+  // Fetch claimable yield from contract if not provided
+  const finalClaimableYield =
+    claimableYield ??
+    (await fetchFacilityClaimableYield(context.client, facilityAddress, depositAssetAddress));
 
   // Create new snapshot
   const newSnapshot = {
@@ -302,8 +302,8 @@ export async function getOrCreateDepositFacilityAssetSnapshot(
     pendingRedemptionDecimal: toDecimal(pendingRedemption, assetDecimals),
     borrowedAmount,
     borrowedAmountDecimal: toDecimal(borrowedAmount, assetDecimals),
-    claimableYield,
-    claimableYieldDecimal: toDecimal(claimableYield, assetDecimals),
+    claimableYield: finalClaimableYield,
+    claimableYieldDecimal: toDecimal(finalClaimableYield, assetDecimals),
   };
 
   await context.db.insert(schema.depositFacilityAssetSnapshot).values(newSnapshot);

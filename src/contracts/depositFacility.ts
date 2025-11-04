@@ -78,6 +78,86 @@ export async function fetchFacilityClaimableYield(
 }
 
 /**
+ * Batch fetch facility claimable yield for multiple facility/asset pairs in a single multicall
+ * This is more efficient than making separate calls, especially in loops
+ * @param facilityAssetMap - Map of facility addresses to arrays of asset addresses
+ * @returns Nested Map: Map<facilityAddress, Map<assetAddress, claimableYield>>
+ */
+export async function fetchFacilityClaimableYieldBatch(
+  client: PonderClient,
+  facilityAssetMap: Map<Address, Address[]>,
+): Promise<Map<Address, Map<Address, bigint>>> {
+  // Build contracts array directly from Map structure
+  const contracts: Array<{
+    address: Address;
+    abi: typeof ConvertibleDepositFacilityAbi;
+    functionName: "previewClaimYield";
+    args: [Address];
+    facilityAddress: Address;
+    assetAddress: Address;
+  }> = [];
+
+  for (const [facilityAddress, assetAddresses] of facilityAssetMap) {
+    for (const assetAddress of assetAddresses) {
+      contracts.push({
+        address: facilityAddress,
+        abi: ConvertibleDepositFacilityAbi,
+        functionName: "previewClaimYield" as const,
+        args: [assetAddress] as [Address],
+        facilityAddress,
+        assetAddress,
+      });
+    }
+  }
+
+  if (contracts.length === 0) {
+    return new Map();
+  }
+
+  const results = await client.multicall({
+    contracts: contracts.map(({ address, abi, functionName, args }) => ({
+      address,
+      abi,
+      functionName,
+      args,
+    })),
+  });
+
+  // Build nested Map structure
+  const yieldMap = new Map<Address, Map<Address, bigint>>();
+  for (let i = 0; i < results.length; i++) {
+    const result = results[i];
+    const contract = contracts[i];
+    if (!contract) {
+      throw new Error(`Missing contract at index ${i}`);
+    }
+    if (!result) {
+      throw new Error(
+        `No result returned for facility ${contract.facilityAddress} asset ${contract.assetAddress} at index ${i}`,
+      );
+    }
+    if (result.status === "failure") {
+      throw new Error(
+        `Failed to fetch claimable yield for facility ${contract.facilityAddress} asset ${contract.assetAddress}: ${result.error}`,
+      );
+    }
+
+    const claimableYield = result.result as bigint;
+
+    // Get or create inner Map for this facility
+    let facilityYieldMap = yieldMap.get(contract.facilityAddress);
+    if (!facilityYieldMap) {
+      facilityYieldMap = new Map<Address, bigint>();
+      yieldMap.set(contract.facilityAddress, facilityYieldMap);
+    }
+
+    facilityYieldMap.set(contract.assetAddress, claimableYield);
+  }
+
+  return yieldMap;
+}
+
+/**
  * Fetch receipt token manager address from deposit manager
  */
 export async function fetchReceiptTokenManager(
