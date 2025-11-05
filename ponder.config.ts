@@ -3,13 +3,13 @@ import { createConfig } from "ponder";
 import { ConvertibleDepositAuctioneerAbi } from "./abis/ConvertibleDepositAuctioneer";
 import { ConvertibleDepositFacilityAbi } from "./abis/ConvertibleDepositFacility";
 import { DepositRedemptionVaultAbi } from "./abis/DepositRedemptionVault";
-import { getEnv } from "./src/utils/env";
+import { getTransport } from "./src/utils/rpc";
 
 export default createConfig({
   chains: {
     sepolia: {
       id: 11155111,
-      rpc: [getEnv("PONDER_RPC_URL_11155111")],
+      rpc: getTransport(11155111),
     },
   },
   contracts: {
