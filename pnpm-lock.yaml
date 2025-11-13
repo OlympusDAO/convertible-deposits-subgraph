@@ -9,14 +9,14 @@ importers:
   .:
     dependencies:
       hono:
-        specifier: ^4.5.0
-        version: 4.10.4
+        specifier: ^4.10.5
+        version: 4.10.5
       ponder:
-        specifier: ^0.14.12
-        version: 0.14.12(@opentelemetry/api@1.9.0)(@types/node@20.19.24)(hono@4.10.4)(typescript@5.9.3)(viem@2.38.6(typescript@5.9.3))
+        specifier: ^0.14.15
+        version: 0.14.15(@opentelemetry/api@1.9.0)(@types/node@20.19.24)(hono@4.10.5)(typescript@5.9.3)(viem@2.39.0(typescript@5.9.3))
       viem:
-        specifier: ^2.38.6
-        version: 2.38.6(typescript@5.9.3)
+        specifier: ^2.39.0
+        version: 2.39.0(typescript@5.9.3)
     devDependencies:
       '@biomejs/biome':
         specifier: ^2.3.5
@@ -341,8 +341,8 @@ packages:
     resolution: {integrity: sha512-+1VkjdD0QBLPodGrJUeqarH8VAIvQODIbwh9XpP5Syisf7YoQgsJKPNFoqqLQlu+VQ/tVSshMR6loPMn8U+dPg==}
     engines: {node: '>=14'}
 
-  '@ponder/utils@0.2.15':
-    resolution: {integrity: sha512-3qb7FvCIJuabBvLUfh89pL1w/kcKmvQr6bdlg3LbCZGipfhphqmBwN+eZcgy8aiceHStc4ebLFe79bZitREopA==}
+  '@ponder/utils@0.2.16':
+    resolution: {integrity: sha512-Q2TpJ1BywdZhGDjtWe6mDQXn/jF2YDfMwdblDytwGjQ6zuFyuujP+o/liVbuHfqSYmeUOPHugxk5yKAhHwWfJw==}
     peerDependencies:
       typescript: '>=5.0.4'
       viem: '>=2'
@@ -818,8 +818,8 @@ packages:
     resolution: {integrity: sha512-mS1lbMsxgQj6hge1XZ6p7GPhbrtFwUFYi3wRzXAC/FmYnyXMTvvI3td3rjmQ2u8ewXueaSvRPWaEcgVVOT9Jnw==}
     engines: {node: ^12.22.0 || ^14.16.0 || ^16.0.0 || >=17.0.0}
 
-  hono@4.10.4:
-    resolution: {integrity: sha512-YG/fo7zlU3KwrBL5vDpWKisLYiM+nVstBQqfr7gCPbSYURnNEP9BDxEMz8KfsDR9JX0lJWDRNc6nXX31v7ZEyg==}
+  hono@4.10.5:
+    resolution: {integrity: sha512-h/MXuTkoAK8NG1EfDp0jI1YLf6yGdDnfkebRO2pwEh5+hE3RAJFXkCsnD0vamSiARK4ZrB6MY+o3E/hCnOyHrQ==}
     engines: {node: '>=16.9.0'}
 
   http-terminator@3.2.0:
@@ -1001,8 +1001,8 @@ packages:
     resolution: {integrity: sha512-ip4qdzjkAyDDZklUaZkcRFb2iA118H9SgRh8yzTkSQK8HilsOJF7rSY8HoW5+I0M46AZgX/pxbprf2vvzQCE0Q==}
     hasBin: true
 
-  ponder@0.14.12:
-    resolution: {integrity: sha512-hIKDiFEgJ75e4Zgg3u81OJAWAE41pyFIjr+yPu7I3UzX6kg0M3UDpAefukuKjJepkowWMHUNTGNSlnbFYzYzOA==}
+  ponder@0.14.15:
+    resolution: {integrity: sha512-AKrG/n7L7qQ2Oi3mKjwSUJXhWF5X/eKOI3QpSERSeNNEXKimDIVm4hVu9/Ais0/Vw5kg9f3pZh+d9b9pYnRcpg==}
     engines: {node: '>=18.14'}
     hasBin: true
     peerDependencies:
@@ -1196,8 +1196,8 @@ packages:
   urlpattern-polyfill@10.1.0:
     resolution: {integrity: sha512-IGjKp/o0NL3Bso1PymYURCJxMPNAf/ILOpendP9f5B6e1rTJgdgiOvgfoT8VxCAdY+Wisb9uhGaJJf3yZ2V9nw==}
 
-  viem@2.38.6:
-    resolution: {integrity: sha512-aqO6P52LPXRjdnP6rl5Buab65sYa4cZ6Cpn+k4OLOzVJhGIK8onTVoKMFMT04YjDfyDICa/DZyV9HmvLDgcjkw==}
+  viem@2.39.0:
+    resolution: {integrity: sha512-rCN+IfnMESlrg/iPyyVL+M9NS/BHzyyNy72470tFmbTuscY3iPaZGMtJDcHKKV8TC6HV9DjWk0zWX6cpu0juyA==}
     peerDependencies:
       typescript: '>=5.0.4'
     peerDependenciesMeta:
@@ -1496,9 +1496,9 @@ snapshots:
       '@repeaterjs/repeater': 3.0.6
       tslib: 2.8.1
 
-  '@hono/node-server@1.19.5(hono@4.10.4)':
+  '@hono/node-server@1.19.5(hono@4.10.5)':
     dependencies:
-      hono: 4.10.4
+      hono: 4.10.5
 
   '@isaacs/cliui@8.0.2':
     dependencies:
@@ -1522,9 +1522,9 @@ snapshots:
   '@pkgjs/parseargs@0.11.0':
     optional: true
 
-  '@ponder/utils@0.2.15(typescript@5.9.3)(viem@2.38.6(typescript@5.9.3))':
+  '@ponder/utils@0.2.16(typescript@5.9.3)(viem@2.39.0(typescript@5.9.3))':
     dependencies:
-      viem: 2.38.6(typescript@5.9.3)
+      viem: 2.39.0(typescript@5.9.3)
     optionalDependencies:
       typescript: 5.9.3
 
@@ -1876,7 +1876,7 @@ snapshots:
 
   graphql@16.11.0: {}
 
-  hono@4.10.4: {}
+  hono@4.10.5: {}
 
   http-terminator@3.2.0:
     dependencies:
@@ -2045,7 +2045,7 @@ snapshots:
       sonic-boom: 3.8.1
       thread-stream: 2.7.0
 
-  ponder@0.14.12(@opentelemetry/api@1.9.0)(@types/node@20.19.24)(hono@4.10.4)(typescript@5.9.3)(viem@2.38.6(typescript@5.9.3)):
+  ponder@0.14.15(@opentelemetry/api@1.9.0)(@types/node@20.19.24)(hono@4.10.5)(typescript@5.9.3)(viem@2.39.0(typescript@5.9.3)):
     dependencies:
       '@babel/code-frame': 7.27.1
       '@commander-js/extra-typings': 12.1.0(commander@12.1.0)
@@ -2053,8 +2053,8 @@ snapshots:
       '@escape.tech/graphql-armor-max-aliases': 2.6.2
       '@escape.tech/graphql-armor-max-depth': 2.4.2
       '@escape.tech/graphql-armor-max-tokens': 2.5.1
-      '@hono/node-server': 1.19.5(hono@4.10.4)
-      '@ponder/utils': 0.2.15(typescript@5.9.3)(viem@2.38.6(typescript@5.9.3))
+      '@hono/node-server': 1.19.5(hono@4.10.5)
+      '@ponder/utils': 0.2.16(typescript@5.9.3)(viem@2.39.0(typescript@5.9.3))
       abitype: 0.10.3(typescript@5.9.3)
       ansi-escapes: 7.1.1
       commander: 12.1.0
@@ -2066,7 +2066,7 @@ snapshots:
       glob: 10.4.5
       graphql: 16.11.0
       graphql-yoga: 5.16.0(graphql@16.11.0)
-      hono: 4.10.4
+      hono: 4.10.5
       http-terminator: 3.2.0
       kysely: 0.26.3
       pg: 8.16.3
@@ -2080,7 +2080,7 @@ snapshots:
       stacktrace-parser: 0.1.11
       superjson: 2.2.5
       terminal-size: 4.0.0
-      viem: 2.38.6(typescript@5.9.3)
+      viem: 2.39.0(typescript@5.9.3)
       vite: 5.0.7(@types/node@20.19.24)
       vite-node: 1.0.2(@types/node@20.19.24)
       vite-tsconfig-paths: 4.3.1(typescript@5.9.3)(vite@5.0.7(@types/node@20.19.24))
@@ -2295,7 +2295,7 @@ snapshots:
 
   urlpattern-polyfill@10.1.0: {}
 
-  viem@2.38.6(typescript@5.9.3):
+  viem@2.39.0(typescript@5.9.3):
     dependencies:
       '@noble/curves': 1.9.1
       '@noble/hashes': 1.8.0
