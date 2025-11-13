@@ -26,7 +26,9 @@ ponder.on("Snapshot:block", async ({ event, context }) => {
   }
 
   for (const auctioneer of auctioneers) {
-    console.log(`Refreshing auction state for auctioneer ${auctioneer.address} on chain ${chainId}`);
+    console.log(
+      `Refreshing auction state for auctioneer ${auctioneer.address} on chain ${chainId}`,
+    );
     await refreshAuctionState(context, chainId, blockNumber, timestamp, auctioneer.address);
   }
 
