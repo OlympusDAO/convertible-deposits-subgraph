@@ -5,8 +5,15 @@ import { ConvertibleDepositFacilityAbi } from "./abis/ConvertibleDepositFacility
 import { DepositRedemptionVaultAbi } from "./abis/DepositRedemptionVault";
 import { getTransport } from "./src/utils/rpc";
 
+const START_BLOCK_SEPOLIA = 9180152;
+const START_BLOCK_MAINNET = 23747531;
+
 export default createConfig({
   chains: {
+    mainnet: {
+      id: 1,
+      rpc: getTransport(1),
+    },
     sepolia: {
       id: 11155111,
       rpc: getTransport(11155111),
@@ -14,29 +21,72 @@ export default createConfig({
   },
   contracts: {
     ConvertibleDepositAuctioneer: {
-      chain: "sepolia",
       abi: ConvertibleDepositAuctioneerAbi,
-      address: "0xc14156AF3bF6c11b1c40C8f51f64bA5496870126",
-      startBlock: 9180152,
+      chain: {
+        mainnet: {
+          address: [
+            "0xF35193DA8C10e44aF10853Ba5a3a1a6F7529E39a",
+          ],
+          startBlock: START_BLOCK_MAINNET,
+        },
+        sepolia: {
+          address: [
+            "0xc14156AF3bF6c11b1c40C8f51f64bA5496870126",
+            "0x247f1989aDc0F63D07b91Bf645De879b9de06fbB",
+          ],
+          startBlock: START_BLOCK_SEPOLIA,
+        },
+      },
     },
     ConvertibleDepositFacility: {
-      chain: "sepolia",
       abi: ConvertibleDepositFacilityAbi,
-      address: "0x87568265eb6Ea27f37613d242D4192B6f6771269",
-      startBlock: 9180152,
+      chain: {
+        mainnet: {
+          address: [
+            "0xEBDe552D851DD6Dfd3D360C596D3F4aF6e5F9678"
+          ],
+          startBlock: START_BLOCK_MAINNET,
+        },
+        sepolia: {
+          address: [
+            "0x87568265eb6Ea27f37613d242D4192B6f6771269",
+            "0x0bE69702E83f06A027E6841B614f6946d1265441",
+          ],
+          startBlock: START_BLOCK_SEPOLIA,
+        },
+      },
     },
     DepositRedemptionVault: {
-      chain: "sepolia",
       abi: DepositRedemptionVaultAbi,
-      address: "0x69b2Be653BAB628116b360818BE75a2d97b45C4a",
-      startBlock: 9180152,
+      chain: {
+        mainnet: {
+          address: [
+            "0x20a3d8510f2e1176E8Db4CeA9883a8287a9029Db"
+          ],
+          startBlock: START_BLOCK_MAINNET,
+        },
+        sepolia: {
+          address: [
+            "0x69b2Be653BAB628116b360818BE75a2d97b45C4a",
+            "0x93AcaDa86ad23C85e96869D46945fA6FFb7a4036",
+          ],
+          startBlock: START_BLOCK_SEPOLIA,
+        },
+      },
     },
   },
   blocks: {
     Snapshot: {
-      chain: "sepolia",
-      interval: 3000, // ~1 hour at 12s block time
-      startBlock: 9180152, // Activation block
+      chain: {
+        mainnet: {
+          interval: 3000, // ~1 hour at 12s block time
+          startBlock: START_BLOCK_MAINNET,
+        },
+        sepolia: {
+          interval: 3000, // ~1 hour at 12s block time
+          startBlock: START_BLOCK_SEPOLIA,
+        },
+      },
     },
   },
 });
