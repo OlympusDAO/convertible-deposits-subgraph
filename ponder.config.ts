@@ -25,14 +25,14 @@ export default createConfig({
       chain: {
         mainnet: {
           address: [
-            "0xF35193DA8C10e44aF10853Ba5a3a1a6F7529E39a",
+            "0xF35193DA8C10e44aF10853Ba5a3a1a6F7529E39a", // Commit SHA: 06cd3728b58af36639dea8a6f0a3c4d79f557b65
           ],
           startBlock: START_BLOCK_MAINNET,
         },
         sepolia: {
           address: [
-            "0xc14156AF3bF6c11b1c40C8f51f64bA5496870126",
-            "0x247f1989aDc0F63D07b91Bf645De879b9de06fbB",
+            "0xc14156AF3bF6c11b1c40C8f51f64bA5496870126", // Commit SHA: dfae803d86eb902c328dd81bbe6162eb69c7cbd8
+            "0x247f1989aDc0F63D07b91Bf645De879b9de06fbB", // Commit SHA: bad6eee15e2c2c2bdfd128e5516f680e16633bef
           ],
           startBlock: START_BLOCK_SEPOLIA,
         },
@@ -43,14 +43,14 @@ export default createConfig({
       chain: {
         mainnet: {
           address: [
-            "0xEBDe552D851DD6Dfd3D360C596D3F4aF6e5F9678"
+            "0xEBDe552D851DD6Dfd3D360C596D3F4aF6e5F9678", // Commit SHA: 06cd3728b58af36639dea8a6f0a3c4d79f557b65
           ],
           startBlock: START_BLOCK_MAINNET,
         },
         sepolia: {
           address: [
-            "0x87568265eb6Ea27f37613d242D4192B6f6771269",
-            "0x0bE69702E83f06A027E6841B614f6946d1265441",
+            "0x87568265eb6Ea27f37613d242D4192B6f6771269", // Commit SHA: dfae803d86eb902c328dd81bbe6162eb69c7cbd8
+            "0x0bE69702E83f06A027E6841B614f6946d1265441", // Commit SHA: bad6eee15e2c2c2bdfd128e5516f680e16633bef
           ],
           startBlock: START_BLOCK_SEPOLIA,
         },
@@ -61,14 +61,14 @@ export default createConfig({
       chain: {
         mainnet: {
           address: [
-            "0x20a3d8510f2e1176E8Db4CeA9883a8287a9029Db"
+            "0x20a3d8510f2e1176E8Db4CeA9883a8287a9029Db", // Commit SHA: 06cd3728b58af36639dea8a6f0a3c4d79f557b65
           ],
           startBlock: START_BLOCK_MAINNET,
         },
         sepolia: {
           address: [
-            "0x69b2Be653BAB628116b360818BE75a2d97b45C4a",
-            "0x93AcaDa86ad23C85e96869D46945fA6FFb7a4036",
+            "0x69b2Be653BAB628116b360818BE75a2d97b45C4a", // Commit SHA: dfae803d86eb902c328dd81bbe6162eb69c7cbd8
+            "0x93AcaDa86ad23C85e96869D46945fA6FFb7a4036", // Commit SHA: bad6eee15e2c2c2bdfd128e5516f680e16633bef
           ],
           startBlock: START_BLOCK_SEPOLIA,
         },
