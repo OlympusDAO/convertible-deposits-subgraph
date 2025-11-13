@@ -19,7 +19,14 @@ ponder.on("Snapshot:block", async ({ event, context }) => {
     .from(schema.auctioneer)
     .where(and(eq(schema.auctioneer.chainId, chainId), eq(schema.auctioneer.enabled, true)));
 
+  // If no auctioneers, skip
+  if (auctioneers.length === 0) {
+    console.log(`No auctioneers found for chain ${chainId}, skipping snapshot creation`);
+    return;
+  }
+
   for (const auctioneer of auctioneers) {
+    console.log(`Refreshing auction state for auctioneer ${auctioneer.address} on chain ${chainId}`);
     await refreshAuctionState(context, chainId, blockNumber, timestamp, auctioneer.address);
   }
 
