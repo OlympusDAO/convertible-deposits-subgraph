@@ -724,6 +724,21 @@ export const convertibleDepositFacilityClaimedYield = onchainTable(
   }),
 );
 
+export const convertibleDepositFacilityClaimAllYieldFailed = onchainTable(
+  "convertible_deposit_facility_claim_all_yield_failed",
+  (t) => ({
+    chainId: t.integer().notNull(),
+    block: t.bigint().notNull(),
+    logIndex: t.integer().notNull(),
+    txHash: t.hex().notNull(),
+    timestamp: t.bigint().notNull(),
+    facility: t.hex().notNull(), // Facility address (FK)
+  }),
+  (table) => ({
+    pk: primaryKey({ columns: [table.chainId, table.block, table.logIndex] }),
+  }),
+);
+
 // DepositRedemptionVault Events
 export const depositRedemptionVaultEnabled = onchainTable(
   "deposit_redemption_vault_enabled",
@@ -1826,6 +1841,7 @@ export const depositFacilityRelations = relations(depositFacility, ({ many }) =>
   disabledEvents: many(convertibleDepositFacilityDisabled),
   operatorAuthorizedEvents: many(convertibleDepositFacilityOperatorAuthorized),
   operatorDeauthorizedEvents: many(convertibleDepositFacilityOperatorDeauthorized),
+  claimAllYieldFailedEvents: many(convertibleDepositFacilityClaimAllYieldFailed),
 }));
 
 export const depositFacilityAssetRelations = relations(depositFacilityAsset, ({ one, many }) => ({
@@ -2511,6 +2527,19 @@ export const convertibleDepositFacilityClaimedYieldRelations = relations(
         depositFacilityAsset.facility,
         depositFacilityAsset.depositAsset,
       ],
+    }),
+  }),
+);
+
+export const convertibleDepositFacilityClaimAllYieldFailedRelations = relations(
+  convertibleDepositFacilityClaimAllYieldFailed,
+  ({ one }) => ({
+    rFacility: one(depositFacility, {
+      fields: [
+        convertibleDepositFacilityClaimAllYieldFailed.chainId,
+        convertibleDepositFacilityClaimAllYieldFailed.facility,
+      ],
+      references: [depositFacility.chainId, depositFacility.address],
     }),
   }),
 );

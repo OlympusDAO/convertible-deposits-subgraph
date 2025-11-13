@@ -521,3 +521,18 @@ ponder.on("ConvertibleDepositFacility:ClaimedYield", async ({ event, context }) 
     amountDecimal: toDecimal(BigInt(event.args.amount), assetDecimals),
   });
 });
+
+ponder.on("ConvertibleDepositFacility:ClaimAllYieldFailed", async ({ event, context }) => {
+  const chainId = Number(context.chain.id);
+  const facilityAddress = event.log.address as Address;
+
+  // Record event
+  await context.db.insert(schema.convertibleDepositFacilityClaimAllYieldFailed).values({
+    chainId,
+    block: BigInt(event.block.number),
+    logIndex: event.log.logIndex,
+    txHash: event.transaction.hash,
+    timestamp: BigInt(event.block.timestamp),
+    facility: facilityAddress.toLowerCase() as Address,
+  });
+});
