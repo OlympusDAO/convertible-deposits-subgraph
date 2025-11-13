@@ -10,5 +10,8 @@ import "./handlers/depositFacility.handlers";
 // Redemption vault handlers
 import "./handlers/redemptionVault.handlers";
 
+// Emission manager handlers
+import "./handlers/emissionManager.handlers";
+
 // Block handlers (snapshots)
 import "./handlers/block.handlers";
