@@ -17,3 +17,7 @@ export function toOhmDecimal(value: bigint | number): string {
 export function toBpsDecimal(value: bigint | number): string {
   return toDecimal(value, 4);
 }
+
+export function toWadDecimal(value: bigint | number): string {
+  return toDecimal(value, 18);
+}

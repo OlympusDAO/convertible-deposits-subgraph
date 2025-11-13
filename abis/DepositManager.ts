@@ -1,810 +1,1855 @@
 export const DepositManagerAbi = [
   {
+    type: "constructor",
     inputs: [
-      { internalType: "address", name: "kernel_", type: "address" },
-      { internalType: "address", name: "tokenManager_", type: "address" },
+      {
+        name: "kernel_",
+        type: "address",
+        internalType: "address",
+      },
+      {
+        name: "tokenManager_",
+        type: "address",
+        internalType: "address",
+      },
     ],
     stateMutability: "nonpayable",
-    type: "constructor",
-  },
-  { inputs: [], name: "AssetManager_AssetAlreadyConfigured", type: "error" },
-  {
-    inputs: [
-      { internalType: "address", name: "asset", type: "address" },
-      { internalType: "uint256", name: "existingDepositAmount", type: "uint256" },
-      { internalType: "uint256", name: "depositCap", type: "uint256" },
-    ],
-    name: "AssetManager_DepositCapExceeded",
-    type: "error",
-  },
-  { inputs: [], name: "AssetManager_InvalidAsset", type: "error" },
-  {
-    inputs: [
-      { internalType: "address", name: "asset", type: "address" },
-      { internalType: "uint256", name: "minimumDeposit", type: "uint256" },
-      { internalType: "uint256", name: "depositCap", type: "uint256" },
-    ],
-    name: "AssetManager_MinimumDepositExceedsDepositCap",
-    type: "error",
   },
   {
-    inputs: [
-      { internalType: "address", name: "asset", type: "address" },
-      { internalType: "uint256", name: "depositAmount", type: "uint256" },
-      { internalType: "uint256", name: "minimumDeposit", type: "uint256" },
-    ],
-    name: "AssetManager_MinimumDepositNotMet",
-    type: "error",
-  },
-  { inputs: [], name: "AssetManager_NotConfigured", type: "error" },
-  { inputs: [], name: "AssetManager_VaultAssetMismatch", type: "error" },
-  { inputs: [], name: "AssetManager_ZeroAmount", type: "error" },
-  {
-    inputs: [
-      { internalType: "address", name: "asset", type: "address" },
-      { internalType: "uint8", name: "depositPeriod", type: "uint8" },
-      { internalType: "address", name: "operator", type: "address" },
-    ],
-    name: "DepositManager_AssetPeriodDisabled",
-    type: "error",
-  },
-  {
-    inputs: [
-      { internalType: "address", name: "asset", type: "address" },
-      { internalType: "uint8", name: "depositPeriod", type: "uint8" },
-      { internalType: "address", name: "operator", type: "address" },
-    ],
-    name: "DepositManager_AssetPeriodEnabled",
-    type: "error",
-  },
-  {
-    inputs: [
-      { internalType: "address", name: "asset", type: "address" },
-      { internalType: "uint8", name: "depositPeriod", type: "uint8" },
-      { internalType: "address", name: "operator", type: "address" },
-    ],
-    name: "DepositManager_AssetPeriodExists",
-    type: "error",
-  },
-  {
-    inputs: [
-      { internalType: "address", name: "asset", type: "address" },
-      { internalType: "address", name: "operator", type: "address" },
-      { internalType: "uint256", name: "amount", type: "uint256" },
-      { internalType: "uint256", name: "borrowed", type: "uint256" },
-    ],
-    name: "DepositManager_BorrowedAmountExceeded",
-    type: "error",
-  },
-  {
-    inputs: [
-      { internalType: "address", name: "asset", type: "address" },
-      { internalType: "address", name: "operator", type: "address" },
-      { internalType: "uint256", name: "requested", type: "uint256" },
-      { internalType: "uint256", name: "available", type: "uint256" },
-    ],
-    name: "DepositManager_BorrowingLimitExceeded",
-    type: "error",
-  },
-  {
-    inputs: [{ internalType: "address", name: "token", type: "address" }],
-    name: "DepositManager_CannotRescueAsset",
-    type: "error",
-  },
-  {
-    inputs: [
-      { internalType: "address", name: "asset", type: "address" },
-      { internalType: "uint256", name: "requiredAssets", type: "uint256" },
-      { internalType: "uint256", name: "depositedSharesInAssets", type: "uint256" },
-      { internalType: "uint256", name: "borrowedAmount", type: "uint256" },
-    ],
-    name: "DepositManager_Insolvent",
-    type: "error",
-  },
-  {
-    inputs: [
-      { internalType: "address", name: "asset", type: "address" },
-      { internalType: "uint8", name: "depositPeriod", type: "uint8" },
-      { internalType: "address", name: "operator", type: "address" },
-    ],
-    name: "DepositManager_InvalidAssetPeriod",
-    type: "error",
-  },
-  {
-    inputs: [{ internalType: "string", name: "reason", type: "string" }],
-    name: "DepositManager_InvalidParams",
-    type: "error",
-  },
-  {
-    inputs: [{ internalType: "string", name: "name", type: "string" }],
-    name: "DepositManager_OperatorNameInUse",
-    type: "error",
-  },
-  { inputs: [], name: "DepositManager_OperatorNameInvalid", type: "error" },
-  {
-    inputs: [{ internalType: "address", name: "operator", type: "address" }],
-    name: "DepositManager_OperatorNameNotSet",
-    type: "error",
-  },
-  {
-    inputs: [{ internalType: "address", name: "operator", type: "address" }],
-    name: "DepositManager_OperatorNameSet",
-    type: "error",
-  },
-  { inputs: [], name: "DepositManager_OutOfBounds", type: "error" },
-  { inputs: [], name: "DepositManager_ZeroAddress", type: "error" },
-  {
-    inputs: [{ internalType: "address", name: "caller_", type: "address" }],
-    name: "KernelAdapter_OnlyKernel",
-    type: "error",
-  },
-  { inputs: [], name: "NotAuthorised", type: "error" },
-  { inputs: [], name: "NotDisabled", type: "error" },
-  { inputs: [], name: "NotEnabled", type: "error" },
-  {
-    inputs: [{ internalType: "Keycode", name: "keycode_", type: "bytes5" }],
-    name: "Policy_ModuleDoesNotExist",
-    type: "error",
-  },
-  {
-    inputs: [{ internalType: "bytes", name: "expected_", type: "bytes" }],
-    name: "Policy_WrongModuleVersion",
-    type: "error",
-  },
-  {
-    inputs: [{ internalType: "bytes32", name: "role_", type: "bytes32" }],
-    name: "ROLES_RequireRole",
-    type: "error",
-  },
-  {
-    anonymous: false,
-    inputs: [
-      { indexed: true, internalType: "address", name: "asset", type: "address" },
-      { indexed: true, internalType: "address", name: "vault", type: "address" },
-    ],
-    name: "AssetConfigured",
-    type: "event",
-  },
-  {
-    anonymous: false,
-    inputs: [
-      { indexed: true, internalType: "address", name: "asset", type: "address" },
-      { indexed: false, internalType: "uint256", name: "depositCap", type: "uint256" },
-    ],
-    name: "AssetDepositCapSet",
-    type: "event",
-  },
-  {
-    anonymous: false,
-    inputs: [
-      { indexed: true, internalType: "address", name: "asset", type: "address" },
-      { indexed: true, internalType: "address", name: "depositor", type: "address" },
-      { indexed: true, internalType: "address", name: "operator", type: "address" },
-      { indexed: false, internalType: "uint256", name: "amount", type: "uint256" },
-      { indexed: false, internalType: "uint256", name: "shares", type: "uint256" },
-    ],
-    name: "AssetDeposited",
-    type: "event",
-  },
-  {
-    anonymous: false,
-    inputs: [
-      { indexed: true, internalType: "address", name: "asset", type: "address" },
-      { indexed: false, internalType: "uint256", name: "minimumDeposit", type: "uint256" },
-    ],
-    name: "AssetMinimumDepositSet",
-    type: "event",
-  },
-  {
-    anonymous: false,
-    inputs: [
-      { indexed: true, internalType: "uint256", name: "receiptTokenId", type: "uint256" },
-      { indexed: true, internalType: "address", name: "asset", type: "address" },
-      { indexed: true, internalType: "address", name: "operator", type: "address" },
-      { indexed: false, internalType: "uint8", name: "depositPeriod", type: "uint8" },
-    ],
-    name: "AssetPeriodConfigured",
-    type: "event",
-  },
-  {
-    anonymous: false,
-    inputs: [
-      { indexed: true, internalType: "uint256", name: "receiptTokenId", type: "uint256" },
-      { indexed: true, internalType: "address", name: "asset", type: "address" },
-      { indexed: true, internalType: "address", name: "operator", type: "address" },
-      { indexed: false, internalType: "uint8", name: "depositPeriod", type: "uint8" },
-    ],
-    name: "AssetPeriodDisabled",
-    type: "event",
-  },
-  {
-    anonymous: false,
-    inputs: [
-      { indexed: true, internalType: "uint256", name: "receiptTokenId", type: "uint256" },
-      { indexed: true, internalType: "address", name: "asset", type: "address" },
-      { indexed: true, internalType: "address", name: "operator", type: "address" },
-      { indexed: false, internalType: "uint8", name: "depositPeriod", type: "uint8" },
-    ],
-    name: "AssetPeriodEnabled",
-    type: "event",
-  },
-  {
-    anonymous: false,
-    inputs: [
-      { indexed: true, internalType: "address", name: "asset", type: "address" },
-      { indexed: true, internalType: "address", name: "withdrawer", type: "address" },
-      { indexed: true, internalType: "address", name: "operator", type: "address" },
-      { indexed: false, internalType: "uint256", name: "amount", type: "uint256" },
-      { indexed: false, internalType: "uint256", name: "shares", type: "uint256" },
-    ],
-    name: "AssetWithdrawn",
-    type: "event",
-  },
-  {
-    anonymous: false,
-    inputs: [
-      { indexed: true, internalType: "address", name: "asset", type: "address" },
-      { indexed: true, internalType: "address", name: "operator", type: "address" },
-      { indexed: true, internalType: "address", name: "payer", type: "address" },
-      { indexed: false, internalType: "uint256", name: "amount", type: "uint256" },
-    ],
-    name: "BorrowingDefault",
-    type: "event",
-  },
-  {
-    anonymous: false,
-    inputs: [
-      { indexed: true, internalType: "address", name: "asset", type: "address" },
-      { indexed: true, internalType: "address", name: "operator", type: "address" },
-      { indexed: true, internalType: "address", name: "payer", type: "address" },
-      { indexed: false, internalType: "uint256", name: "amount", type: "uint256" },
-    ],
-    name: "BorrowingRepayment",
-    type: "event",
-  },
-  {
-    anonymous: false,
-    inputs: [
-      { indexed: true, internalType: "address", name: "asset", type: "address" },
-      { indexed: true, internalType: "address", name: "operator", type: "address" },
-      { indexed: true, internalType: "address", name: "recipient", type: "address" },
-      { indexed: false, internalType: "uint256", name: "amount", type: "uint256" },
-    ],
-    name: "BorrowingWithdrawal",
-    type: "event",
-  },
-  { anonymous: false, inputs: [], name: "Disabled", type: "event" },
-  { anonymous: false, inputs: [], name: "Enabled", type: "event" },
-  {
-    anonymous: false,
-    inputs: [
-      { indexed: true, internalType: "address", name: "operator", type: "address" },
-      { indexed: false, internalType: "string", name: "name", type: "string" },
-    ],
-    name: "OperatorNameSet",
-    type: "event",
-  },
-  {
-    anonymous: false,
-    inputs: [
-      { indexed: true, internalType: "address", name: "asset", type: "address" },
-      { indexed: true, internalType: "address", name: "depositor", type: "address" },
-      { indexed: true, internalType: "address", name: "operator", type: "address" },
-      { indexed: false, internalType: "uint256", name: "amount", type: "uint256" },
-    ],
-    name: "OperatorYieldClaimed",
-    type: "event",
-  },
-  {
-    anonymous: false,
-    inputs: [
-      { indexed: true, internalType: "address", name: "token", type: "address" },
-      { indexed: false, internalType: "uint256", name: "amount", type: "uint256" },
-    ],
-    name: "TokenRescued",
-    type: "event",
-  },
-  {
-    inputs: [],
+    type: "function",
     name: "ONE_HUNDRED_PERCENT",
-    outputs: [{ internalType: "uint16", name: "", type: "uint16" }],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
     inputs: [],
-    name: "ROLES",
-    outputs: [{ internalType: "contract ROLESv1", name: "", type: "address" }],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
-    inputs: [],
-    name: "ROLE_DEPOSIT_OPERATOR",
-    outputs: [{ internalType: "bytes32", name: "", type: "bytes32" }],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
-    inputs: [],
-    name: "VERSION",
     outputs: [
-      { internalType: "uint8", name: "major", type: "uint8" },
-      { internalType: "uint8", name: "minor", type: "uint8" },
+      {
+        name: "",
+        type: "uint16",
+        internalType: "uint16",
+      },
+    ],
+    stateMutability: "view",
+  },
+  {
+    type: "function",
+    name: "ROLES",
+    inputs: [],
+    outputs: [
+      {
+        name: "",
+        type: "address",
+        internalType: "contract ROLESv1",
+      },
+    ],
+    stateMutability: "view",
+  },
+  {
+    type: "function",
+    name: "ROLE_DEPOSIT_OPERATOR",
+    inputs: [],
+    outputs: [
+      {
+        name: "",
+        type: "bytes32",
+        internalType: "bytes32",
+      },
+    ],
+    stateMutability: "view",
+  },
+  {
+    type: "function",
+    name: "VERSION",
+    inputs: [],
+    outputs: [
+      {
+        name: "major",
+        type: "uint8",
+        internalType: "uint8",
+      },
+      {
+        name: "minor",
+        type: "uint8",
+        internalType: "uint8",
+      },
     ],
     stateMutability: "pure",
-    type: "function",
   },
   {
-    inputs: [
-      { internalType: "contract IERC20", name: "asset_", type: "address" },
-      { internalType: "contract IERC4626", name: "vault_", type: "address" },
-      { internalType: "uint256", name: "depositCap_", type: "uint256" },
-      { internalType: "uint256", name: "minimumDeposit_", type: "uint256" },
-    ],
+    type: "function",
     name: "addAsset",
+    inputs: [
+      {
+        name: "asset_",
+        type: "address",
+        internalType: "contract IERC20",
+      },
+      {
+        name: "vault_",
+        type: "address",
+        internalType: "contract IERC4626",
+      },
+      {
+        name: "depositCap_",
+        type: "uint256",
+        internalType: "uint256",
+      },
+      {
+        name: "minimumDeposit_",
+        type: "uint256",
+        internalType: "uint256",
+      },
+    ],
     outputs: [],
     stateMutability: "nonpayable",
-    type: "function",
   },
   {
-    inputs: [
-      { internalType: "contract IERC20", name: "asset_", type: "address" },
-      { internalType: "uint8", name: "depositPeriod_", type: "uint8" },
-      { internalType: "address", name: "operator_", type: "address" },
-    ],
+    type: "function",
     name: "addAssetPeriod",
-    outputs: [{ internalType: "uint256", name: "receiptTokenId", type: "uint256" }],
-    stateMutability: "nonpayable",
-    type: "function",
-  },
-  {
     inputs: [
       {
-        components: [
-          { internalType: "contract IERC20", name: "asset", type: "address" },
-          { internalType: "uint8", name: "depositPeriod", type: "uint8" },
-          { internalType: "address", name: "payer", type: "address" },
-          { internalType: "uint256", name: "amount", type: "uint256" },
-        ],
-        internalType: "struct IDepositManager.BorrowingDefaultParams",
-        name: "params_",
-        type: "tuple",
+        name: "asset_",
+        type: "address",
+        internalType: "contract IERC20",
+      },
+      {
+        name: "depositPeriod_",
+        type: "uint8",
+        internalType: "uint8",
+      },
+      {
+        name: "operator_",
+        type: "address",
+        internalType: "address",
       },
     ],
+    outputs: [
+      {
+        name: "receiptTokenId",
+        type: "uint256",
+        internalType: "uint256",
+      },
+    ],
+    stateMutability: "nonpayable",
+  },
+  {
+    type: "function",
     name: "borrowingDefault",
-    outputs: [],
-    stateMutability: "nonpayable",
-    type: "function",
-  },
-  {
     inputs: [
       {
-        components: [
-          { internalType: "contract IERC20", name: "asset", type: "address" },
-          { internalType: "address", name: "payer", type: "address" },
-          { internalType: "uint256", name: "amount", type: "uint256" },
-        ],
-        internalType: "struct IDepositManager.BorrowingRepayParams",
         name: "params_",
         type: "tuple",
+        internalType: "struct IDepositManager.BorrowingDefaultParams",
+        components: [
+          {
+            name: "asset",
+            type: "address",
+            internalType: "contract IERC20",
+          },
+          {
+            name: "depositPeriod",
+            type: "uint8",
+            internalType: "uint8",
+          },
+          {
+            name: "payer",
+            type: "address",
+            internalType: "address",
+          },
+          {
+            name: "amount",
+            type: "uint256",
+            internalType: "uint256",
+          },
+        ],
       },
     ],
+    outputs: [],
+    stateMutability: "nonpayable",
+  },
+  {
+    type: "function",
     name: "borrowingRepay",
-    outputs: [{ internalType: "uint256", name: "actualAmount", type: "uint256" }],
-    stateMutability: "nonpayable",
-    type: "function",
-  },
-  {
     inputs: [
       {
-        components: [
-          { internalType: "contract IERC20", name: "asset", type: "address" },
-          { internalType: "address", name: "recipient", type: "address" },
-          { internalType: "uint256", name: "amount", type: "uint256" },
-        ],
-        internalType: "struct IDepositManager.BorrowingWithdrawParams",
         name: "params_",
         type: "tuple",
+        internalType: "struct IDepositManager.BorrowingRepayParams",
+        components: [
+          {
+            name: "asset",
+            type: "address",
+            internalType: "contract IERC20",
+          },
+          {
+            name: "payer",
+            type: "address",
+            internalType: "address",
+          },
+          {
+            name: "amount",
+            type: "uint256",
+            internalType: "uint256",
+          },
+          {
+            name: "maxAmount",
+            type: "uint256",
+            internalType: "uint256",
+          },
+        ],
       },
     ],
+    outputs: [
+      {
+        name: "actualAmount",
+        type: "uint256",
+        internalType: "uint256",
+      },
+    ],
+    stateMutability: "nonpayable",
+  },
+  {
+    type: "function",
     name: "borrowingWithdraw",
-    outputs: [{ internalType: "uint256", name: "actualAmount", type: "uint256" }],
-    stateMutability: "nonpayable",
-    type: "function",
-  },
-  {
-    inputs: [{ internalType: "contract Kernel", name: "newKernel_", type: "address" }],
-    name: "changeKernel",
-    outputs: [],
-    stateMutability: "nonpayable",
-    type: "function",
-  },
-  {
-    inputs: [
-      { internalType: "contract IERC20", name: "asset_", type: "address" },
-      { internalType: "address", name: "recipient_", type: "address" },
-      { internalType: "uint256", name: "amount_", type: "uint256" },
-    ],
-    name: "claimYield",
-    outputs: [{ internalType: "uint256", name: "actualAmount", type: "uint256" }],
-    stateMutability: "nonpayable",
-    type: "function",
-  },
-  {
-    inputs: [],
-    name: "configureDependencies",
-    outputs: [{ internalType: "Keycode[]", name: "dependencies", type: "bytes5[]" }],
-    stateMutability: "nonpayable",
-    type: "function",
-  },
-  {
     inputs: [
       {
-        components: [
-          { internalType: "contract IERC20", name: "asset", type: "address" },
-          { internalType: "uint8", name: "depositPeriod", type: "uint8" },
-          { internalType: "address", name: "depositor", type: "address" },
-          { internalType: "uint256", name: "amount", type: "uint256" },
-          { internalType: "bool", name: "shouldWrap", type: "bool" },
-        ],
-        internalType: "struct IDepositManager.DepositParams",
         name: "params_",
         type: "tuple",
+        internalType: "struct IDepositManager.BorrowingWithdrawParams",
+        components: [
+          {
+            name: "asset",
+            type: "address",
+            internalType: "contract IERC20",
+          },
+          {
+            name: "recipient",
+            type: "address",
+            internalType: "address",
+          },
+          {
+            name: "amount",
+            type: "uint256",
+            internalType: "uint256",
+          },
+        ],
       },
     ],
-    name: "deposit",
-    outputs: [
-      { internalType: "uint256", name: "receiptTokenId", type: "uint256" },
-      { internalType: "uint256", name: "actualAmount", type: "uint256" },
-    ],
-    stateMutability: "nonpayable",
-    type: "function",
-  },
-  {
-    inputs: [{ internalType: "bytes", name: "disableData_", type: "bytes" }],
-    name: "disable",
-    outputs: [],
-    stateMutability: "nonpayable",
-    type: "function",
-  },
-  {
-    inputs: [
-      { internalType: "contract IERC20", name: "asset_", type: "address" },
-      { internalType: "uint8", name: "depositPeriod_", type: "uint8" },
-      { internalType: "address", name: "operator_", type: "address" },
-    ],
-    name: "disableAssetPeriod",
-    outputs: [],
-    stateMutability: "nonpayable",
-    type: "function",
-  },
-  {
-    inputs: [{ internalType: "bytes", name: "enableData_", type: "bytes" }],
-    name: "enable",
-    outputs: [],
-    stateMutability: "nonpayable",
-    type: "function",
-  },
-  {
-    inputs: [
-      { internalType: "contract IERC20", name: "asset_", type: "address" },
-      { internalType: "uint8", name: "depositPeriod_", type: "uint8" },
-      { internalType: "address", name: "operator_", type: "address" },
-    ],
-    name: "enableAssetPeriod",
-    outputs: [],
-    stateMutability: "nonpayable",
-    type: "function",
-  },
-  {
-    inputs: [{ internalType: "contract IERC20", name: "asset_", type: "address" }],
-    name: "getAssetConfiguration",
     outputs: [
       {
+        name: "actualAmount",
+        type: "uint256",
+        internalType: "uint256",
+      },
+    ],
+    stateMutability: "nonpayable",
+  },
+  {
+    type: "function",
+    name: "changeKernel",
+    inputs: [
+      {
+        name: "newKernel_",
+        type: "address",
+        internalType: "contract Kernel",
+      },
+    ],
+    outputs: [],
+    stateMutability: "nonpayable",
+  },
+  {
+    type: "function",
+    name: "claimYield",
+    inputs: [
+      {
+        name: "asset_",
+        type: "address",
+        internalType: "contract IERC20",
+      },
+      {
+        name: "recipient_",
+        type: "address",
+        internalType: "address",
+      },
+      {
+        name: "amount_",
+        type: "uint256",
+        internalType: "uint256",
+      },
+    ],
+    outputs: [
+      {
+        name: "actualAmount",
+        type: "uint256",
+        internalType: "uint256",
+      },
+    ],
+    stateMutability: "nonpayable",
+  },
+  {
+    type: "function",
+    name: "configureDependencies",
+    inputs: [],
+    outputs: [
+      {
+        name: "dependencies",
+        type: "bytes5[]",
+        internalType: "Keycode[]",
+      },
+    ],
+    stateMutability: "nonpayable",
+  },
+  {
+    type: "function",
+    name: "deposit",
+    inputs: [
+      {
+        name: "params_",
+        type: "tuple",
+        internalType: "struct IDepositManager.DepositParams",
         components: [
-          { internalType: "bool", name: "isConfigured", type: "bool" },
-          { internalType: "uint256", name: "depositCap", type: "uint256" },
-          { internalType: "uint256", name: "minimumDeposit", type: "uint256" },
-          { internalType: "address", name: "vault", type: "address" },
+          {
+            name: "asset",
+            type: "address",
+            internalType: "contract IERC20",
+          },
+          {
+            name: "depositPeriod",
+            type: "uint8",
+            internalType: "uint8",
+          },
+          {
+            name: "depositor",
+            type: "address",
+            internalType: "address",
+          },
+          {
+            name: "amount",
+            type: "uint256",
+            internalType: "uint256",
+          },
+          {
+            name: "shouldWrap",
+            type: "bool",
+            internalType: "bool",
+          },
         ],
-        internalType: "struct IAssetManager.AssetConfiguration",
+      },
+    ],
+    outputs: [
+      {
+        name: "receiptTokenId",
+        type: "uint256",
+        internalType: "uint256",
+      },
+      {
+        name: "actualAmount",
+        type: "uint256",
+        internalType: "uint256",
+      },
+    ],
+    stateMutability: "nonpayable",
+  },
+  {
+    type: "function",
+    name: "disable",
+    inputs: [
+      {
+        name: "disableData_",
+        type: "bytes",
+        internalType: "bytes",
+      },
+    ],
+    outputs: [],
+    stateMutability: "nonpayable",
+  },
+  {
+    type: "function",
+    name: "disableAssetPeriod",
+    inputs: [
+      {
+        name: "asset_",
+        type: "address",
+        internalType: "contract IERC20",
+      },
+      {
+        name: "depositPeriod_",
+        type: "uint8",
+        internalType: "uint8",
+      },
+      {
+        name: "operator_",
+        type: "address",
+        internalType: "address",
+      },
+    ],
+    outputs: [],
+    stateMutability: "nonpayable",
+  },
+  {
+    type: "function",
+    name: "enable",
+    inputs: [
+      {
+        name: "enableData_",
+        type: "bytes",
+        internalType: "bytes",
+      },
+    ],
+    outputs: [],
+    stateMutability: "nonpayable",
+  },
+  {
+    type: "function",
+    name: "enableAssetPeriod",
+    inputs: [
+      {
+        name: "asset_",
+        type: "address",
+        internalType: "contract IERC20",
+      },
+      {
+        name: "depositPeriod_",
+        type: "uint8",
+        internalType: "uint8",
+      },
+      {
+        name: "operator_",
+        type: "address",
+        internalType: "address",
+      },
+    ],
+    outputs: [],
+    stateMutability: "nonpayable",
+  },
+  {
+    type: "function",
+    name: "getAssetConfiguration",
+    inputs: [
+      {
+        name: "asset_",
+        type: "address",
+        internalType: "contract IERC20",
+      },
+    ],
+    outputs: [
+      {
         name: "configuration",
         type: "tuple",
-      },
-    ],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
-    inputs: [{ internalType: "uint256", name: "tokenId_", type: "uint256" }],
-    name: "getAssetPeriod",
-    outputs: [
-      {
+        internalType: "struct IAssetManager.AssetConfiguration",
         components: [
-          { internalType: "bool", name: "isEnabled", type: "bool" },
-          { internalType: "uint8", name: "depositPeriod", type: "uint8" },
-          { internalType: "address", name: "asset", type: "address" },
-          { internalType: "address", name: "operator", type: "address" },
+          {
+            name: "isConfigured",
+            type: "bool",
+            internalType: "bool",
+          },
+          {
+            name: "depositCap",
+            type: "uint256",
+            internalType: "uint256",
+          },
+          {
+            name: "minimumDeposit",
+            type: "uint256",
+            internalType: "uint256",
+          },
+          {
+            name: "vault",
+            type: "address",
+            internalType: "address",
+          },
         ],
-        internalType: "struct IDepositManager.AssetPeriod",
-        name: "",
-        type: "tuple",
       },
     ],
     stateMutability: "view",
-    type: "function",
   },
   {
+    type: "function",
+    name: "getAssetPeriod",
     inputs: [
-      { internalType: "contract IERC20", name: "asset_", type: "address" },
-      { internalType: "uint8", name: "depositPeriod_", type: "uint8" },
-      { internalType: "address", name: "operator_", type: "address" },
+      {
+        name: "tokenId_",
+        type: "uint256",
+        internalType: "uint256",
+      },
     ],
-    name: "getAssetPeriod",
     outputs: [
       {
-        components: [
-          { internalType: "bool", name: "isEnabled", type: "bool" },
-          { internalType: "uint8", name: "depositPeriod", type: "uint8" },
-          { internalType: "address", name: "asset", type: "address" },
-          { internalType: "address", name: "operator", type: "address" },
-        ],
-        internalType: "struct IDepositManager.AssetPeriod",
         name: "",
         type: "tuple",
+        internalType: "struct IDepositManager.AssetPeriod",
+        components: [
+          {
+            name: "isEnabled",
+            type: "bool",
+            internalType: "bool",
+          },
+          {
+            name: "depositPeriod",
+            type: "uint8",
+            internalType: "uint8",
+          },
+          {
+            name: "asset",
+            type: "address",
+            internalType: "address",
+          },
+          {
+            name: "operator",
+            type: "address",
+            internalType: "address",
+          },
+        ],
       },
     ],
     stateMutability: "view",
-    type: "function",
   },
   {
-    inputs: [],
-    name: "getAssetPeriods",
+    type: "function",
+    name: "getAssetPeriod",
+    inputs: [
+      {
+        name: "asset_",
+        type: "address",
+        internalType: "contract IERC20",
+      },
+      {
+        name: "depositPeriod_",
+        type: "uint8",
+        internalType: "uint8",
+      },
+      {
+        name: "operator_",
+        type: "address",
+        internalType: "address",
+      },
+    ],
     outputs: [
       {
+        name: "",
+        type: "tuple",
+        internalType: "struct IDepositManager.AssetPeriod",
         components: [
-          { internalType: "bool", name: "isEnabled", type: "bool" },
-          { internalType: "uint8", name: "depositPeriod", type: "uint8" },
-          { internalType: "address", name: "asset", type: "address" },
-          { internalType: "address", name: "operator", type: "address" },
+          {
+            name: "isEnabled",
+            type: "bool",
+            internalType: "bool",
+          },
+          {
+            name: "depositPeriod",
+            type: "uint8",
+            internalType: "uint8",
+          },
+          {
+            name: "asset",
+            type: "address",
+            internalType: "address",
+          },
+          {
+            name: "operator",
+            type: "address",
+            internalType: "address",
+          },
         ],
-        internalType: "struct IDepositManager.AssetPeriod[]",
+      },
+    ],
+    stateMutability: "view",
+  },
+  {
+    type: "function",
+    name: "getAssetPeriods",
+    inputs: [],
+    outputs: [
+      {
         name: "assetPeriods",
         type: "tuple[]",
+        internalType: "struct IDepositManager.AssetPeriod[]",
+        components: [
+          {
+            name: "isEnabled",
+            type: "bool",
+            internalType: "bool",
+          },
+          {
+            name: "depositPeriod",
+            type: "uint8",
+            internalType: "uint8",
+          },
+          {
+            name: "asset",
+            type: "address",
+            internalType: "address",
+          },
+          {
+            name: "operator",
+            type: "address",
+            internalType: "address",
+          },
+        ],
       },
     ],
     stateMutability: "view",
-    type: "function",
   },
   {
-    inputs: [
-      { internalType: "contract IERC20", name: "asset_", type: "address" },
-      { internalType: "address", name: "operator_", type: "address" },
-    ],
+    type: "function",
     name: "getBorrowedAmount",
-    outputs: [{ internalType: "uint256", name: "borrowed", type: "uint256" }],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
     inputs: [
-      { internalType: "contract IERC20", name: "asset_", type: "address" },
-      { internalType: "address", name: "operator_", type: "address" },
+      {
+        name: "asset_",
+        type: "address",
+        internalType: "contract IERC20",
+      },
+      {
+        name: "operator_",
+        type: "address",
+        internalType: "address",
+      },
     ],
-    name: "getBorrowingCapacity",
-    outputs: [{ internalType: "uint256", name: "capacity", type: "uint256" }],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
-    inputs: [],
-    name: "getConfiguredAssets",
-    outputs: [{ internalType: "contract IERC20[]", name: "assets", type: "address[]" }],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
-    inputs: [
-      { internalType: "contract IERC20", name: "asset_", type: "address" },
-      { internalType: "address", name: "operator_", type: "address" },
-    ],
-    name: "getOperatorAssets",
-    outputs: [
-      { internalType: "uint256", name: "shares", type: "uint256" },
-      { internalType: "uint256", name: "sharesInAssets", type: "uint256" },
-    ],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
-    inputs: [
-      { internalType: "contract IERC20", name: "asset_", type: "address" },
-      { internalType: "address", name: "operator_", type: "address" },
-    ],
-    name: "getOperatorLiabilities",
-    outputs: [{ internalType: "uint256", name: "", type: "uint256" }],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
-    inputs: [{ internalType: "address", name: "operator_", type: "address" }],
-    name: "getOperatorName",
-    outputs: [{ internalType: "string", name: "", type: "string" }],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
-    inputs: [
-      { internalType: "contract IERC20", name: "asset_", type: "address" },
-      { internalType: "uint8", name: "depositPeriod_", type: "uint8" },
-      { internalType: "address", name: "operator_", type: "address" },
-    ],
-    name: "getReceiptToken",
-    outputs: [
-      { internalType: "uint256", name: "tokenId", type: "uint256" },
-      { internalType: "address", name: "wrappedToken", type: "address" },
-    ],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
-    inputs: [
-      { internalType: "contract IERC20", name: "asset_", type: "address" },
-      { internalType: "uint8", name: "depositPeriod_", type: "uint8" },
-      { internalType: "address", name: "operator_", type: "address" },
-    ],
-    name: "getReceiptTokenId",
-    outputs: [{ internalType: "uint256", name: "", type: "uint256" }],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
-    inputs: [],
-    name: "getReceiptTokenIds",
-    outputs: [{ internalType: "uint256[]", name: "", type: "uint256[]" }],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
-    inputs: [],
-    name: "getReceiptTokenManager",
-    outputs: [{ internalType: "contract IReceiptTokenManager", name: "", type: "address" }],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
-    inputs: [],
-    name: "isActive",
-    outputs: [{ internalType: "bool", name: "", type: "bool" }],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
-    inputs: [
-      { internalType: "contract IERC20", name: "asset_", type: "address" },
-      { internalType: "uint8", name: "depositPeriod_", type: "uint8" },
-      { internalType: "address", name: "operator_", type: "address" },
-    ],
-    name: "isAssetPeriod",
     outputs: [
       {
-        components: [
-          { internalType: "bool", name: "isConfigured", type: "bool" },
-          { internalType: "bool", name: "isEnabled", type: "bool" },
-        ],
-        internalType: "struct IDepositManager.AssetPeriodStatus",
+        name: "borrowed",
+        type: "uint256",
+        internalType: "uint256",
+      },
+    ],
+    stateMutability: "view",
+  },
+  {
+    type: "function",
+    name: "getBorrowingCapacity",
+    inputs: [
+      {
+        name: "asset_",
+        type: "address",
+        internalType: "contract IERC20",
+      },
+      {
+        name: "operator_",
+        type: "address",
+        internalType: "address",
+      },
+    ],
+    outputs: [
+      {
+        name: "capacity",
+        type: "uint256",
+        internalType: "uint256",
+      },
+    ],
+    stateMutability: "view",
+  },
+  {
+    type: "function",
+    name: "getConfiguredAssets",
+    inputs: [],
+    outputs: [
+      {
+        name: "assets",
+        type: "address[]",
+        internalType: "contract IERC20[]",
+      },
+    ],
+    stateMutability: "view",
+  },
+  {
+    type: "function",
+    name: "getOperatorAssets",
+    inputs: [
+      {
+        name: "asset_",
+        type: "address",
+        internalType: "contract IERC20",
+      },
+      {
+        name: "operator_",
+        type: "address",
+        internalType: "address",
+      },
+    ],
+    outputs: [
+      {
+        name: "shares",
+        type: "uint256",
+        internalType: "uint256",
+      },
+      {
+        name: "sharesInAssets",
+        type: "uint256",
+        internalType: "uint256",
+      },
+    ],
+    stateMutability: "view",
+  },
+  {
+    type: "function",
+    name: "getOperatorLiabilities",
+    inputs: [
+      {
+        name: "asset_",
+        type: "address",
+        internalType: "contract IERC20",
+      },
+      {
+        name: "operator_",
+        type: "address",
+        internalType: "address",
+      },
+    ],
+    outputs: [
+      {
+        name: "",
+        type: "uint256",
+        internalType: "uint256",
+      },
+    ],
+    stateMutability: "view",
+  },
+  {
+    type: "function",
+    name: "getOperatorName",
+    inputs: [
+      {
+        name: "operator_",
+        type: "address",
+        internalType: "address",
+      },
+    ],
+    outputs: [
+      {
+        name: "",
+        type: "string",
+        internalType: "string",
+      },
+    ],
+    stateMutability: "view",
+  },
+  {
+    type: "function",
+    name: "getReceiptToken",
+    inputs: [
+      {
+        name: "asset_",
+        type: "address",
+        internalType: "contract IERC20",
+      },
+      {
+        name: "depositPeriod_",
+        type: "uint8",
+        internalType: "uint8",
+      },
+      {
+        name: "operator_",
+        type: "address",
+        internalType: "address",
+      },
+    ],
+    outputs: [
+      {
+        name: "tokenId",
+        type: "uint256",
+        internalType: "uint256",
+      },
+      {
+        name: "wrappedToken",
+        type: "address",
+        internalType: "address",
+      },
+    ],
+    stateMutability: "view",
+  },
+  {
+    type: "function",
+    name: "getReceiptTokenId",
+    inputs: [
+      {
+        name: "asset_",
+        type: "address",
+        internalType: "contract IERC20",
+      },
+      {
+        name: "depositPeriod_",
+        type: "uint8",
+        internalType: "uint8",
+      },
+      {
+        name: "operator_",
+        type: "address",
+        internalType: "address",
+      },
+    ],
+    outputs: [
+      {
+        name: "",
+        type: "uint256",
+        internalType: "uint256",
+      },
+    ],
+    stateMutability: "view",
+  },
+  {
+    type: "function",
+    name: "getReceiptTokenIds",
+    inputs: [],
+    outputs: [
+      {
+        name: "",
+        type: "uint256[]",
+        internalType: "uint256[]",
+      },
+    ],
+    stateMutability: "view",
+  },
+  {
+    type: "function",
+    name: "getReceiptTokenManager",
+    inputs: [],
+    outputs: [
+      {
+        name: "",
+        type: "address",
+        internalType: "contract IReceiptTokenManager",
+      },
+    ],
+    stateMutability: "view",
+  },
+  {
+    type: "function",
+    name: "isActive",
+    inputs: [],
+    outputs: [
+      {
+        name: "",
+        type: "bool",
+        internalType: "bool",
+      },
+    ],
+    stateMutability: "view",
+  },
+  {
+    type: "function",
+    name: "isAssetPeriod",
+    inputs: [
+      {
+        name: "asset_",
+        type: "address",
+        internalType: "contract IERC20",
+      },
+      {
+        name: "depositPeriod_",
+        type: "uint8",
+        internalType: "uint8",
+      },
+      {
+        name: "operator_",
+        type: "address",
+        internalType: "address",
+      },
+    ],
+    outputs: [
+      {
         name: "status",
         type: "tuple",
+        internalType: "struct IDepositManager.AssetPeriodStatus",
+        components: [
+          {
+            name: "isConfigured",
+            type: "bool",
+            internalType: "bool",
+          },
+          {
+            name: "isEnabled",
+            type: "bool",
+            internalType: "bool",
+          },
+        ],
       },
     ],
     stateMutability: "view",
-    type: "function",
   },
   {
-    inputs: [],
+    type: "function",
     name: "isEnabled",
-    outputs: [{ internalType: "bool", name: "", type: "bool" }],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
     inputs: [],
-    name: "kernel",
-    outputs: [{ internalType: "contract Kernel", name: "", type: "address" }],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
-    inputs: [
-      { internalType: "contract IERC20", name: "asset_", type: "address" },
-      { internalType: "address", name: "operator_", type: "address" },
-    ],
-    name: "maxClaimYield",
-    outputs: [{ internalType: "uint256", name: "", type: "uint256" }],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
-    inputs: [],
-    name: "requestPermissions",
     outputs: [
       {
-        components: [
-          { internalType: "Keycode", name: "keycode", type: "bytes5" },
-          { internalType: "bytes4", name: "funcSelector", type: "bytes4" },
-        ],
-        internalType: "struct Permissions[]",
-        name: "permissions",
-        type: "tuple[]",
+        name: "",
+        type: "bool",
+        internalType: "bool",
       },
     ],
     stateMutability: "view",
-    type: "function",
   },
   {
-    inputs: [{ internalType: "address", name: "token_", type: "address" }],
-    name: "rescue",
-    outputs: [],
-    stateMutability: "nonpayable",
     type: "function",
-  },
-  {
-    inputs: [
-      { internalType: "contract IERC20", name: "asset_", type: "address" },
-      { internalType: "uint256", name: "depositCap_", type: "uint256" },
+    name: "kernel",
+    inputs: [],
+    outputs: [
+      {
+        name: "",
+        type: "address",
+        internalType: "contract Kernel",
+      },
     ],
-    name: "setAssetDepositCap",
-    outputs: [],
-    stateMutability: "nonpayable",
-    type: "function",
-  },
-  {
-    inputs: [
-      { internalType: "contract IERC20", name: "asset_", type: "address" },
-      { internalType: "uint256", name: "minimumDeposit_", type: "uint256" },
-    ],
-    name: "setAssetMinimumDeposit",
-    outputs: [],
-    stateMutability: "nonpayable",
-    type: "function",
-  },
-  {
-    inputs: [
-      { internalType: "address", name: "operator_", type: "address" },
-      { internalType: "string", name: "name_", type: "string" },
-    ],
-    name: "setOperatorName",
-    outputs: [],
-    stateMutability: "nonpayable",
-    type: "function",
-  },
-  {
-    inputs: [{ internalType: "bytes4", name: "interfaceId", type: "bytes4" }],
-    name: "supportsInterface",
-    outputs: [{ internalType: "bool", name: "", type: "bool" }],
     stateMutability: "view",
-    type: "function",
   },
   {
+    type: "function",
+    name: "maxClaimYield",
     inputs: [
       {
-        components: [
-          { internalType: "contract IERC20", name: "asset", type: "address" },
-          { internalType: "uint8", name: "depositPeriod", type: "uint8" },
-          { internalType: "address", name: "depositor", type: "address" },
-          { internalType: "address", name: "recipient", type: "address" },
-          { internalType: "uint256", name: "amount", type: "uint256" },
-          { internalType: "bool", name: "isWrapped", type: "bool" },
-        ],
-        internalType: "struct IDepositManager.WithdrawParams",
-        name: "params_",
-        type: "tuple",
+        name: "asset_",
+        type: "address",
+        internalType: "contract IERC20",
+      },
+      {
+        name: "operator_",
+        type: "address",
+        internalType: "address",
       },
     ],
-    name: "withdraw",
-    outputs: [{ internalType: "uint256", name: "actualAmount", type: "uint256" }],
-    stateMutability: "nonpayable",
+    outputs: [
+      {
+        name: "",
+        type: "uint256",
+        internalType: "uint256",
+      },
+    ],
+    stateMutability: "view",
+  },
+  {
     type: "function",
+    name: "requestPermissions",
+    inputs: [],
+    outputs: [
+      {
+        name: "permissions",
+        type: "tuple[]",
+        internalType: "struct Permissions[]",
+        components: [
+          {
+            name: "keycode",
+            type: "bytes5",
+            internalType: "Keycode",
+          },
+          {
+            name: "funcSelector",
+            type: "bytes4",
+            internalType: "bytes4",
+          },
+        ],
+      },
+    ],
+    stateMutability: "view",
+  },
+  {
+    type: "function",
+    name: "rescue",
+    inputs: [
+      {
+        name: "token_",
+        type: "address",
+        internalType: "address",
+      },
+    ],
+    outputs: [],
+    stateMutability: "nonpayable",
+  },
+  {
+    type: "function",
+    name: "setAssetDepositCap",
+    inputs: [
+      {
+        name: "asset_",
+        type: "address",
+        internalType: "contract IERC20",
+      },
+      {
+        name: "depositCap_",
+        type: "uint256",
+        internalType: "uint256",
+      },
+    ],
+    outputs: [],
+    stateMutability: "nonpayable",
+  },
+  {
+    type: "function",
+    name: "setAssetMinimumDeposit",
+    inputs: [
+      {
+        name: "asset_",
+        type: "address",
+        internalType: "contract IERC20",
+      },
+      {
+        name: "minimumDeposit_",
+        type: "uint256",
+        internalType: "uint256",
+      },
+    ],
+    outputs: [],
+    stateMutability: "nonpayable",
+  },
+  {
+    type: "function",
+    name: "setOperatorName",
+    inputs: [
+      {
+        name: "operator_",
+        type: "address",
+        internalType: "address",
+      },
+      {
+        name: "name_",
+        type: "string",
+        internalType: "string",
+      },
+    ],
+    outputs: [],
+    stateMutability: "nonpayable",
+  },
+  {
+    type: "function",
+    name: "supportsInterface",
+    inputs: [
+      {
+        name: "interfaceId",
+        type: "bytes4",
+        internalType: "bytes4",
+      },
+    ],
+    outputs: [
+      {
+        name: "",
+        type: "bool",
+        internalType: "bool",
+      },
+    ],
+    stateMutability: "view",
+  },
+  {
+    type: "function",
+    name: "withdraw",
+    inputs: [
+      {
+        name: "params_",
+        type: "tuple",
+        internalType: "struct IDepositManager.WithdrawParams",
+        components: [
+          {
+            name: "asset",
+            type: "address",
+            internalType: "contract IERC20",
+          },
+          {
+            name: "depositPeriod",
+            type: "uint8",
+            internalType: "uint8",
+          },
+          {
+            name: "depositor",
+            type: "address",
+            internalType: "address",
+          },
+          {
+            name: "recipient",
+            type: "address",
+            internalType: "address",
+          },
+          {
+            name: "amount",
+            type: "uint256",
+            internalType: "uint256",
+          },
+          {
+            name: "isWrapped",
+            type: "bool",
+            internalType: "bool",
+          },
+        ],
+      },
+    ],
+    outputs: [
+      {
+        name: "actualAmount",
+        type: "uint256",
+        internalType: "uint256",
+      },
+    ],
+    stateMutability: "nonpayable",
+  },
+  {
+    type: "event",
+    name: "AssetConfigured",
+    inputs: [
+      {
+        name: "asset",
+        type: "address",
+        indexed: true,
+        internalType: "address",
+      },
+      {
+        name: "vault",
+        type: "address",
+        indexed: true,
+        internalType: "address",
+      },
+    ],
+    anonymous: false,
+  },
+  {
+    type: "event",
+    name: "AssetDepositCapSet",
+    inputs: [
+      {
+        name: "asset",
+        type: "address",
+        indexed: true,
+        internalType: "address",
+      },
+      {
+        name: "depositCap",
+        type: "uint256",
+        indexed: false,
+        internalType: "uint256",
+      },
+    ],
+    anonymous: false,
+  },
+  {
+    type: "event",
+    name: "AssetDeposited",
+    inputs: [
+      {
+        name: "asset",
+        type: "address",
+        indexed: true,
+        internalType: "address",
+      },
+      {
+        name: "depositor",
+        type: "address",
+        indexed: true,
+        internalType: "address",
+      },
+      {
+        name: "operator",
+        type: "address",
+        indexed: true,
+        internalType: "address",
+      },
+      {
+        name: "amount",
+        type: "uint256",
+        indexed: false,
+        internalType: "uint256",
+      },
+      {
+        name: "shares",
+        type: "uint256",
+        indexed: false,
+        internalType: "uint256",
+      },
+    ],
+    anonymous: false,
+  },
+  {
+    type: "event",
+    name: "AssetMinimumDepositSet",
+    inputs: [
+      {
+        name: "asset",
+        type: "address",
+        indexed: true,
+        internalType: "address",
+      },
+      {
+        name: "minimumDeposit",
+        type: "uint256",
+        indexed: false,
+        internalType: "uint256",
+      },
+    ],
+    anonymous: false,
+  },
+  {
+    type: "event",
+    name: "AssetPeriodConfigured",
+    inputs: [
+      {
+        name: "receiptTokenId",
+        type: "uint256",
+        indexed: true,
+        internalType: "uint256",
+      },
+      {
+        name: "asset",
+        type: "address",
+        indexed: true,
+        internalType: "address",
+      },
+      {
+        name: "operator",
+        type: "address",
+        indexed: true,
+        internalType: "address",
+      },
+      {
+        name: "depositPeriod",
+        type: "uint8",
+        indexed: false,
+        internalType: "uint8",
+      },
+    ],
+    anonymous: false,
+  },
+  {
+    type: "event",
+    name: "AssetPeriodDisabled",
+    inputs: [
+      {
+        name: "receiptTokenId",
+        type: "uint256",
+        indexed: true,
+        internalType: "uint256",
+      },
+      {
+        name: "asset",
+        type: "address",
+        indexed: true,
+        internalType: "address",
+      },
+      {
+        name: "operator",
+        type: "address",
+        indexed: true,
+        internalType: "address",
+      },
+      {
+        name: "depositPeriod",
+        type: "uint8",
+        indexed: false,
+        internalType: "uint8",
+      },
+    ],
+    anonymous: false,
+  },
+  {
+    type: "event",
+    name: "AssetPeriodEnabled",
+    inputs: [
+      {
+        name: "receiptTokenId",
+        type: "uint256",
+        indexed: true,
+        internalType: "uint256",
+      },
+      {
+        name: "asset",
+        type: "address",
+        indexed: true,
+        internalType: "address",
+      },
+      {
+        name: "operator",
+        type: "address",
+        indexed: true,
+        internalType: "address",
+      },
+      {
+        name: "depositPeriod",
+        type: "uint8",
+        indexed: false,
+        internalType: "uint8",
+      },
+    ],
+    anonymous: false,
+  },
+  {
+    type: "event",
+    name: "AssetWithdrawn",
+    inputs: [
+      {
+        name: "asset",
+        type: "address",
+        indexed: true,
+        internalType: "address",
+      },
+      {
+        name: "withdrawer",
+        type: "address",
+        indexed: true,
+        internalType: "address",
+      },
+      {
+        name: "operator",
+        type: "address",
+        indexed: true,
+        internalType: "address",
+      },
+      {
+        name: "amount",
+        type: "uint256",
+        indexed: false,
+        internalType: "uint256",
+      },
+      {
+        name: "shares",
+        type: "uint256",
+        indexed: false,
+        internalType: "uint256",
+      },
+    ],
+    anonymous: false,
+  },
+  {
+    type: "event",
+    name: "BorrowingDefault",
+    inputs: [
+      {
+        name: "asset",
+        type: "address",
+        indexed: true,
+        internalType: "address",
+      },
+      {
+        name: "operator",
+        type: "address",
+        indexed: true,
+        internalType: "address",
+      },
+      {
+        name: "payer",
+        type: "address",
+        indexed: true,
+        internalType: "address",
+      },
+      {
+        name: "amount",
+        type: "uint256",
+        indexed: false,
+        internalType: "uint256",
+      },
+    ],
+    anonymous: false,
+  },
+  {
+    type: "event",
+    name: "BorrowingRepayment",
+    inputs: [
+      {
+        name: "asset",
+        type: "address",
+        indexed: true,
+        internalType: "address",
+      },
+      {
+        name: "operator",
+        type: "address",
+        indexed: true,
+        internalType: "address",
+      },
+      {
+        name: "payer",
+        type: "address",
+        indexed: true,
+        internalType: "address",
+      },
+      {
+        name: "amount",
+        type: "uint256",
+        indexed: false,
+        internalType: "uint256",
+      },
+    ],
+    anonymous: false,
+  },
+  {
+    type: "event",
+    name: "BorrowingWithdrawal",
+    inputs: [
+      {
+        name: "asset",
+        type: "address",
+        indexed: true,
+        internalType: "address",
+      },
+      {
+        name: "operator",
+        type: "address",
+        indexed: true,
+        internalType: "address",
+      },
+      {
+        name: "recipient",
+        type: "address",
+        indexed: true,
+        internalType: "address",
+      },
+      {
+        name: "amount",
+        type: "uint256",
+        indexed: false,
+        internalType: "uint256",
+      },
+    ],
+    anonymous: false,
+  },
+  {
+    type: "event",
+    name: "Disabled",
+    inputs: [],
+    anonymous: false,
+  },
+  {
+    type: "event",
+    name: "Enabled",
+    inputs: [],
+    anonymous: false,
+  },
+  {
+    type: "event",
+    name: "OperatorNameSet",
+    inputs: [
+      {
+        name: "operator",
+        type: "address",
+        indexed: true,
+        internalType: "address",
+      },
+      {
+        name: "name",
+        type: "string",
+        indexed: false,
+        internalType: "string",
+      },
+    ],
+    anonymous: false,
+  },
+  {
+    type: "event",
+    name: "OperatorYieldClaimed",
+    inputs: [
+      {
+        name: "asset",
+        type: "address",
+        indexed: true,
+        internalType: "address",
+      },
+      {
+        name: "depositor",
+        type: "address",
+        indexed: true,
+        internalType: "address",
+      },
+      {
+        name: "operator",
+        type: "address",
+        indexed: true,
+        internalType: "address",
+      },
+      {
+        name: "amount",
+        type: "uint256",
+        indexed: false,
+        internalType: "uint256",
+      },
+    ],
+    anonymous: false,
+  },
+  {
+    type: "event",
+    name: "TokenRescued",
+    inputs: [
+      {
+        name: "token",
+        type: "address",
+        indexed: true,
+        internalType: "address",
+      },
+      {
+        name: "amount",
+        type: "uint256",
+        indexed: false,
+        internalType: "uint256",
+      },
+    ],
+    anonymous: false,
+  },
+  {
+    type: "error",
+    name: "AssetManager_AssetAlreadyConfigured",
+    inputs: [],
+  },
+  {
+    type: "error",
+    name: "AssetManager_DepositCapExceeded",
+    inputs: [
+      {
+        name: "asset",
+        type: "address",
+        internalType: "address",
+      },
+      {
+        name: "existingDepositAmount",
+        type: "uint256",
+        internalType: "uint256",
+      },
+      {
+        name: "depositCap",
+        type: "uint256",
+        internalType: "uint256",
+      },
+    ],
+  },
+  {
+    type: "error",
+    name: "AssetManager_InvalidAsset",
+    inputs: [],
+  },
+  {
+    type: "error",
+    name: "AssetManager_MinimumDepositExceedsDepositCap",
+    inputs: [
+      {
+        name: "asset",
+        type: "address",
+        internalType: "address",
+      },
+      {
+        name: "minimumDeposit",
+        type: "uint256",
+        internalType: "uint256",
+      },
+      {
+        name: "depositCap",
+        type: "uint256",
+        internalType: "uint256",
+      },
+    ],
+  },
+  {
+    type: "error",
+    name: "AssetManager_MinimumDepositNotMet",
+    inputs: [
+      {
+        name: "asset",
+        type: "address",
+        internalType: "address",
+      },
+      {
+        name: "depositAmount",
+        type: "uint256",
+        internalType: "uint256",
+      },
+      {
+        name: "minimumDeposit",
+        type: "uint256",
+        internalType: "uint256",
+      },
+    ],
+  },
+  {
+    type: "error",
+    name: "AssetManager_NotConfigured",
+    inputs: [],
+  },
+  {
+    type: "error",
+    name: "AssetManager_VaultAssetMismatch",
+    inputs: [],
+  },
+  {
+    type: "error",
+    name: "AssetManager_ZeroAmount",
+    inputs: [],
+  },
+  {
+    type: "error",
+    name: "DepositManager_AssetPeriodDisabled",
+    inputs: [
+      {
+        name: "asset",
+        type: "address",
+        internalType: "address",
+      },
+      {
+        name: "depositPeriod",
+        type: "uint8",
+        internalType: "uint8",
+      },
+      {
+        name: "operator",
+        type: "address",
+        internalType: "address",
+      },
+    ],
+  },
+  {
+    type: "error",
+    name: "DepositManager_AssetPeriodEnabled",
+    inputs: [
+      {
+        name: "asset",
+        type: "address",
+        internalType: "address",
+      },
+      {
+        name: "depositPeriod",
+        type: "uint8",
+        internalType: "uint8",
+      },
+      {
+        name: "operator",
+        type: "address",
+        internalType: "address",
+      },
+    ],
+  },
+  {
+    type: "error",
+    name: "DepositManager_AssetPeriodExists",
+    inputs: [
+      {
+        name: "asset",
+        type: "address",
+        internalType: "address",
+      },
+      {
+        name: "depositPeriod",
+        type: "uint8",
+        internalType: "uint8",
+      },
+      {
+        name: "operator",
+        type: "address",
+        internalType: "address",
+      },
+    ],
+  },
+  {
+    type: "error",
+    name: "DepositManager_BorrowedAmountExceeded",
+    inputs: [
+      {
+        name: "asset",
+        type: "address",
+        internalType: "address",
+      },
+      {
+        name: "operator",
+        type: "address",
+        internalType: "address",
+      },
+      {
+        name: "amount",
+        type: "uint256",
+        internalType: "uint256",
+      },
+      {
+        name: "borrowed",
+        type: "uint256",
+        internalType: "uint256",
+      },
+    ],
+  },
+  {
+    type: "error",
+    name: "DepositManager_BorrowingLimitExceeded",
+    inputs: [
+      {
+        name: "asset",
+        type: "address",
+        internalType: "address",
+      },
+      {
+        name: "operator",
+        type: "address",
+        internalType: "address",
+      },
+      {
+        name: "requested",
+        type: "uint256",
+        internalType: "uint256",
+      },
+      {
+        name: "available",
+        type: "uint256",
+        internalType: "uint256",
+      },
+    ],
+  },
+  {
+    type: "error",
+    name: "DepositManager_CannotRescueAsset",
+    inputs: [
+      {
+        name: "token",
+        type: "address",
+        internalType: "address",
+      },
+    ],
+  },
+  {
+    type: "error",
+    name: "DepositManager_Insolvent",
+    inputs: [
+      {
+        name: "asset",
+        type: "address",
+        internalType: "address",
+      },
+      {
+        name: "requiredAssets",
+        type: "uint256",
+        internalType: "uint256",
+      },
+      {
+        name: "depositedSharesInAssets",
+        type: "uint256",
+        internalType: "uint256",
+      },
+      {
+        name: "borrowedAmount",
+        type: "uint256",
+        internalType: "uint256",
+      },
+    ],
+  },
+  {
+    type: "error",
+    name: "DepositManager_InvalidAssetPeriod",
+    inputs: [
+      {
+        name: "asset",
+        type: "address",
+        internalType: "address",
+      },
+      {
+        name: "depositPeriod",
+        type: "uint8",
+        internalType: "uint8",
+      },
+      {
+        name: "operator",
+        type: "address",
+        internalType: "address",
+      },
+    ],
+  },
+  {
+    type: "error",
+    name: "DepositManager_InvalidParams",
+    inputs: [
+      {
+        name: "reason",
+        type: "string",
+        internalType: "string",
+      },
+    ],
+  },
+  {
+    type: "error",
+    name: "DepositManager_OperatorNameInUse",
+    inputs: [
+      {
+        name: "name",
+        type: "string",
+        internalType: "string",
+      },
+    ],
+  },
+  {
+    type: "error",
+    name: "DepositManager_OperatorNameInvalid",
+    inputs: [],
+  },
+  {
+    type: "error",
+    name: "DepositManager_OperatorNameNotSet",
+    inputs: [
+      {
+        name: "operator",
+        type: "address",
+        internalType: "address",
+      },
+    ],
+  },
+  {
+    type: "error",
+    name: "DepositManager_OperatorNameSet",
+    inputs: [
+      {
+        name: "operator",
+        type: "address",
+        internalType: "address",
+      },
+    ],
+  },
+  {
+    type: "error",
+    name: "DepositManager_OutOfBounds",
+    inputs: [],
+  },
+  {
+    type: "error",
+    name: "DepositManager_ZeroAddress",
+    inputs: [],
+  },
+  {
+    type: "error",
+    name: "KernelAdapter_OnlyKernel",
+    inputs: [
+      {
+        name: "caller_",
+        type: "address",
+        internalType: "address",
+      },
+    ],
+  },
+  {
+    type: "error",
+    name: "NotAuthorised",
+    inputs: [],
+  },
+  {
+    type: "error",
+    name: "NotDisabled",
+    inputs: [],
+  },
+  {
+    type: "error",
+    name: "NotEnabled",
+    inputs: [],
+  },
+  {
+    type: "error",
+    name: "Policy_ModuleDoesNotExist",
+    inputs: [
+      {
+        name: "keycode_",
+        type: "bytes5",
+        internalType: "Keycode",
+      },
+    ],
+  },
+  {
+    type: "error",
+    name: "Policy_WrongModuleVersion",
+    inputs: [
+      {
+        name: "expected_",
+        type: "bytes",
+        internalType: "bytes",
+      },
+    ],
+  },
+  {
+    type: "error",
+    name: "ROLES_RequireRole",
+    inputs: [
+      {
+        name: "role_",
+        type: "bytes32",
+        internalType: "bytes32",
+      },
+    ],
   },
 ] as const;

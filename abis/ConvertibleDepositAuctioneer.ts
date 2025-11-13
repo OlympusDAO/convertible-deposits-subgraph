@@ -1,495 +1,1139 @@
 export const ConvertibleDepositAuctioneerAbi = [
   {
+    type: "constructor",
     inputs: [
-      { internalType: "address", name: "kernel_", type: "address" },
-      { internalType: "address", name: "cdFacility_", type: "address" },
-      { internalType: "address", name: "depositAsset_", type: "address" },
+      {
+        name: "kernel_",
+        type: "address",
+        internalType: "address",
+      },
+      {
+        name: "cdFacility_",
+        type: "address",
+        internalType: "address",
+      },
+      {
+        name: "depositAsset_",
+        type: "address",
+        internalType: "address",
+      },
     ],
     stateMutability: "nonpayable",
-    type: "constructor",
   },
   {
-    inputs: [
-      { internalType: "uint256", name: "ohmOut", type: "uint256" },
-      { internalType: "uint256", name: "minOhmOut", type: "uint256" },
-    ],
-    name: "ConvertibleDepositAuctioneer_ConvertedAmountSlippage",
-    type: "error",
-  },
-  { inputs: [], name: "ConvertibleDepositAuctioneer_ConvertedAmountZero", type: "error" },
-  {
-    inputs: [
-      { internalType: "address", name: "depositAsset", type: "address" },
-      { internalType: "uint8", name: "depositPeriod", type: "uint8" },
-      { internalType: "bool", name: "isEnabled", type: "bool" },
-    ],
-    name: "ConvertibleDepositAuctioneer_DepositPeriodInvalidState",
-    type: "error",
-  },
-  {
-    inputs: [
-      { internalType: "address", name: "depositAsset", type: "address" },
-      { internalType: "uint8", name: "depositPeriod", type: "uint8" },
-    ],
-    name: "ConvertibleDepositAuctioneer_DepositPeriodNotEnabled",
-    type: "error",
-  },
-  {
-    inputs: [{ internalType: "string", name: "reason", type: "string" }],
-    name: "ConvertibleDepositAuctioneer_InvalidParams",
-    type: "error",
-  },
-  {
-    inputs: [{ internalType: "address", name: "caller_", type: "address" }],
-    name: "KernelAdapter_OnlyKernel",
-    type: "error",
-  },
-  { inputs: [], name: "NotAuthorised", type: "error" },
-  { inputs: [], name: "NotDisabled", type: "error" },
-  { inputs: [], name: "NotEnabled", type: "error" },
-  {
-    inputs: [{ internalType: "Keycode", name: "keycode_", type: "bytes5" }],
-    name: "Policy_ModuleDoesNotExist",
-    type: "error",
-  },
-  {
-    inputs: [{ internalType: "bytes", name: "expected_", type: "bytes" }],
-    name: "Policy_WrongModuleVersion",
-    type: "error",
-  },
-  {
-    inputs: [{ internalType: "bytes32", name: "role_", type: "bytes32" }],
-    name: "ROLES_RequireRole",
-    type: "error",
-  },
-  {
-    anonymous: false,
-    inputs: [
-      { indexed: true, internalType: "address", name: "depositAsset", type: "address" },
-      { indexed: false, internalType: "uint256", name: "newTarget", type: "uint256" },
-      { indexed: false, internalType: "uint256", name: "newTickSize", type: "uint256" },
-      { indexed: false, internalType: "uint256", name: "newMinPrice", type: "uint256" },
-    ],
-    name: "AuctionParametersUpdated",
-    type: "event",
-  },
-  {
-    anonymous: false,
-    inputs: [
-      { indexed: true, internalType: "address", name: "depositAsset", type: "address" },
-      { indexed: false, internalType: "uint256", name: "ohmConvertible", type: "uint256" },
-      { indexed: false, internalType: "uint256", name: "target", type: "uint256" },
-      { indexed: false, internalType: "uint8", name: "periodIndex", type: "uint8" },
-    ],
-    name: "AuctionResult",
-    type: "event",
-  },
-  {
-    anonymous: false,
-    inputs: [
-      { indexed: true, internalType: "address", name: "depositAsset", type: "address" },
-      { indexed: false, internalType: "uint8", name: "newAuctionTrackingPeriod", type: "uint8" },
-    ],
-    name: "AuctionTrackingPeriodUpdated",
-    type: "event",
-  },
-  {
-    anonymous: false,
-    inputs: [
-      { indexed: true, internalType: "address", name: "bidder", type: "address" },
-      { indexed: true, internalType: "address", name: "depositAsset", type: "address" },
-      { indexed: true, internalType: "uint8", name: "depositPeriod", type: "uint8" },
-      { indexed: false, internalType: "uint256", name: "depositAmount", type: "uint256" },
-      { indexed: false, internalType: "uint256", name: "convertedAmount", type: "uint256" },
-      { indexed: false, internalType: "uint256", name: "positionId", type: "uint256" },
-    ],
-    name: "Bid",
-    type: "event",
-  },
-  {
-    anonymous: false,
-    inputs: [
-      { indexed: true, internalType: "address", name: "depositAsset", type: "address" },
-      { indexed: false, internalType: "uint8", name: "depositPeriod", type: "uint8" },
-    ],
-    name: "DepositPeriodDisableQueued",
-    type: "event",
-  },
-  {
-    anonymous: false,
-    inputs: [
-      { indexed: true, internalType: "address", name: "depositAsset", type: "address" },
-      { indexed: false, internalType: "uint8", name: "depositPeriod", type: "uint8" },
-    ],
-    name: "DepositPeriodDisabled",
-    type: "event",
-  },
-  {
-    anonymous: false,
-    inputs: [
-      { indexed: true, internalType: "address", name: "depositAsset", type: "address" },
-      { indexed: false, internalType: "uint8", name: "depositPeriod", type: "uint8" },
-    ],
-    name: "DepositPeriodEnableQueued",
-    type: "event",
-  },
-  {
-    anonymous: false,
-    inputs: [
-      { indexed: true, internalType: "address", name: "depositAsset", type: "address" },
-      { indexed: false, internalType: "uint8", name: "depositPeriod", type: "uint8" },
-    ],
-    name: "DepositPeriodEnabled",
-    type: "event",
-  },
-  { anonymous: false, inputs: [], name: "Disabled", type: "event" },
-  { anonymous: false, inputs: [], name: "Enabled", type: "event" },
-  {
-    anonymous: false,
-    inputs: [
-      { indexed: true, internalType: "address", name: "depositAsset", type: "address" },
-      { indexed: false, internalType: "uint24", name: "newTickStep", type: "uint24" },
-    ],
-    name: "TickStepUpdated",
-    type: "event",
-  },
-  {
-    inputs: [],
+    type: "function",
     name: "CD_FACILITY",
-    outputs: [{ internalType: "contract ConvertibleDepositFacility", name: "", type: "address" }],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
     inputs: [],
-    name: "ONE_HUNDRED_PERCENT",
-    outputs: [{ internalType: "uint24", name: "", type: "uint24" }],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
-    inputs: [],
-    name: "ROLES",
-    outputs: [{ internalType: "contract ROLESv1", name: "", type: "address" }],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
-    inputs: [],
-    name: "ROLE_EMISSION_MANAGER",
-    outputs: [{ internalType: "bytes32", name: "", type: "bytes32" }],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
-    inputs: [],
-    name: "VERSION",
     outputs: [
-      { internalType: "uint8", name: "major", type: "uint8" },
-      { internalType: "uint8", name: "minor", type: "uint8" },
+      {
+        name: "",
+        type: "address",
+        internalType: "contract ConvertibleDepositFacility",
+      },
+    ],
+    stateMutability: "view",
+  },
+  {
+    type: "function",
+    name: "ONE_HUNDRED_PERCENT",
+    inputs: [],
+    outputs: [
+      {
+        name: "",
+        type: "uint24",
+        internalType: "uint24",
+      },
+    ],
+    stateMutability: "view",
+  },
+  {
+    type: "function",
+    name: "ROLES",
+    inputs: [],
+    outputs: [
+      {
+        name: "",
+        type: "address",
+        internalType: "contract ROLESv1",
+      },
+    ],
+    stateMutability: "view",
+  },
+  {
+    type: "function",
+    name: "ROLE_EMISSION_MANAGER",
+    inputs: [],
+    outputs: [
+      {
+        name: "",
+        type: "bytes32",
+        internalType: "bytes32",
+      },
+    ],
+    stateMutability: "view",
+  },
+  {
+    type: "function",
+    name: "VERSION",
+    inputs: [],
+    outputs: [
+      {
+        name: "major",
+        type: "uint8",
+        internalType: "uint8",
+      },
+      {
+        name: "minor",
+        type: "uint8",
+        internalType: "uint8",
+      },
     ],
     stateMutability: "pure",
-    type: "function",
   },
   {
-    inputs: [
-      { internalType: "uint8", name: "depositPeriod_", type: "uint8" },
-      { internalType: "uint256", name: "depositAmount_", type: "uint256" },
-      { internalType: "uint256", name: "minOhmOut_", type: "uint256" },
-      { internalType: "bool", name: "wrapPosition_", type: "bool" },
-      { internalType: "bool", name: "wrapReceipt_", type: "bool" },
-    ],
+    type: "function",
     name: "bid",
-    outputs: [
-      { internalType: "uint256", name: "", type: "uint256" },
-      { internalType: "uint256", name: "", type: "uint256" },
-      { internalType: "uint256", name: "", type: "uint256" },
-      { internalType: "uint256", name: "", type: "uint256" },
+    inputs: [
+      {
+        name: "depositPeriod_",
+        type: "uint8",
+        internalType: "uint8",
+      },
+      {
+        name: "depositAmount_",
+        type: "uint256",
+        internalType: "uint256",
+      },
+      {
+        name: "minOhmOut_",
+        type: "uint256",
+        internalType: "uint256",
+      },
+      {
+        name: "wrapPosition_",
+        type: "bool",
+        internalType: "bool",
+      },
+      {
+        name: "wrapReceipt_",
+        type: "bool",
+        internalType: "bool",
+      },
     ],
-    stateMutability: "nonpayable",
-    type: "function",
-  },
-  {
-    inputs: [{ internalType: "contract Kernel", name: "newKernel_", type: "address" }],
-    name: "changeKernel",
-    outputs: [],
-    stateMutability: "nonpayable",
-    type: "function",
-  },
-  {
-    inputs: [],
-    name: "configureDependencies",
-    outputs: [{ internalType: "Keycode[]", name: "dependencies", type: "bytes5[]" }],
-    stateMutability: "nonpayable",
-    type: "function",
-  },
-  {
-    inputs: [{ internalType: "bytes", name: "disableData_", type: "bytes" }],
-    name: "disable",
-    outputs: [],
-    stateMutability: "nonpayable",
-    type: "function",
-  },
-  {
-    inputs: [{ internalType: "uint8", name: "depositPeriod_", type: "uint8" }],
-    name: "disableDepositPeriod",
-    outputs: [],
-    stateMutability: "nonpayable",
-    type: "function",
-  },
-  {
-    inputs: [{ internalType: "bytes", name: "enableData_", type: "bytes" }],
-    name: "enable",
-    outputs: [],
-    stateMutability: "nonpayable",
-    type: "function",
-  },
-  {
-    inputs: [{ internalType: "uint8", name: "depositPeriod_", type: "uint8" }],
-    name: "enableDepositPeriod",
-    outputs: [],
-    stateMutability: "nonpayable",
-    type: "function",
-  },
-  {
-    inputs: [],
-    name: "getAuctionParameters",
     outputs: [
       {
-        components: [
-          { internalType: "uint256", name: "target", type: "uint256" },
-          { internalType: "uint256", name: "tickSize", type: "uint256" },
-          { internalType: "uint256", name: "minPrice", type: "uint256" },
-        ],
-        internalType: "struct IConvertibleDepositAuctioneer.AuctionParameters",
+        name: "",
+        type: "uint256",
+        internalType: "uint256",
+      },
+      {
+        name: "",
+        type: "uint256",
+        internalType: "uint256",
+      },
+      {
+        name: "",
+        type: "uint256",
+        internalType: "uint256",
+      },
+      {
+        name: "",
+        type: "uint256",
+        internalType: "uint256",
+      },
+    ],
+    stateMutability: "nonpayable",
+  },
+  {
+    type: "function",
+    name: "changeKernel",
+    inputs: [
+      {
+        name: "newKernel_",
+        type: "address",
+        internalType: "contract Kernel",
+      },
+    ],
+    outputs: [],
+    stateMutability: "nonpayable",
+  },
+  {
+    type: "function",
+    name: "configureDependencies",
+    inputs: [],
+    outputs: [
+      {
+        name: "dependencies",
+        type: "bytes5[]",
+        internalType: "Keycode[]",
+      },
+    ],
+    stateMutability: "nonpayable",
+  },
+  {
+    type: "function",
+    name: "disable",
+    inputs: [
+      {
+        name: "disableData_",
+        type: "bytes",
+        internalType: "bytes",
+      },
+    ],
+    outputs: [],
+    stateMutability: "nonpayable",
+  },
+  {
+    type: "function",
+    name: "disableDepositPeriod",
+    inputs: [
+      {
+        name: "depositPeriod_",
+        type: "uint8",
+        internalType: "uint8",
+      },
+    ],
+    outputs: [],
+    stateMutability: "nonpayable",
+  },
+  {
+    type: "function",
+    name: "enable",
+    inputs: [
+      {
+        name: "enableData_",
+        type: "bytes",
+        internalType: "bytes",
+      },
+    ],
+    outputs: [],
+    stateMutability: "nonpayable",
+  },
+  {
+    type: "function",
+    name: "enableDepositPeriod",
+    inputs: [
+      {
+        name: "depositPeriod_",
+        type: "uint8",
+        internalType: "uint8",
+      },
+    ],
+    outputs: [],
+    stateMutability: "nonpayable",
+  },
+  {
+    type: "function",
+    name: "getAuctionParameters",
+    inputs: [],
+    outputs: [
+      {
         name: "",
         type: "tuple",
+        internalType: "struct IConvertibleDepositAuctioneer.AuctionParameters",
+        components: [
+          {
+            name: "target",
+            type: "uint256",
+            internalType: "uint256",
+          },
+          {
+            name: "tickSize",
+            type: "uint256",
+            internalType: "uint256",
+          },
+          {
+            name: "minPrice",
+            type: "uint256",
+            internalType: "uint256",
+          },
+        ],
       },
     ],
     stateMutability: "view",
-    type: "function",
   },
   {
-    inputs: [],
+    type: "function",
     name: "getAuctionResults",
-    outputs: [{ internalType: "int256[]", name: "", type: "int256[]" }],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
     inputs: [],
-    name: "getAuctionResultsNextIndex",
-    outputs: [{ internalType: "uint8", name: "", type: "uint8" }],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
-    inputs: [],
-    name: "getAuctionTrackingPeriod",
-    outputs: [{ internalType: "uint8", name: "", type: "uint8" }],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
-    inputs: [{ internalType: "uint8", name: "depositPeriod_", type: "uint8" }],
-    name: "getCurrentTick",
     outputs: [
       {
-        components: [
-          { internalType: "uint256", name: "price", type: "uint256" },
-          { internalType: "uint256", name: "capacity", type: "uint256" },
-          { internalType: "uint48", name: "lastUpdate", type: "uint48" },
-        ],
-        internalType: "struct IConvertibleDepositAuctioneer.Tick",
+        name: "",
+        type: "int256[]",
+        internalType: "int256[]",
+      },
+    ],
+    stateMutability: "view",
+  },
+  {
+    type: "function",
+    name: "getAuctionResultsNextIndex",
+    inputs: [],
+    outputs: [
+      {
+        name: "",
+        type: "uint8",
+        internalType: "uint8",
+      },
+    ],
+    stateMutability: "view",
+  },
+  {
+    type: "function",
+    name: "getAuctionTrackingPeriod",
+    inputs: [],
+    outputs: [
+      {
+        name: "",
+        type: "uint8",
+        internalType: "uint8",
+      },
+    ],
+    stateMutability: "view",
+  },
+  {
+    type: "function",
+    name: "getCurrentTick",
+    inputs: [
+      {
+        name: "depositPeriod_",
+        type: "uint8",
+        internalType: "uint8",
+      },
+    ],
+    outputs: [
+      {
         name: "tick",
         type: "tuple",
+        internalType: "struct IConvertibleDepositAuctioneer.Tick",
+        components: [
+          {
+            name: "price",
+            type: "uint256",
+            internalType: "uint256",
+          },
+          {
+            name: "capacity",
+            type: "uint256",
+            internalType: "uint256",
+          },
+          {
+            name: "lastUpdate",
+            type: "uint48",
+            internalType: "uint48",
+          },
+        ],
       },
     ],
     stateMutability: "view",
-    type: "function",
   },
   {
-    inputs: [],
+    type: "function",
     name: "getCurrentTickSize",
-    outputs: [{ internalType: "uint256", name: "", type: "uint256" }],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
     inputs: [],
-    name: "getDayState",
     outputs: [
       {
-        components: [
-          { internalType: "uint48", name: "initTimestamp", type: "uint48" },
-          { internalType: "uint256", name: "convertible", type: "uint256" },
-        ],
-        internalType: "struct IConvertibleDepositAuctioneer.Day",
+        name: "",
+        type: "uint256",
+        internalType: "uint256",
+      },
+    ],
+    stateMutability: "view",
+  },
+  {
+    type: "function",
+    name: "getDayState",
+    inputs: [],
+    outputs: [
+      {
         name: "",
         type: "tuple",
+        internalType: "struct IConvertibleDepositAuctioneer.Day",
+        components: [
+          {
+            name: "initTimestamp",
+            type: "uint48",
+            internalType: "uint48",
+          },
+          {
+            name: "convertible",
+            type: "uint256",
+            internalType: "uint256",
+          },
+        ],
       },
     ],
     stateMutability: "view",
-    type: "function",
   },
   {
-    inputs: [],
+    type: "function",
     name: "getDepositAsset",
-    outputs: [{ internalType: "contract IERC20", name: "", type: "address" }],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
     inputs: [],
-    name: "getDepositPeriods",
-    outputs: [{ internalType: "uint8[]", name: "", type: "uint8[]" }],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
-    inputs: [],
-    name: "getDepositPeriodsCount",
-    outputs: [{ internalType: "uint256", name: "", type: "uint256" }],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
-    inputs: [],
-    name: "getPendingDepositPeriodChanges",
     outputs: [
       {
-        components: [
-          { internalType: "uint8", name: "depositPeriod", type: "uint8" },
-          { internalType: "bool", name: "enable", type: "bool" },
-        ],
-        internalType: "struct ConvertibleDepositAuctioneer.PendingDepositPeriodChange[]",
+        name: "",
+        type: "address",
+        internalType: "contract IERC20",
+      },
+    ],
+    stateMutability: "view",
+  },
+  {
+    type: "function",
+    name: "getDepositPeriods",
+    inputs: [],
+    outputs: [
+      {
+        name: "",
+        type: "uint8[]",
+        internalType: "uint8[]",
+      },
+    ],
+    stateMutability: "view",
+  },
+  {
+    type: "function",
+    name: "getDepositPeriodsCount",
+    inputs: [],
+    outputs: [
+      {
+        name: "",
+        type: "uint256",
+        internalType: "uint256",
+      },
+    ],
+    stateMutability: "view",
+  },
+  {
+    type: "function",
+    name: "getMinimumBid",
+    inputs: [],
+    outputs: [
+      {
+        name: "",
+        type: "uint256",
+        internalType: "uint256",
+      },
+    ],
+    stateMutability: "view",
+  },
+  {
+    type: "function",
+    name: "getPendingDepositPeriodChanges",
+    inputs: [],
+    outputs: [
+      {
         name: "",
         type: "tuple[]",
+        internalType: "struct ConvertibleDepositAuctioneer.PendingDepositPeriodChange[]",
+        components: [
+          {
+            name: "depositPeriod",
+            type: "uint8",
+            internalType: "uint8",
+          },
+          {
+            name: "enable",
+            type: "bool",
+            internalType: "bool",
+          },
+        ],
       },
     ],
     stateMutability: "view",
-    type: "function",
   },
   {
-    inputs: [{ internalType: "uint8", name: "depositPeriod_", type: "uint8" }],
+    type: "function",
     name: "getPreviousTick",
+    inputs: [
+      {
+        name: "depositPeriod_",
+        type: "uint8",
+        internalType: "uint8",
+      },
+    ],
     outputs: [
       {
-        components: [
-          { internalType: "uint256", name: "price", type: "uint256" },
-          { internalType: "uint256", name: "capacity", type: "uint256" },
-          { internalType: "uint48", name: "lastUpdate", type: "uint48" },
-        ],
-        internalType: "struct IConvertibleDepositAuctioneer.Tick",
         name: "tick",
         type: "tuple",
+        internalType: "struct IConvertibleDepositAuctioneer.Tick",
+        components: [
+          {
+            name: "price",
+            type: "uint256",
+            internalType: "uint256",
+          },
+          {
+            name: "capacity",
+            type: "uint256",
+            internalType: "uint256",
+          },
+          {
+            name: "lastUpdate",
+            type: "uint48",
+            internalType: "uint48",
+          },
+        ],
       },
     ],
     stateMutability: "view",
-    type: "function",
   },
   {
+    type: "function",
+    name: "getTickSizeBase",
     inputs: [],
-    name: "getTickStep",
-    outputs: [{ internalType: "uint24", name: "", type: "uint24" }],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
-    inputs: [],
-    name: "isActive",
-    outputs: [{ internalType: "bool", name: "", type: "bool" }],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
-    inputs: [],
-    name: "isAuctionActive",
-    outputs: [{ internalType: "bool", name: "", type: "bool" }],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
-    inputs: [{ internalType: "uint8", name: "depositPeriod_", type: "uint8" }],
-    name: "isDepositPeriodEnabled",
-    outputs: [
-      { internalType: "bool", name: "isEnabled", type: "bool" },
-      { internalType: "bool", name: "isPendingEnabled", type: "bool" },
-    ],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
-    inputs: [],
-    name: "isEnabled",
-    outputs: [{ internalType: "bool", name: "", type: "bool" }],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
-    inputs: [],
-    name: "kernel",
-    outputs: [{ internalType: "contract Kernel", name: "", type: "address" }],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
-    inputs: [
-      { internalType: "uint8", name: "depositPeriod_", type: "uint8" },
-      { internalType: "uint256", name: "bidAmount_", type: "uint256" },
-    ],
-    name: "previewBid",
-    outputs: [{ internalType: "uint256", name: "ohmOut", type: "uint256" }],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
-    inputs: [],
-    name: "requestPermissions",
     outputs: [
       {
-        components: [
-          { internalType: "Keycode", name: "keycode", type: "bytes5" },
-          { internalType: "bytes4", name: "funcSelector", type: "bytes4" },
-        ],
-        internalType: "struct Permissions[]",
+        name: "",
+        type: "uint256",
+        internalType: "uint256",
+      },
+    ],
+    stateMutability: "view",
+  },
+  {
+    type: "function",
+    name: "getTickStep",
+    inputs: [],
+    outputs: [
+      {
+        name: "",
+        type: "uint24",
+        internalType: "uint24",
+      },
+    ],
+    stateMutability: "view",
+  },
+  {
+    type: "function",
+    name: "isActive",
+    inputs: [],
+    outputs: [
+      {
+        name: "",
+        type: "bool",
+        internalType: "bool",
+      },
+    ],
+    stateMutability: "view",
+  },
+  {
+    type: "function",
+    name: "isAuctionActive",
+    inputs: [],
+    outputs: [
+      {
+        name: "",
+        type: "bool",
+        internalType: "bool",
+      },
+    ],
+    stateMutability: "view",
+  },
+  {
+    type: "function",
+    name: "isDepositPeriodEnabled",
+    inputs: [
+      {
+        name: "depositPeriod_",
+        type: "uint8",
+        internalType: "uint8",
+      },
+    ],
+    outputs: [
+      {
+        name: "isEnabled",
+        type: "bool",
+        internalType: "bool",
+      },
+      {
+        name: "isPendingEnabled",
+        type: "bool",
+        internalType: "bool",
+      },
+    ],
+    stateMutability: "view",
+  },
+  {
+    type: "function",
+    name: "isEnabled",
+    inputs: [],
+    outputs: [
+      {
+        name: "",
+        type: "bool",
+        internalType: "bool",
+      },
+    ],
+    stateMutability: "view",
+  },
+  {
+    type: "function",
+    name: "kernel",
+    inputs: [],
+    outputs: [
+      {
+        name: "",
+        type: "address",
+        internalType: "contract Kernel",
+      },
+    ],
+    stateMutability: "view",
+  },
+  {
+    type: "function",
+    name: "previewBid",
+    inputs: [
+      {
+        name: "depositPeriod_",
+        type: "uint8",
+        internalType: "uint8",
+      },
+      {
+        name: "bidAmount_",
+        type: "uint256",
+        internalType: "uint256",
+      },
+    ],
+    outputs: [
+      {
+        name: "ohmOut",
+        type: "uint256",
+        internalType: "uint256",
+      },
+    ],
+    stateMutability: "view",
+  },
+  {
+    type: "function",
+    name: "requestPermissions",
+    inputs: [],
+    outputs: [
+      {
         name: "permissions",
         type: "tuple[]",
+        internalType: "struct Permissions[]",
+        components: [
+          {
+            name: "keycode",
+            type: "bytes5",
+            internalType: "Keycode",
+          },
+          {
+            name: "funcSelector",
+            type: "bytes4",
+            internalType: "bytes4",
+          },
+        ],
       },
     ],
     stateMutability: "view",
-    type: "function",
   },
   {
-    inputs: [
-      { internalType: "uint256", name: "target_", type: "uint256" },
-      { internalType: "uint256", name: "tickSize_", type: "uint256" },
-      { internalType: "uint256", name: "minPrice_", type: "uint256" },
-    ],
+    type: "function",
     name: "setAuctionParameters",
+    inputs: [
+      {
+        name: "target_",
+        type: "uint256",
+        internalType: "uint256",
+      },
+      {
+        name: "tickSize_",
+        type: "uint256",
+        internalType: "uint256",
+      },
+      {
+        name: "minPrice_",
+        type: "uint256",
+        internalType: "uint256",
+      },
+    ],
     outputs: [],
     stateMutability: "nonpayable",
-    type: "function",
   },
   {
-    inputs: [{ internalType: "uint8", name: "days_", type: "uint8" }],
+    type: "function",
     name: "setAuctionTrackingPeriod",
+    inputs: [
+      {
+        name: "days_",
+        type: "uint8",
+        internalType: "uint8",
+      },
+    ],
     outputs: [],
     stateMutability: "nonpayable",
-    type: "function",
   },
   {
-    inputs: [{ internalType: "uint24", name: "newStep_", type: "uint24" }],
+    type: "function",
+    name: "setMinimumBid",
+    inputs: [
+      {
+        name: "minimumBid_",
+        type: "uint256",
+        internalType: "uint256",
+      },
+    ],
+    outputs: [],
+    stateMutability: "nonpayable",
+  },
+  {
+    type: "function",
+    name: "setTickSizeBase",
+    inputs: [
+      {
+        name: "newBase_",
+        type: "uint256",
+        internalType: "uint256",
+      },
+    ],
+    outputs: [],
+    stateMutability: "nonpayable",
+  },
+  {
+    type: "function",
     name: "setTickStep",
+    inputs: [
+      {
+        name: "newStep_",
+        type: "uint24",
+        internalType: "uint24",
+      },
+    ],
     outputs: [],
     stateMutability: "nonpayable",
-    type: "function",
   },
   {
-    inputs: [{ internalType: "bytes4", name: "interfaceId", type: "bytes4" }],
-    name: "supportsInterface",
-    outputs: [{ internalType: "bool", name: "", type: "bool" }],
-    stateMutability: "view",
     type: "function",
+    name: "supportsInterface",
+    inputs: [
+      {
+        name: "interfaceId",
+        type: "bytes4",
+        internalType: "bytes4",
+      },
+    ],
+    outputs: [
+      {
+        name: "",
+        type: "bool",
+        internalType: "bool",
+      },
+    ],
+    stateMutability: "view",
+  },
+  {
+    type: "event",
+    name: "AuctionParametersUpdated",
+    inputs: [
+      {
+        name: "depositAsset",
+        type: "address",
+        indexed: true,
+        internalType: "address",
+      },
+      {
+        name: "newTarget",
+        type: "uint256",
+        indexed: false,
+        internalType: "uint256",
+      },
+      {
+        name: "newTickSize",
+        type: "uint256",
+        indexed: false,
+        internalType: "uint256",
+      },
+      {
+        name: "newMinPrice",
+        type: "uint256",
+        indexed: false,
+        internalType: "uint256",
+      },
+    ],
+    anonymous: false,
+  },
+  {
+    type: "event",
+    name: "AuctionResult",
+    inputs: [
+      {
+        name: "depositAsset",
+        type: "address",
+        indexed: true,
+        internalType: "address",
+      },
+      {
+        name: "ohmConvertible",
+        type: "uint256",
+        indexed: false,
+        internalType: "uint256",
+      },
+      {
+        name: "target",
+        type: "uint256",
+        indexed: false,
+        internalType: "uint256",
+      },
+      {
+        name: "periodIndex",
+        type: "uint8",
+        indexed: false,
+        internalType: "uint8",
+      },
+    ],
+    anonymous: false,
+  },
+  {
+    type: "event",
+    name: "AuctionTrackingPeriodUpdated",
+    inputs: [
+      {
+        name: "depositAsset",
+        type: "address",
+        indexed: true,
+        internalType: "address",
+      },
+      {
+        name: "newAuctionTrackingPeriod",
+        type: "uint8",
+        indexed: false,
+        internalType: "uint8",
+      },
+    ],
+    anonymous: false,
+  },
+  {
+    type: "event",
+    name: "Bid",
+    inputs: [
+      {
+        name: "bidder",
+        type: "address",
+        indexed: true,
+        internalType: "address",
+      },
+      {
+        name: "depositAsset",
+        type: "address",
+        indexed: true,
+        internalType: "address",
+      },
+      {
+        name: "depositPeriod",
+        type: "uint8",
+        indexed: true,
+        internalType: "uint8",
+      },
+      {
+        name: "depositAmount",
+        type: "uint256",
+        indexed: false,
+        internalType: "uint256",
+      },
+      {
+        name: "convertedAmount",
+        type: "uint256",
+        indexed: false,
+        internalType: "uint256",
+      },
+      {
+        name: "positionId",
+        type: "uint256",
+        indexed: false,
+        internalType: "uint256",
+      },
+    ],
+    anonymous: false,
+  },
+  {
+    type: "event",
+    name: "DepositPeriodDisableQueued",
+    inputs: [
+      {
+        name: "depositAsset",
+        type: "address",
+        indexed: true,
+        internalType: "address",
+      },
+      {
+        name: "depositPeriod",
+        type: "uint8",
+        indexed: false,
+        internalType: "uint8",
+      },
+    ],
+    anonymous: false,
+  },
+  {
+    type: "event",
+    name: "DepositPeriodDisabled",
+    inputs: [
+      {
+        name: "depositAsset",
+        type: "address",
+        indexed: true,
+        internalType: "address",
+      },
+      {
+        name: "depositPeriod",
+        type: "uint8",
+        indexed: false,
+        internalType: "uint8",
+      },
+    ],
+    anonymous: false,
+  },
+  {
+    type: "event",
+    name: "DepositPeriodEnableQueued",
+    inputs: [
+      {
+        name: "depositAsset",
+        type: "address",
+        indexed: true,
+        internalType: "address",
+      },
+      {
+        name: "depositPeriod",
+        type: "uint8",
+        indexed: false,
+        internalType: "uint8",
+      },
+    ],
+    anonymous: false,
+  },
+  {
+    type: "event",
+    name: "DepositPeriodEnabled",
+    inputs: [
+      {
+        name: "depositAsset",
+        type: "address",
+        indexed: true,
+        internalType: "address",
+      },
+      {
+        name: "depositPeriod",
+        type: "uint8",
+        indexed: false,
+        internalType: "uint8",
+      },
+    ],
+    anonymous: false,
+  },
+  {
+    type: "event",
+    name: "Disabled",
+    inputs: [],
+    anonymous: false,
+  },
+  {
+    type: "event",
+    name: "Enabled",
+    inputs: [],
+    anonymous: false,
+  },
+  {
+    type: "event",
+    name: "MinimumBidUpdated",
+    inputs: [
+      {
+        name: "depositAsset",
+        type: "address",
+        indexed: true,
+        internalType: "address",
+      },
+      {
+        name: "newMinimumBid",
+        type: "uint256",
+        indexed: false,
+        internalType: "uint256",
+      },
+    ],
+    anonymous: false,
+  },
+  {
+    type: "event",
+    name: "TickSizeBaseUpdated",
+    inputs: [
+      {
+        name: "depositAsset",
+        type: "address",
+        indexed: true,
+        internalType: "address",
+      },
+      {
+        name: "newBase",
+        type: "uint256",
+        indexed: false,
+        internalType: "uint256",
+      },
+    ],
+    anonymous: false,
+  },
+  {
+    type: "event",
+    name: "TickStepUpdated",
+    inputs: [
+      {
+        name: "depositAsset",
+        type: "address",
+        indexed: true,
+        internalType: "address",
+      },
+      {
+        name: "newTickStep",
+        type: "uint24",
+        indexed: false,
+        internalType: "uint24",
+      },
+    ],
+    anonymous: false,
+  },
+  {
+    type: "error",
+    name: "ConvertibleDepositAuctioneer_BidBelowMinimum",
+    inputs: [
+      {
+        name: "bidAmount",
+        type: "uint256",
+        internalType: "uint256",
+      },
+      {
+        name: "minimumBid",
+        type: "uint256",
+        internalType: "uint256",
+      },
+    ],
+  },
+  {
+    type: "error",
+    name: "ConvertibleDepositAuctioneer_ConvertedAmountSlippage",
+    inputs: [
+      {
+        name: "ohmOut",
+        type: "uint256",
+        internalType: "uint256",
+      },
+      {
+        name: "minOhmOut",
+        type: "uint256",
+        internalType: "uint256",
+      },
+    ],
+  },
+  {
+    type: "error",
+    name: "ConvertibleDepositAuctioneer_ConvertedAmountZero",
+    inputs: [],
+  },
+  {
+    type: "error",
+    name: "ConvertibleDepositAuctioneer_DepositPeriodInvalidState",
+    inputs: [
+      {
+        name: "depositAsset",
+        type: "address",
+        internalType: "address",
+      },
+      {
+        name: "depositPeriod",
+        type: "uint8",
+        internalType: "uint8",
+      },
+      {
+        name: "isEnabled",
+        type: "bool",
+        internalType: "bool",
+      },
+    ],
+  },
+  {
+    type: "error",
+    name: "ConvertibleDepositAuctioneer_DepositPeriodNotEnabled",
+    inputs: [
+      {
+        name: "depositAsset",
+        type: "address",
+        internalType: "address",
+      },
+      {
+        name: "depositPeriod",
+        type: "uint8",
+        internalType: "uint8",
+      },
+    ],
+  },
+  {
+    type: "error",
+    name: "ConvertibleDepositAuctioneer_InvalidParams",
+    inputs: [
+      {
+        name: "reason",
+        type: "string",
+        internalType: "string",
+      },
+    ],
+  },
+  {
+    type: "error",
+    name: "KernelAdapter_OnlyKernel",
+    inputs: [
+      {
+        name: "caller_",
+        type: "address",
+        internalType: "address",
+      },
+    ],
+  },
+  {
+    type: "error",
+    name: "NotAuthorised",
+    inputs: [],
+  },
+  {
+    type: "error",
+    name: "NotDisabled",
+    inputs: [],
+  },
+  {
+    type: "error",
+    name: "NotEnabled",
+    inputs: [],
+  },
+  {
+    type: "error",
+    name: "Policy_ModuleDoesNotExist",
+    inputs: [
+      {
+        name: "keycode_",
+        type: "bytes5",
+        internalType: "Keycode",
+      },
+    ],
+  },
+  {
+    type: "error",
+    name: "Policy_WrongModuleVersion",
+    inputs: [
+      {
+        name: "expected_",
+        type: "bytes",
+        internalType: "bytes",
+      },
+    ],
+  },
+  {
+    type: "error",
+    name: "ROLES_RequireRole",
+    inputs: [
+      {
+        name: "role_",
+        type: "bytes32",
+        internalType: "bytes32",
+      },
+    ],
   },
 ] as const;
