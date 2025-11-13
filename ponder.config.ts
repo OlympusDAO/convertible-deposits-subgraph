@@ -3,6 +3,7 @@ import { createConfig } from "ponder";
 import { ConvertibleDepositAuctioneerAbi } from "./abis/ConvertibleDepositAuctioneer";
 import { ConvertibleDepositFacilityAbi } from "./abis/ConvertibleDepositFacility";
 import { DepositRedemptionVaultAbi } from "./abis/DepositRedemptionVault";
+import { EmissionManagerAbi } from "./abis/EmissionManager";
 import { getTransport } from "./src/utils/rpc";
 
 const START_BLOCK_SEPOLIA = 9180152;
@@ -69,6 +70,24 @@ export default createConfig({
           address: [
             "0x69b2Be653BAB628116b360818BE75a2d97b45C4a", // Commit SHA: dfae803d86eb902c328dd81bbe6162eb69c7cbd8
             "0x93AcaDa86ad23C85e96869D46945fA6FFb7a4036", // Commit SHA: bad6eee15e2c2c2bdfd128e5516f680e16633bef
+          ],
+          startBlock: START_BLOCK_SEPOLIA,
+        },
+      },
+    },
+    EmissionManager: {
+      abi: EmissionManagerAbi,
+      chain: {
+        mainnet: {
+          address: [
+            "0xb4f620c39F3BA4a1E7aD264fEd6239B0C618DB50", // Commit SHA: 06cd3728b58af36639dea8a6f0a3c4d79f557b65
+          ],
+          startBlock: START_BLOCK_MAINNET,
+        },
+        sepolia: {
+          address: [
+            "0x9dC1920981Fcf74786C838Bf6f6c3683a8713576", // Commit SHA: dfae803d86eb902c328dd81bbe6162eb69c7cbd8
+            "0x84785E392BfD02F97A9b84F85d86DEc11933ef81", // Commit SHA: bad6eee15e2c2c2bdfd128e5516f680e16633bef
           ],
           startBlock: START_BLOCK_SEPOLIA,
         },

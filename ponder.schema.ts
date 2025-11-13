@@ -106,6 +106,38 @@ export const receiptToken = onchainTable(
   }),
 );
 
+export const emissionManager = onchainTable(
+  "emission_manager",
+  (t) => ({
+    chainId: t.integer().notNull(),
+    address: t.hex().notNull(),
+    enabled: t.boolean().notNull(),
+    backing: t.bigint().notNull(), // Scale: reserve asset decimals
+    backingDecimal: t.text().notNull(), // BigDecimal as text
+    baseEmissionRate: t.bigint().notNull(), // Scale: 1e9 = 100%
+    baseEmissionRateDecimal: t.text().notNull(), // BigDecimal as text
+    bondMarketAuctioneer: t.hex().notNull(),
+    convertibleDepositAuctioneer: t.hex().notNull(),
+    bondMarketTeller: t.hex().notNull(),
+    bondMarketCapacityScalar: t.bigint().notNull(), // Scale: 1e18 = 100%
+    bondMarketCapacityScalarDecimal: t.text().notNull(), // BigDecimal as text
+    minPriceScalar: t.bigint().notNull(), // Scale: 1e18 = 100%
+    minPriceScalarDecimal: t.text().notNull(), // BigDecimal as text
+    minimumPremium: t.bigint().notNull(), // Scale: 1e18 = 100%
+    minimumPremiumDecimal: t.text().notNull(), // BigDecimal as text
+    reserveAsset: t.hex().notNull(),
+    restartTimeframe: t.bigint().notNull(),
+    tickSize: t.bigint().notNull(), // Scale: 1e9
+    tickSizeDecimal: t.text().notNull(), // BigDecimal as text
+    vestingPeriod: t.bigint().notNull(),
+  }),
+  (table) => ({
+    pk: primaryKey({
+      columns: [table.chainId, table.address],
+    }),
+  }),
+);
+
 export const depositRedemptionVaultAssetConfiguration = onchainTable(
   "deposit_redemption_vault_asset_configuration",
   (t) => ({
@@ -1003,6 +1035,262 @@ export const depositRedemptionVaultLoanExtended = onchainTable(
   }),
 );
 
+// Emission Manager Events
+export const emissionManagerEnabled = onchainTable(
+  "emission_manager_enabled",
+  (t) => ({
+    chainId: t.integer().notNull(),
+    block: t.bigint().notNull(),
+    logIndex: t.integer().notNull(),
+    txHash: t.hex().notNull(),
+    timestamp: t.bigint().notNull(),
+    emissionManager: t.hex().notNull(),
+  }),
+  (table) => ({
+    pk: primaryKey({ columns: [table.chainId, table.block, table.logIndex] }),
+  }),
+);
+
+export const emissionManagerDisabled = onchainTable(
+  "emission_manager_disabled",
+  (t) => ({
+    chainId: t.integer().notNull(),
+    block: t.bigint().notNull(),
+    logIndex: t.integer().notNull(),
+    txHash: t.hex().notNull(),
+    timestamp: t.bigint().notNull(),
+    emissionManager: t.hex().notNull(),
+  }),
+  (table) => ({
+    pk: primaryKey({ columns: [table.chainId, table.block, table.logIndex] }),
+  }),
+);
+
+export const emissionManagerBackingChanged = onchainTable(
+  "emission_manager_backing_changed",
+  (t) => ({
+    chainId: t.integer().notNull(),
+    block: t.bigint().notNull(),
+    logIndex: t.integer().notNull(),
+    txHash: t.hex().notNull(),
+    timestamp: t.bigint().notNull(),
+    emissionManager: t.hex().notNull(),
+    newBacking: t.bigint().notNull(), // Scale: reserve asset decimals
+    newBackingDecimal: t.text().notNull(), // BigDecimal as text
+  }),
+  (table) => ({
+    pk: primaryKey({ columns: [table.chainId, table.block, table.logIndex] }),
+  }),
+);
+
+export const emissionManagerBackingUpdated = onchainTable(
+  "emission_manager_backing_updated",
+  (t) => ({
+    chainId: t.integer().notNull(),
+    block: t.bigint().notNull(),
+    logIndex: t.integer().notNull(),
+    txHash: t.hex().notNull(),
+    timestamp: t.bigint().notNull(),
+    emissionManager: t.hex().notNull(),
+    newBacking: t.bigint().notNull(), // Scale: reserve asset decimals
+    newBackingDecimal: t.text().notNull(), // BigDecimal as text
+    supplyAdded: t.bigint().notNull(), // Scale: 1e9
+    supplyAddedDecimal: t.text().notNull(), // BigDecimal as text
+    reservesAdded: t.bigint().notNull(), // Scale: reserve asset decimals
+    reservesAddedDecimal: t.text().notNull(), // BigDecimal as text
+  }),
+  (table) => ({
+    pk: primaryKey({ columns: [table.chainId, table.block, table.logIndex] }),
+  }),
+);
+
+export const emissionManagerBaseRateChanged = onchainTable(
+  "emission_manager_base_rate_changed",
+  (t) => ({
+    chainId: t.integer().notNull(),
+    block: t.bigint().notNull(),
+    logIndex: t.integer().notNull(),
+    txHash: t.hex().notNull(),
+    timestamp: t.bigint().notNull(),
+    emissionManager: t.hex().notNull(),
+    changeBy: t.bigint().notNull(), // Scale: 1e9
+    changeByDecimal: t.text().notNull(), // BigDecimal as text
+    forNumBeats: t.bigint().notNull(), // Number of beats
+    add: t.boolean().notNull(),
+  }),
+  (table) => ({
+    pk: primaryKey({ columns: [table.chainId, table.block, table.logIndex] }),
+  }),
+);
+
+export const emissionManagerBondContractsSet = onchainTable(
+  "emission_manager_bond_contracts_set",
+  (t) => ({
+    chainId: t.integer().notNull(),
+    block: t.bigint().notNull(),
+    logIndex: t.integer().notNull(),
+    txHash: t.hex().notNull(),
+    timestamp: t.bigint().notNull(),
+    emissionManager: t.hex().notNull(),
+    bondMarketAuctioneer: t.hex().notNull(),
+    bondMarketTeller: t.hex().notNull(),
+  }),
+  (table) => ({
+    pk: primaryKey({ columns: [table.chainId, table.block, table.logIndex] }),
+  }),
+);
+
+export const emissionManagerBondMarketCapacityScalarChanged = onchainTable(
+  "emission_manager_bond_market_capacity_scalar_changed",
+  (t) => ({
+    chainId: t.integer().notNull(),
+    block: t.bigint().notNull(),
+    logIndex: t.integer().notNull(),
+    txHash: t.hex().notNull(),
+    timestamp: t.bigint().notNull(),
+    emissionManager: t.hex().notNull(),
+    newBondMarketCapacityScalar: t.bigint().notNull(), // Scale: 1e18 = 100%
+    newBondMarketCapacityScalarDecimal: t.text().notNull(), // BigDecimal as text
+  }),
+  (table) => ({
+    pk: primaryKey({ columns: [table.chainId, table.block, table.logIndex] }),
+  }),
+);
+
+export const emissionManagerBondMarketCreationFailed = onchainTable(
+  "emission_manager_bond_market_creation_failed",
+  (t) => ({
+    chainId: t.integer().notNull(),
+    block: t.bigint().notNull(),
+    logIndex: t.integer().notNull(),
+    txHash: t.hex().notNull(),
+    timestamp: t.bigint().notNull(),
+    emissionManager: t.hex().notNull(),
+    saleAmount: t.bigint().notNull(), // Scale: 1e9
+    saleAmountDecimal: t.text().notNull(), // BigDecimal as text
+  }),
+  (table) => ({
+    pk: primaryKey({ columns: [table.chainId, table.block, table.logIndex] }),
+  }),
+);
+
+export const emissionManagerConvertibleDepositAuctioneerSet = onchainTable(
+  "emission_manager_convertible_deposit_auctioneer_set",
+  (t) => ({
+    chainId: t.integer().notNull(),
+    block: t.bigint().notNull(),
+    logIndex: t.integer().notNull(),
+    txHash: t.hex().notNull(),
+    timestamp: t.bigint().notNull(),
+    emissionManager: t.hex().notNull(),
+    convertibleDepositAuctioneer: t.hex().notNull(),
+  }),
+  (table) => ({
+    pk: primaryKey({ columns: [table.chainId, table.block, table.logIndex] }),
+  }),
+);
+
+export const emissionManagerMinPriceScalarChanged = onchainTable(
+  "emission_manager_min_price_scalar_changed",
+  (t) => ({
+    chainId: t.integer().notNull(),
+    block: t.bigint().notNull(),
+    logIndex: t.integer().notNull(),
+    txHash: t.hex().notNull(),
+    timestamp: t.bigint().notNull(),
+    emissionManager: t.hex().notNull(),
+    newMinPriceScalar: t.bigint().notNull(), // Scale: 1e18 = 100%
+    newMinPriceScalarDecimal: t.text().notNull(), // BigDecimal as text
+  }),
+  (table) => ({
+    pk: primaryKey({ columns: [table.chainId, table.block, table.logIndex] }),
+  }),
+);
+
+export const emissionManagerMinimumPremiumChanged = onchainTable(
+  "emission_manager_minimum_premium_changed",
+  (t) => ({
+    chainId: t.integer().notNull(),
+    block: t.bigint().notNull(),
+    logIndex: t.integer().notNull(),
+    txHash: t.hex().notNull(),
+    timestamp: t.bigint().notNull(),
+    emissionManager: t.hex().notNull(),
+    newMinimumPremium: t.bigint().notNull(), // Scale: 1e18 = 100%
+    newMinimumPremiumDecimal: t.text().notNull(), // BigDecimal as text
+  }),
+  (table) => ({
+    pk: primaryKey({ columns: [table.chainId, table.block, table.logIndex] }),
+  }),
+);
+
+export const emissionManagerRestartTimeframeChanged = onchainTable(
+  "emission_manager_restart_timeframe_changed",
+  (t) => ({
+    chainId: t.integer().notNull(),
+    block: t.bigint().notNull(),
+    logIndex: t.integer().notNull(),
+    txHash: t.hex().notNull(),
+    timestamp: t.bigint().notNull(),
+    emissionManager: t.hex().notNull(),
+    newRestartTimeframe: t.bigint().notNull(),
+  }),
+  (table) => ({
+    pk: primaryKey({ columns: [table.chainId, table.block, table.logIndex] }),
+  }),
+);
+
+export const emissionManagerBondMarketCreated = onchainTable(
+  "emission_manager_bond_market_created",
+  (t) => ({
+    chainId: t.integer().notNull(),
+    block: t.bigint().notNull(),
+    logIndex: t.integer().notNull(),
+    txHash: t.hex().notNull(),
+    timestamp: t.bigint().notNull(),
+    emissionManager: t.hex().notNull(),
+    marketId: t.bigint().notNull(),
+    saleAmount: t.bigint().notNull(), // Scale: 1e9
+    saleAmountDecimal: t.text().notNull(), // BigDecimal as text
+  }),
+  (table) => ({
+    pk: primaryKey({ columns: [table.chainId, table.block, table.logIndex] }),
+  }),
+);
+
+export const emissionManagerTickSizeChanged = onchainTable(
+  "emission_manager_tick_size_changed",
+  (t) => ({
+    chainId: t.integer().notNull(),
+    block: t.bigint().notNull(),
+    logIndex: t.integer().notNull(),
+    txHash: t.hex().notNull(),
+    timestamp: t.bigint().notNull(),
+    emissionManager: t.hex().notNull(),
+    newTickSize: t.bigint().notNull(), // Scale: 1e9
+    newTickSizeDecimal: t.text().notNull(), // BigDecimal as text
+  }),
+  (table) => ({
+    pk: primaryKey({ columns: [table.chainId, table.block, table.logIndex] }),
+  }),
+);
+
+export const emissionManagerVestingPeriodChanged = onchainTable(
+  "emission_manager_vesting_period_changed",
+  (t) => ({
+    chainId: t.integer().notNull(),
+    block: t.bigint().notNull(),
+    logIndex: t.integer().notNull(),
+    txHash: t.hex().notNull(),
+    timestamp: t.bigint().notNull(),
+    emissionManager: t.hex().notNull(),
+    newVestingPeriod: t.bigint().notNull(),
+  }),
+  (table) => ({
+    pk: primaryKey({ columns: [table.chainId, table.block, table.logIndex] }),
+  }),
+);
+
 // Snapshot entities for interval-based state tracking
 export const auctioneerSnapshot = onchainTable(
   "auctioneer_snapshot",
@@ -1093,6 +1381,32 @@ export const depositRedemptionVaultRelations = relations(depositRedemptionVault,
   ),
   facilityAuthorizedEvents: many(depositRedemptionVaultFacilityAuthorized),
   facilityDeauthorizedEvents: many(depositRedemptionVaultFacilityDeauthorized),
+}));
+
+export const emissionManagerRelations = relations(emissionManager, ({ one, many }) => ({
+  rConvertibleDepositAuctioneer: one(auctioneer, {
+    fields: [emissionManager.chainId, emissionManager.convertibleDepositAuctioneer],
+    references: [auctioneer.chainId, auctioneer.address],
+  }),
+  rReserveAsset: one(asset, {
+    fields: [emissionManager.chainId, emissionManager.reserveAsset],
+    references: [asset.chainId, asset.address],
+  }),
+  backingChangedEvents: many(emissionManagerBackingChanged),
+  backingUpdatedEvents: many(emissionManagerBackingUpdated),
+  baseRateChangedEvents: many(emissionManagerBaseRateChanged),
+  bondContractsSetEvents: many(emissionManagerBondContractsSet),
+  bondMarketCapacityScalarChangedEvents: many(emissionManagerBondMarketCapacityScalarChanged),
+  bondMarketCreatedEvents: many(emissionManagerBondMarketCreated),
+  bondMarketCreationFailedEvents: many(emissionManagerBondMarketCreationFailed),
+  convertibleDepositAuctioneerSetEvents: many(emissionManagerConvertibleDepositAuctioneerSet),
+  disabledEvents: many(emissionManagerDisabled),
+  enabledEvents: many(emissionManagerEnabled),
+  minimumPremiumChangedEvents: many(emissionManagerMinimumPremiumChanged),
+  minPriceScalarChangedEvents: many(emissionManagerMinPriceScalarChanged),
+  restartTimeframeChangedEvents: many(emissionManagerRestartTimeframeChanged),
+  tickSizeChangedEvents: many(emissionManagerTickSizeChanged),
+  vestingPeriodChangedEvents: many(emissionManagerVestingPeriodChanged),
 }));
 
 export const receiptTokenRelations = relations(receiptToken, ({ one, many }) => ({
@@ -1687,6 +2001,203 @@ export const depositRedemptionVaultLoanExtendedRelations = relations(
   }),
 );
 
+export const emissionManagerEnabledRelations = relations(emissionManagerEnabled, ({ one }) => ({
+  rEmissionManager: one(emissionManager, {
+    fields: [emissionManagerEnabled.chainId, emissionManagerEnabled.emissionManager],
+    references: [emissionManager.chainId, emissionManager.address],
+  }),
+}));
+
+export const emissionManagerDisabledRelations = relations(emissionManagerDisabled, ({ one }) => ({
+  rEmissionManager: one(emissionManager, {
+    fields: [emissionManagerDisabled.chainId, emissionManagerDisabled.emissionManager],
+    references: [emissionManager.chainId, emissionManager.address],
+  }),
+}));
+
+export const emissionManagerBackingChangedRelations = relations(
+  emissionManagerBackingChanged,
+  ({ one }) => ({
+    rEmissionManager: one(emissionManager, {
+      fields: [
+        emissionManagerBackingChanged.chainId,
+        emissionManagerBackingChanged.emissionManager,
+      ],
+      references: [emissionManager.chainId, emissionManager.address],
+    }),
+  }),
+);
+
+export const emissionManagerBackingUpdatedRelations = relations(
+  emissionManagerBackingUpdated,
+  ({ one }) => ({
+    rEmissionManager: one(emissionManager, {
+      fields: [
+        emissionManagerBackingUpdated.chainId,
+        emissionManagerBackingUpdated.emissionManager,
+      ],
+      references: [emissionManager.chainId, emissionManager.address],
+    }),
+  }),
+);
+
+export const emissionManagerBaseRateChangedRelations = relations(
+  emissionManagerBaseRateChanged,
+  ({ one }) => ({
+    rEmissionManager: one(emissionManager, {
+      fields: [
+        emissionManagerBaseRateChanged.chainId,
+        emissionManagerBaseRateChanged.emissionManager,
+      ],
+      references: [emissionManager.chainId, emissionManager.address],
+    }),
+  }),
+);
+
+export const emissionManagerBondContractsSetRelations = relations(
+  emissionManagerBondContractsSet,
+  ({ one }) => ({
+    rEmissionManager: one(emissionManager, {
+      fields: [
+        emissionManagerBondContractsSet.chainId,
+        emissionManagerBondContractsSet.emissionManager,
+      ],
+      references: [emissionManager.chainId, emissionManager.address],
+    }),
+    rAuctioneer: one(auctioneer, {
+      fields: [
+        emissionManagerBondContractsSet.chainId,
+        emissionManagerBondContractsSet.bondMarketAuctioneer,
+      ],
+      references: [auctioneer.chainId, auctioneer.address],
+    }),
+  }),
+);
+
+export const emissionManagerBondMarketCapacityScalarChangedRelations = relations(
+  emissionManagerBondMarketCapacityScalarChanged,
+  ({ one }) => ({
+    rEmissionManager: one(emissionManager, {
+      fields: [
+        emissionManagerBondMarketCapacityScalarChanged.chainId,
+        emissionManagerBondMarketCapacityScalarChanged.emissionManager,
+      ],
+      references: [emissionManager.chainId, emissionManager.address],
+    }),
+  }),
+);
+
+export const emissionManagerBondMarketCreationFailedRelations = relations(
+  emissionManagerBondMarketCreationFailed,
+  ({ one }) => ({
+    rEmissionManager: one(emissionManager, {
+      fields: [
+        emissionManagerBondMarketCreationFailed.chainId,
+        emissionManagerBondMarketCreationFailed.emissionManager,
+      ],
+      references: [emissionManager.chainId, emissionManager.address],
+    }),
+  }),
+);
+
+export const emissionManagerConvertibleDepositAuctioneerSetRelations = relations(
+  emissionManagerConvertibleDepositAuctioneerSet,
+  ({ one }) => ({
+    rEmissionManager: one(emissionManager, {
+      fields: [
+        emissionManagerConvertibleDepositAuctioneerSet.chainId,
+        emissionManagerConvertibleDepositAuctioneerSet.emissionManager,
+      ],
+      references: [emissionManager.chainId, emissionManager.address],
+    }),
+    rAuctioneer: one(auctioneer, {
+      fields: [
+        emissionManagerConvertibleDepositAuctioneerSet.chainId,
+        emissionManagerConvertibleDepositAuctioneerSet.convertibleDepositAuctioneer,
+      ],
+      references: [auctioneer.chainId, auctioneer.address],
+    }),
+  }),
+);
+
+export const emissionManagerMinPriceScalarChangedRelations = relations(
+  emissionManagerMinPriceScalarChanged,
+  ({ one }) => ({
+    rEmissionManager: one(emissionManager, {
+      fields: [
+        emissionManagerMinPriceScalarChanged.chainId,
+        emissionManagerMinPriceScalarChanged.emissionManager,
+      ],
+      references: [emissionManager.chainId, emissionManager.address],
+    }),
+  }),
+);
+
+export const emissionManagerMinimumPremiumChangedRelations = relations(
+  emissionManagerMinimumPremiumChanged,
+  ({ one }) => ({
+    rEmissionManager: one(emissionManager, {
+      fields: [
+        emissionManagerMinimumPremiumChanged.chainId,
+        emissionManagerMinimumPremiumChanged.emissionManager,
+      ],
+      references: [emissionManager.chainId, emissionManager.address],
+    }),
+  }),
+);
+
+export const emissionManagerRestartTimeframeChangedRelations = relations(
+  emissionManagerRestartTimeframeChanged,
+  ({ one }) => ({
+    rEmissionManager: one(emissionManager, {
+      fields: [
+        emissionManagerRestartTimeframeChanged.chainId,
+        emissionManagerRestartTimeframeChanged.emissionManager,
+      ],
+      references: [emissionManager.chainId, emissionManager.address],
+    }),
+  }),
+);
+
+export const emissionManagerBondMarketCreatedRelations = relations(
+  emissionManagerBondMarketCreated,
+  ({ one }) => ({
+    rEmissionManager: one(emissionManager, {
+      fields: [
+        emissionManagerBondMarketCreated.chainId,
+        emissionManagerBondMarketCreated.emissionManager,
+      ],
+      references: [emissionManager.chainId, emissionManager.address],
+    }),
+  }),
+);
+
+export const emissionManagerTickSizeChangedRelations = relations(
+  emissionManagerTickSizeChanged,
+  ({ one }) => ({
+    rEmissionManager: one(emissionManager, {
+      fields: [
+        emissionManagerTickSizeChanged.chainId,
+        emissionManagerTickSizeChanged.emissionManager,
+      ],
+      references: [emissionManager.chainId, emissionManager.address],
+    }),
+  }),
+);
+
+export const emissionManagerVestingPeriodChangedRelations = relations(
+  emissionManagerVestingPeriodChanged,
+  ({ one }) => ({
+    rEmissionManager: one(emissionManager, {
+      fields: [
+        emissionManagerVestingPeriodChanged.chainId,
+        emissionManagerVestingPeriodChanged.emissionManager,
+      ],
+      references: [emissionManager.chainId, emissionManager.address],
+    }),
+  }),
+);
+
 // Snapshot Relations
 export const auctioneerSnapshotRelations = relations(auctioneerSnapshot, ({ one, many }) => ({
   rAuctioneer: one(auctioneer, {
@@ -1791,6 +2302,7 @@ export const auctioneerRelations = relations(auctioneer, ({ one, many }) => ({
     fields: [auctioneer.chainId, auctioneer.depositAsset],
     references: [depositAsset.chainId, depositAsset.asset],
   }),
+  rEmissionManagers: many(emissionManager),
   depositPeriods: many(auctioneerDepositPeriod),
   enabledEvents: many(convertibleDepositAuctioneerEnabled),
   disabledEvents: many(convertibleDepositAuctioneerDisabled),
