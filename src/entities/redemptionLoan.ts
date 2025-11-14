@@ -1,27 +1,38 @@
-import type { RedemptionLoan } from "generated";
-import type { HandlerContext } from "generated/src/Types";
-import type { Hex } from "viem";
+import type { Context } from "ponder:registry";
+import schema from "ponder:schema";
+import type { Address } from "viem";
 import { fetchLoan } from "../contracts/redemptionVault";
 import { toDecimal } from "../utils/decimal";
-import { buildEntityId } from "../utils/ids";
-import { getDepositAssetPeriodDecimals } from "./asset";
+import { getDepositAssetPeriod } from "./asset";
 import { getOrCreateRedemption } from "./redemption";
 
+/**
+ * Get or create a RedemptionLoan entity
+ */
 export async function getOrCreateRedemptionLoan(
-  context: HandlerContext,
+  context: Context,
   chainId: number,
-  redemptionVaultAddress: Hex,
-  facilityAddress: Hex,
-  depositAssetAddress: Hex,
+  redemptionVaultAddress: Address,
+  facilityAddress: Address,
+  depositAssetAddress: Address,
   depositAssetPeriodMonths: number,
-  userAddress: Hex,
+  userAddress: Address,
   redemptionId: number,
-  createdAt: number,
-): Promise<RedemptionLoan> {
-  const id = buildEntityId([chainId, redemptionVaultAddress, userAddress, redemptionId]);
-  const existing = await context.RedemptionLoan.get(id);
-  if (existing) return existing as RedemptionLoan;
+  createdAt: bigint,
+): Promise<typeof schema.redemptionLoan.$inferSelect> {
+  // Check if redemption loan already exists
+  const existing = await context.db.find(schema.redemptionLoan, {
+    chainId,
+    redemptionVault: redemptionVaultAddress.toLowerCase() as Address,
+    depositor: userAddress.toLowerCase() as Address,
+    redemptionId,
+  });
 
+  if (existing) {
+    return existing;
+  }
+
+  // Get or create redemption first
   const redemption = await getOrCreateRedemption(
     context,
     chainId,
@@ -32,48 +43,108 @@ export async function getOrCreateRedemptionLoan(
     userAddress,
     redemptionId,
   );
-  const assetDecimals = await getDepositAssetPeriodDecimals(
-    context,
-    redemption.depositAssetPeriod_id,
-  );
+
+  // Get asset decimals
+  await getDepositAssetPeriod(context, chainId, depositAssetAddress, depositAssetPeriodMonths);
+  const assetDecimals = await context.db.find(schema.asset, {
+    chainId,
+    address: depositAssetAddress.toLowerCase() as Address,
+  });
+
+  if (!assetDecimals) {
+    throw new Error(`Asset not found: ${chainId}, ${depositAssetAddress}`);
+  }
 
   // Fetch loan data from contract
-  const loan = await context.effect(fetchLoan, {
+  const loan = await fetchLoan(context.client, redemptionVaultAddress, userAddress, redemptionId);
+
+  // Create redemption loan
+  await context.db.insert(schema.redemptionLoan).values({
     chainId,
-    vaultAddress: redemptionVaultAddress,
-    userAddress,
+    redemptionVault: redemptionVaultAddress.toLowerCase() as Address,
+    depositor: userAddress.toLowerCase() as Address,
+    depositAsset: depositAssetAddress.toLowerCase() as Address,
+    depositPeriod: depositAssetPeriodMonths,
+    facility: facilityAddress.toLowerCase() as Address,
+    receiptTokenManager: redemption.receiptTokenManager,
+    receiptTokenId: redemption.receiptTokenId,
+    redemptionId,
+    initialPrincipal: loan.initialPrincipal,
+    initialPrincipalDecimal: toDecimal(loan.initialPrincipal, assetDecimals.decimals),
+    principal: loan.principal,
+    principalDecimal: toDecimal(loan.principal, assetDecimals.decimals),
+    interest: loan.interest,
+    interestDecimal: toDecimal(loan.interest, assetDecimals.decimals),
+    createdAt,
+    dueDate: loan.dueDate,
+    status: loan.isDefaulted ? "defaulted" : "active",
+  });
+
+  // Return the created entity
+  const created = await context.db.find(schema.redemptionLoan, {
+    chainId,
+    redemptionVault: redemptionVaultAddress.toLowerCase() as Address,
+    depositor: userAddress.toLowerCase() as Address,
     redemptionId,
   });
 
-  const created: RedemptionLoan = {
-    id,
-    chainId: chainId,
-    redemption_id: redemption.id,
-    initialPrincipal: loan.initialPrincipal,
-    initialPrincipalDecimal: toDecimal(loan.initialPrincipal, assetDecimals),
-    principal: loan.principal,
-    principalDecimal: toDecimal(loan.principal, assetDecimals),
-    interest: loan.interest,
-    interestDecimal: toDecimal(loan.interest, assetDecimals),
-    createdAt: BigInt(createdAt),
-    dueDate: BigInt(loan.dueDate),
-    status: "active",
-  };
-  context.RedemptionLoan.set(created);
+  if (!created) {
+    throw new Error(
+      `Failed to create redemption loan: ${chainId}, ${redemptionVaultAddress}, ${userAddress}, ${redemptionId}`,
+    );
+  }
+
   return created;
 }
 
+/**
+ * Get an existing RedemptionLoan entity (throws if not found)
+ */
 export async function getRedemptionLoan(
-  context: HandlerContext,
+  context: Context,
   chainId: number,
-  userAddress: Hex,
+  redemptionVaultAddress: Address,
+  userAddress: Address,
   redemptionId: number,
-): Promise<RedemptionLoan> {
-  const id = buildEntityId([chainId, userAddress, redemptionId]);
-  const existing = await context.RedemptionLoan.get(id);
-  if (!existing) {
-    throw new Error(`RedemptionLoan ${id} not found`);
+): Promise<typeof schema.redemptionLoan.$inferSelect> {
+  const loan = await context.db.find(schema.redemptionLoan, {
+    chainId,
+    redemptionVault: redemptionVaultAddress.toLowerCase() as Address,
+    depositor: userAddress.toLowerCase() as Address,
+    redemptionId,
+  });
+
+  if (!loan) {
+    throw new Error(
+      `RedemptionLoan not found: ${chainId}, ${redemptionVaultAddress}, ${userAddress}, ${redemptionId}`,
+    );
   }
 
-  return existing as RedemptionLoan;
+  return loan;
+}
+
+/**
+ * Update an existing RedemptionLoan entity
+ */
+export async function updateRedemptionLoan(
+  context: Context,
+  chainId: number,
+  redemptionVaultAddress: Address,
+  userAddress: Address,
+  redemptionId: number,
+  updates: Partial<
+    Omit<
+      typeof schema.redemptionLoan.$inferSelect,
+      "chainId" | "redemptionVault" | "depositor" | "redemptionId"
+    >
+  >,
+): Promise<void> {
+  await context.db
+    .update(schema.redemptionLoan, {
+      chainId,
+      redemptionVault: redemptionVaultAddress.toLowerCase() as Address,
+      depositor: userAddress.toLowerCase() as Address,
+      redemptionId,
+    })
+    .set(updates);
 }

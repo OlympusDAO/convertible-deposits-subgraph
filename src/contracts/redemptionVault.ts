@@ -1,167 +1,166 @@
-import { experimental_createEffect, S } from "envio";
-import { DepositRedemptionVaultAbi } from "../abi/DepositRedemptionVault";
-import { getClient } from "../utils/client";
+import type { Address } from "viem";
+import { DepositRedemptionVaultAbi } from "../../abis/DepositRedemptionVault";
+import type { PonderClient } from "../types";
 
-/**
- * Fetch redemption vault interest rate for an asset
- */
-export const fetchRedemptionVaultInterestRate = experimental_createEffect(
-  {
-    name: "fetchRedemptionVaultInterestRate",
-    input: {
-      chainId: S.number,
-      vaultAddress: S.string,
-      facilityAddress: S.string,
-      assetAddress: S.string,
-    },
-    output: S.number,
-    cache: true,
-  },
-  async ({ input }) => {
-    const client = getClient(input.chainId);
-    const vaultAddress = input.vaultAddress as `0x${string}`;
-    const facilityAddress = input.facilityAddress as `0x${string}`;
-    const assetAddress = input.assetAddress as `0x${string}`;
-
-    const result = await client.readContract({
-      address: vaultAddress,
-      abi: DepositRedemptionVaultAbi,
-      functionName: "getAnnualInterestRate",
-      args: [assetAddress, facilityAddress],
-    });
-    return result;
-  },
+const UINT256_MAX = BigInt(
+  "115792089237316195423570985008687907853269984665640564039457584007913129639935",
 );
 
 /**
- * Fetch redemption vault max borrow percentage for an asset
+ * Fetch claim default reward percentage from redemption vault
  */
-export const fetchRedemptionVaultMaxBorrowPercentage = experimental_createEffect(
-  {
-    name: "fetchRedemptionVaultMaxBorrowPercentage",
-    input: {
-      chainId: S.number,
-      vaultAddress: S.string,
-      facilityAddress: S.string,
-      assetAddress: S.string,
-    },
-    output: S.number,
-    cache: true,
-  },
-  async ({ input }) => {
-    const client = getClient(input.chainId);
-    const vaultAddress = input.vaultAddress as `0x${string}`;
-    const facilityAddress = input.facilityAddress as `0x${string}`;
-    const assetAddress = input.assetAddress as `0x${string}`;
-
-    const result = await client.readContract({
-      address: vaultAddress,
-      abi: DepositRedemptionVaultAbi,
-      functionName: "getMaxBorrowPercentage",
-      args: [assetAddress, facilityAddress],
-    });
-    return result;
-  },
-);
+export async function fetchClaimDefaultRewardPercentage(
+  client: PonderClient,
+  address: Address,
+): Promise<number> {
+  const result = await client.readContract({
+    address,
+    abi: DepositRedemptionVaultAbi,
+    functionName: "getClaimDefaultRewardPercentage",
+  });
+  return Number(result);
+}
 
 /**
- * Fetch claim default reward percentage
+ * Fetch redemption vault interest rate for an asset/facility pair
  */
-export const fetchClaimDefaultRewardPercentage = experimental_createEffect(
-  {
-    name: "fetchClaimDefaultRewardPercentage",
-    input: {
-      chainId: S.number,
-      vaultAddress: S.string,
-    },
-    output: S.number,
-    cache: true,
-  },
-  async ({ input }) => {
-    const client = getClient(input.chainId);
-    const vaultAddress = input.vaultAddress as `0x${string}`;
-
-    const result = await client.readContract({
-      address: vaultAddress,
-      abi: DepositRedemptionVaultAbi,
-      functionName: "getClaimDefaultRewardPercentage",
-    });
-    return result;
-  },
-);
+export async function fetchRedemptionVaultInterestRate(
+  client: PonderClient,
+  address: Address,
+  facilityAddress: Address,
+  assetAddress: Address,
+): Promise<number> {
+  const result = await client.readContract({
+    address,
+    abi: DepositRedemptionVaultAbi,
+    functionName: "getAnnualInterestRate",
+    args: [assetAddress, facilityAddress],
+  });
+  return Number(result);
+}
 
 /**
- * Fetch redemption for a user and redemption id
+ * Fetch redemption vault max borrow percentage for an asset/facility pair
  */
-export const fetchRedemption = experimental_createEffect(
-  {
-    name: "fetchRedemption",
-    input: {
-      chainId: S.number,
-      vaultAddress: S.string,
-      userAddress: S.string,
-      redemptionId: S.number,
-    },
-    output: S.schema({
-      depositToken: S.string,
-      depositPeriod: S.number,
-      redeemableAt: S.number,
-      amount: S.bigint,
-      facility: S.string,
-      positionId: S.bigint,
-    }),
-    cache: false,
-  },
-  async ({ input }) => {
-    const client = getClient(input.chainId);
-    const vaultAddress = input.vaultAddress as `0x${string}`;
-    const userAddress = input.userAddress as `0x${string}`;
-    const redemptionId = input.redemptionId;
-
-    const result = await client.readContract({
-      address: vaultAddress,
-      abi: DepositRedemptionVaultAbi,
-      functionName: "getUserRedemption",
-      args: [userAddress, redemptionId],
-    });
-
-    return result;
-  },
-);
+export async function fetchRedemptionVaultMaxBorrowPercentage(
+  client: PonderClient,
+  address: Address,
+  facilityAddress: Address,
+  assetAddress: Address,
+): Promise<number> {
+  const result = await client.readContract({
+    address,
+    abi: DepositRedemptionVaultAbi,
+    functionName: "getMaxBorrowPercentage",
+    args: [assetAddress, facilityAddress],
+  });
+  return Number(result);
+}
 
 /**
- * Fetch loan for a redemption
+ * Batch fetch interest rate and max borrow percentage
  */
-export const fetchLoan = experimental_createEffect(
-  {
-    name: "fetchLoan",
-    input: {
-      chainId: S.number,
-      vaultAddress: S.string,
-      userAddress: S.string,
-      redemptionId: S.number,
-    },
-    output: S.schema({
-      initialPrincipal: S.bigint,
-      principal: S.bigint,
-      interest: S.bigint,
-      dueDate: S.number,
-      isDefaulted: S.boolean,
-    }),
-    cache: false, // Don't cache as this changes
-  },
-  async ({ input }) => {
-    const client = getClient(input.chainId);
-    const vaultAddress = input.vaultAddress as `0x${string}`;
-    const userAddress = input.userAddress as `0x${string}`;
-    const redemptionId = input.redemptionId;
+export async function fetchRedemptionVaultAssetConfiguration(
+  client: PonderClient,
+  address: Address,
+  facilityAddress: Address,
+  assetAddress: Address,
+): Promise<{
+  interestRate: number;
+  maxBorrowPercentage: number;
+}> {
+  const results = await client.multicall({
+    contracts: [
+      {
+        address,
+        abi: DepositRedemptionVaultAbi,
+        functionName: "getAnnualInterestRate",
+        args: [assetAddress, facilityAddress],
+      },
+      {
+        address,
+        abi: DepositRedemptionVaultAbi,
+        functionName: "getMaxBorrowPercentage",
+        args: [assetAddress, facilityAddress],
+      },
+    ],
+  });
 
-    const result = await client.readContract({
-      address: vaultAddress,
-      abi: DepositRedemptionVaultAbi,
-      functionName: "getRedemptionLoan",
-      args: [userAddress, redemptionId],
-    });
-    return result;
-  },
-);
+  const interestRateResult = results[0];
+  const maxBorrowPercentageResult = results[1];
+
+  if (interestRateResult.status === "failure" || maxBorrowPercentageResult.status === "failure") {
+    throw new Error(
+      `Failed to fetch redemption vault asset configuration for ${address}: ${interestRateResult.error || maxBorrowPercentageResult.error}`,
+    );
+  }
+
+  return {
+    interestRate: Number(interestRateResult.result),
+    maxBorrowPercentage: Number(maxBorrowPercentageResult.result),
+  };
+}
+
+/**
+ * Fetch redemption data for a user and redemption id
+ */
+export async function fetchRedemption(
+  client: PonderClient,
+  vaultAddress: Address,
+  userAddress: Address,
+  redemptionId: number,
+): Promise<{
+  depositToken: Address;
+  depositPeriod: number;
+  redeemableAt: bigint;
+  amount: bigint;
+  facility: Address;
+  positionId: bigint | null;
+}> {
+  const result = await client.readContract({
+    address: vaultAddress,
+    abi: DepositRedemptionVaultAbi,
+    functionName: "getUserRedemption",
+    args: [userAddress, redemptionId],
+  });
+
+  return {
+    depositToken: result.depositToken,
+    depositPeriod: Number(result.depositPeriod),
+    redeemableAt: BigInt(result.redeemableAt),
+    amount: result.amount,
+    facility: result.facility,
+    positionId: result.positionId === UINT256_MAX ? null : result.positionId,
+  };
+}
+
+/**
+ * Fetch loan data for a redemption
+ */
+export async function fetchLoan(
+  client: PonderClient,
+  vaultAddress: Address,
+  userAddress: Address,
+  redemptionId: number,
+): Promise<{
+  initialPrincipal: bigint;
+  principal: bigint;
+  interest: bigint;
+  dueDate: bigint;
+  isDefaulted: boolean;
+}> {
+  const result = await client.readContract({
+    address: vaultAddress,
+    abi: DepositRedemptionVaultAbi,
+    functionName: "getRedemptionLoan",
+    args: [userAddress, redemptionId],
+  });
+
+  return {
+    initialPrincipal: result.initialPrincipal,
+    principal: result.principal,
+    interest: result.interest,
+    dueDate: BigInt(result.dueDate),
+    isDefaulted: result.isDefaulted,
+  };
+}

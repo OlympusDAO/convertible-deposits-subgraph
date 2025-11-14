@@ -1,443 +1,406 @@
-/*
- * Event handlers for ConvertibleDepositAuctioneer contract
- */
-import {
-  ConvertibleDepositAuctioneer,
-  type ConvertibleDepositAuctioneer_AuctionParametersUpdated,
-  type ConvertibleDepositAuctioneer_AuctionResult,
-  type ConvertibleDepositAuctioneer_AuctionTrackingPeriodUpdated,
-  type ConvertibleDepositAuctioneer_Bid,
-  type ConvertibleDepositAuctioneer_DepositPeriodDisabled,
-  type ConvertibleDepositAuctioneer_DepositPeriodDisableQueued,
-  type ConvertibleDepositAuctioneer_DepositPeriodEnabled,
-  type ConvertibleDepositAuctioneer_DepositPeriodEnableQueued,
-  type ConvertibleDepositAuctioneer_Disabled,
-  type ConvertibleDepositAuctioneer_Enabled,
-  type ConvertibleDepositAuctioneer_TickStepUpdated,
-} from "generated";
-import type { Hex } from "viem";
+// Event handlers for ConvertibleDepositAuctioneer contract
+
+import { ponder } from "ponder:registry";
+import schema from "ponder:schema";
+import type { Address } from "viem";
 import { fetchAuctioneerCurrentTick } from "../contracts/auctioneer";
+import { getAssetDecimals, getOrCreateDepositAsset } from "../entities/asset";
 import {
-  getDepositAssetDecimals,
-  getDepositAssetPeriod,
-  getDepositAssetPeriodDecimals,
-  getOrCreateDepositAsset,
-} from "../entities/asset";
-import { getOrCreateAuctioneer, getOrCreateAuctioneerDepositPeriod } from "../entities/auctioneer";
-import { getOrCreateDepositFacility } from "../entities/depositFacility";
-import { getOrCreateDepositor } from "../entities/depositor";
+  getOrCreateAuctioneer,
+  getOrCreateAuctioneerDepositPeriod,
+  updateAuctioneer,
+  updateAuctioneerDepositPeriod,
+} from "../entities/auctioneer";
 import { getOrCreatePosition } from "../entities/position";
-import { getOrCreateAuctioneerSnapshot, refreshAuctionState } from "../entities/snapshot";
+import { refreshAuctionState } from "../entities/snapshot";
 import { toBpsDecimal, toDecimal, toOhmDecimal } from "../utils/decimal";
-import { getBlockId } from "../utils/ids";
-// Enables the block handler to run
-import "./block.handlers";
 
-ConvertibleDepositAuctioneer.AuctionParametersUpdated.handler(async ({ event, context }) => {
-  const id = getBlockId(event.chainId, event.block.number, event.logIndex);
-  const auctioneer = await getOrCreateAuctioneer(context, event.chainId, event.srcAddress as Hex);
-  const depositAsset = await getOrCreateDepositAsset(
-    context,
-    event.chainId,
-    event.params.depositAsset as Hex,
-  );
-  const assetDecimals = await getDepositAssetDecimals(context, depositAsset.id);
+ponder.on("ConvertibleDepositAuctioneer:Enabled", async ({ event, context }) => {
+  const chainId = Number(context.chain.id);
+  const auctioneerAddress = event.log.address as Address;
+
+  // Get or create auctioneer
+  const _auctioneer = await getOrCreateAuctioneer(context, chainId, auctioneerAddress);
+
+  // Record the Enabled event
+  await context.db.insert(schema.convertibleDepositAuctioneerEnabled).values({
+    chainId,
+    block: BigInt(event.block.number),
+    logIndex: event.log.logIndex,
+    txHash: event.transaction.hash,
+    timestamp: BigInt(event.block.timestamp),
+    auctioneer: auctioneerAddress.toLowerCase() as Address,
+  });
+
+  // Update auctioneer status
+  await updateAuctioneer(context, chainId, auctioneerAddress, { enabled: true });
+});
+
+ponder.on("ConvertibleDepositAuctioneer:Disabled", async ({ event, context }) => {
+  const chainId = Number(context.chain.id);
+  const auctioneerAddress = event.log.address as Address;
+
+  // Get or create auctioneer
+  const _auctioneer = await getOrCreateAuctioneer(context, chainId, auctioneerAddress);
+
+  // Record the Disabled event
+  await context.db.insert(schema.convertibleDepositAuctioneerDisabled).values({
+    chainId,
+    block: BigInt(event.block.number),
+    logIndex: event.log.logIndex,
+    txHash: event.transaction.hash,
+    timestamp: BigInt(event.block.timestamp),
+    auctioneer: auctioneerAddress.toLowerCase() as Address,
+  });
+
+  // Update auctioneer status
+  await updateAuctioneer(context, chainId, auctioneerAddress, { enabled: false });
+});
+
+ponder.on("ConvertibleDepositAuctioneer:TickStepUpdated", async ({ event, context }) => {
+  const chainId = Number(context.chain.id);
+  const auctioneerAddress = event.log.address as Address;
+
+  // Get or create auctioneer
+  await getOrCreateAuctioneer(context, chainId, auctioneerAddress);
 
   // Calculate decimals
-  const targetDecimal = toOhmDecimal(event.params.newTarget);
-  const tickSizeDecimal = toOhmDecimal(event.params.newTickSize);
-  const minPriceDecimal = toDecimal(event.params.newMinPrice, assetDecimals);
+  const newTickStep = event.args.newTickStep;
+  const tickStepDecimal = toBpsDecimal(Number(newTickStep));
 
-  // Record the AuctionParametersUpdated event
-  const entity: ConvertibleDepositAuctioneer_AuctionParametersUpdated = {
-    id,
-    auctioneer_id: auctioneer.id,
-    chainId: event.chainId,
-    txHash: event.transaction.hash,
+  // Record the TickStepUpdated event
+  await context.db.insert(schema.convertibleDepositAuctioneerTickStepUpdated).values({
+    chainId,
     block: BigInt(event.block.number),
+    logIndex: event.log.logIndex,
+    txHash: event.transaction.hash,
     timestamp: BigInt(event.block.timestamp),
-    target: event.params.newTarget,
-    targetDecimal,
-    tickSize: event.params.newTickSize,
-    tickSizeDecimal,
-    minPrice: event.params.newMinPrice,
-    minPriceDecimal,
-  };
-  context.ConvertibleDepositAuctioneer_AuctionParametersUpdated.set(entity);
+    auctioneer: auctioneerAddress.toLowerCase() as Address,
+    newTickStep: BigInt(newTickStep),
+    newTickStepDecimal: tickStepDecimal,
+  });
 
-  // Create snapshot with fresh contract data (no need to update auctioneer entity)
-  await refreshAuctionState(
+  // Update auctioneer with new tick step
+  await updateAuctioneer(context, chainId, auctioneerAddress, {
+    tickStep: BigInt(newTickStep),
+    tickStepDecimal,
+  });
+});
+
+ponder.on(
+  "ConvertibleDepositAuctioneer:AuctionTrackingPeriodUpdated",
+  async ({ event, context }) => {
+    const chainId = Number(context.chain.id);
+    const auctioneerAddress = event.log.address as Address;
+
+    // Get or create auctioneer
+    await getOrCreateAuctioneer(context, chainId, auctioneerAddress);
+
+    // Record the AuctionTrackingPeriodUpdated event
+    await context.db
+      .insert(schema.convertibleDepositAuctioneerAuctionTrackingPeriodUpdated)
+      .values({
+        chainId,
+        block: BigInt(event.block.number),
+        logIndex: event.log.logIndex,
+        txHash: event.transaction.hash,
+        timestamp: BigInt(event.block.timestamp),
+        auctioneer: auctioneerAddress.toLowerCase() as Address,
+        auctionTrackingPeriod: Number(event.args.newAuctionTrackingPeriod),
+      });
+
+    // Update auctioneer with new tracking period
+    await updateAuctioneer(context, chainId, auctioneerAddress, {
+      auctionTrackingPeriod: Number(event.args.newAuctionTrackingPeriod),
+    });
+  },
+);
+
+ponder.on("ConvertibleDepositAuctioneer:DepositPeriodDisableQueued", async ({ event, context }) => {
+  const chainId = Number(context.chain.id);
+  const auctioneerAddress = event.log.address as Address;
+  const depositAssetAddress = event.args.depositAsset as Address;
+  const depositPeriod = Number(event.args.depositPeriod);
+
+  // Get or create auctioneer and deposit period
+  await getOrCreateAuctioneer(context, chainId, auctioneerAddress);
+  await getOrCreateAuctioneerDepositPeriod(
     context,
-    event.chainId,
-    event.block.number,
-    event.block.timestamp,
-    auctioneer,
+    chainId,
+    auctioneerAddress,
+    depositAssetAddress,
+    depositPeriod,
+  );
+
+  // Record the DepositPeriodDisableQueued event
+  await context.db.insert(schema.convertibleDepositAuctioneerDepositPeriodDisableQueued).values({
+    chainId,
+    block: BigInt(event.block.number),
+    logIndex: event.log.logIndex,
+    txHash: event.transaction.hash,
+    timestamp: BigInt(event.block.timestamp),
+    auctioneer: auctioneerAddress.toLowerCase() as Address,
+    depositAsset: depositAssetAddress.toLowerCase() as Address,
+    depositPeriod,
+  });
+});
+
+ponder.on("ConvertibleDepositAuctioneer:DepositPeriodDisabled", async ({ event, context }) => {
+  const chainId = Number(context.chain.id);
+  const auctioneerAddress = event.log.address as Address;
+  const depositAssetAddress = event.args.depositAsset as Address;
+  const depositPeriod = Number(event.args.depositPeriod);
+
+  // Get or create auctioneer
+  await getOrCreateAuctioneer(context, chainId, auctioneerAddress);
+  await getOrCreateAuctioneerDepositPeriod(
+    context,
+    chainId,
+    auctioneerAddress,
+    depositAssetAddress,
+    depositPeriod,
+  );
+
+  // Record the DepositPeriodDisabled event
+  await context.db.insert(schema.convertibleDepositAuctioneerDepositPeriodDisabled).values({
+    chainId,
+    block: BigInt(event.block.number),
+    logIndex: event.log.logIndex,
+    txHash: event.transaction.hash,
+    timestamp: BigInt(event.block.timestamp),
+    auctioneer: auctioneerAddress.toLowerCase() as Address,
+    depositAsset: depositAssetAddress.toLowerCase() as Address,
+    depositPeriod,
+  });
+
+  // Update the AuctioneerDepositPeriod with the new status
+  await updateAuctioneerDepositPeriod(
+    context,
+    chainId,
+    auctioneerAddress,
+    depositAssetAddress,
+    depositPeriod,
+    { enabled: false },
   );
 });
 
-ConvertibleDepositAuctioneer.AuctionResult.handler(async ({ event, context }) => {
-  const id = getBlockId(event.chainId, event.block.number, event.logIndex);
-  const auctioneer = await getOrCreateAuctioneer(context, event.chainId, event.srcAddress as Hex);
+ponder.on("ConvertibleDepositAuctioneer:DepositPeriodEnableQueued", async ({ event, context }) => {
+  const chainId = Number(context.chain.id);
+  const auctioneerAddress = event.log.address as Address;
+  const depositAssetAddress = event.args.depositAsset as Address;
+  const depositPeriod = Number(event.args.depositPeriod);
 
-  // Calculate decimals
-  const ohmConvertibleDecimal = toOhmDecimal(event.params.ohmConvertible);
-  const targetDecimal = toOhmDecimal(event.params.target);
-
-  const entity: ConvertibleDepositAuctioneer_AuctionResult = {
-    id,
-    auctioneer_id: auctioneer.id,
-    chainId: event.chainId,
-    txHash: event.transaction.hash,
-    block: BigInt(event.block.number),
-    timestamp: BigInt(event.block.timestamp),
-    ohmConvertible: event.params.ohmConvertible,
-    ohmConvertibleDecimal,
-    target: event.params.target,
-    targetDecimal,
-    periodIndex: event.params.periodIndex,
-  };
-  context.ConvertibleDepositAuctioneer_AuctionResult.set(entity);
-
-  // Create snapshot after auction result (auction completed)
-  await getOrCreateAuctioneerSnapshot(
+  // Get or create auctioneer and deposit period
+  await getOrCreateAuctioneer(context, chainId, auctioneerAddress);
+  await getOrCreateAuctioneerDepositPeriod(
     context,
-    event.chainId,
-    event.block.number,
-    event.block.timestamp,
-    auctioneer,
+    chainId,
+    auctioneerAddress,
+    depositAssetAddress,
+    depositPeriod,
+  );
+
+  // Record the DepositPeriodEnableQueued event
+  await context.db.insert(schema.convertibleDepositAuctioneerDepositPeriodEnableQueued).values({
+    chainId,
+    block: BigInt(event.block.number),
+    logIndex: event.log.logIndex,
+    txHash: event.transaction.hash,
+    timestamp: BigInt(event.block.timestamp),
+    auctioneer: auctioneerAddress.toLowerCase() as Address,
+    depositAsset: depositAssetAddress.toLowerCase() as Address,
+    depositPeriod,
+  });
+});
+
+ponder.on("ConvertibleDepositAuctioneer:DepositPeriodEnabled", async ({ event, context }) => {
+  const chainId = Number(context.chain.id);
+  const auctioneerAddress = event.log.address as Address;
+  const depositAssetAddress = event.args.depositAsset as Address;
+  const depositPeriod = Number(event.args.depositPeriod);
+
+  // Get or create auctioneer
+  await getOrCreateAuctioneer(context, chainId, auctioneerAddress);
+  await getOrCreateAuctioneerDepositPeriod(
+    context,
+    chainId,
+    auctioneerAddress,
+    depositAssetAddress,
+    depositPeriod,
+  );
+
+  // Record the DepositPeriodEnabled event
+  await context.db.insert(schema.convertibleDepositAuctioneerDepositPeriodEnabled).values({
+    chainId,
+    block: BigInt(event.block.number),
+    logIndex: event.log.logIndex,
+    txHash: event.transaction.hash,
+    timestamp: BigInt(event.block.timestamp),
+    auctioneer: auctioneerAddress.toLowerCase() as Address,
+    depositAsset: depositAssetAddress.toLowerCase() as Address,
+    depositPeriod,
+  });
+
+  // Update the AuctioneerDepositPeriod with the new status
+  await updateAuctioneerDepositPeriod(
+    context,
+    chainId,
+    auctioneerAddress,
+    depositAssetAddress,
+    depositPeriod,
+    { enabled: true },
   );
 });
 
-ConvertibleDepositAuctioneer.AuctionTrackingPeriodUpdated.handler(async ({ event, context }) => {
-  const id = getBlockId(event.chainId, event.block.number, event.logIndex);
-  const auctioneer = await getOrCreateAuctioneer(context, event.chainId, event.srcAddress as Hex);
+ponder.on("ConvertibleDepositAuctioneer:Bid", async ({ event, context }) => {
+  const chainId = Number(context.chain.id);
+  const auctioneerAddress = event.log.address as Address;
+  const depositAssetAddress = event.args.depositAsset as Address;
+  const depositPeriod = Number(event.args.depositPeriod);
+  const positionId = event.args.positionId;
+  const bidderAddress = event.args.bidder as Address;
 
-  // Record the AuctionTrackingPeriodUpdated event
-  const entity: ConvertibleDepositAuctioneer_AuctionTrackingPeriodUpdated = {
-    id,
-    auctioneer_id: auctioneer.id,
-    chainId: event.chainId,
-    txHash: event.transaction.hash,
-    block: BigInt(event.block.number),
-    timestamp: BigInt(event.block.timestamp),
-    auctionTrackingPeriod: event.params.newAuctionTrackingPeriod,
-  };
-
-  context.ConvertibleDepositAuctioneer_AuctionTrackingPeriodUpdated.set(entity);
-
-  // Update auctioneer with new tracking period
-  const updatedAuctioneer = {
-    ...auctioneer,
-    auctionTrackingPeriod: Number(event.params.newAuctionTrackingPeriod),
-  };
-  context.Auctioneer.set(updatedAuctioneer);
-});
-
-ConvertibleDepositAuctioneer.Bid.handler(async ({ event, context }) => {
-  const id = getBlockId(event.chainId, event.block.number, event.logIndex);
-  const auctioneer = await getOrCreateAuctioneer(context, event.chainId, event.srcAddress as Hex);
-  const facility = await getOrCreateDepositFacility(
+  // Get or create entities
+  // Note: getOrCreateDepositFacility, getOrCreateDepositor and getOrCreateDepositAssetPeriod are called internally by getOrCreatePosition,
+  // so we skip calling them here to avoid duplicate database queries
+  await getOrCreatePosition(
     context,
-    event.chainId,
-    event.srcAddress as Hex,
-  );
-  const auctioneerDepositPeriod = await getOrCreateAuctioneerDepositPeriod(
-    context,
-    event.chainId,
-    auctioneer,
-    event.params.depositAsset as Hex,
-    Number(event.params.depositPeriod),
-  );
-  const depositAssetPeriod = await getDepositAssetPeriod(
-    context,
-    auctioneerDepositPeriod.depositAssetPeriod_id,
-  );
-  const depositor = await getOrCreateDepositor(context, event.chainId, event.params.bidder as Hex);
-  const position = await getOrCreatePosition(
-    context,
-    event.chainId,
-    facility.address as Hex,
-    event.params.depositAsset as Hex,
-    depositAssetPeriod.periodMonths,
-    event.params.positionId,
-    event.params.bidder as Hex,
-    event.transaction.hash as Hex,
+    chainId,
+    auctioneerAddress, // Facility address (same as auctioneer in this case)
+    depositAssetAddress,
+    depositPeriod,
+    BigInt(positionId),
+    bidderAddress,
+    event.transaction.hash,
     BigInt(event.block.number),
     BigInt(event.block.timestamp),
   );
 
-  const assetDecimals = await getDepositAssetPeriodDecimals(context, depositAssetPeriod.id);
+  // Get asset decimals
+  const assetDecimals = await getAssetDecimals(context, chainId, depositAssetAddress);
 
   // Fetch tick data from contract
-  const tickData = await context.effect(fetchAuctioneerCurrentTick, {
-    chainId: event.chainId,
-    address: event.srcAddress as Hex,
-    depositPeriod: Number(event.params.depositPeriod),
-  });
+  const tickData = await fetchAuctioneerCurrentTick(
+    context.client,
+    auctioneerAddress,
+    depositPeriod,
+  );
 
   // Calculate decimals
-  const depositAmountDecimal = toDecimal(event.params.depositAmount, assetDecimals);
-  const convertedAmountDecimal = toOhmDecimal(event.params.convertedAmount);
+  const depositAmount = event.args.depositAmount;
+  const depositAmountDecimal = toDecimal(BigInt(depositAmount), assetDecimals);
+  const convertedAmount = event.args.convertedAmount;
+  const convertedAmountDecimal = toOhmDecimal(BigInt(convertedAmount));
   const tickCapacity = tickData.capacity;
   const tickCapacityDecimal = toOhmDecimal(tickCapacity);
   const tickPrice = tickData.price;
   const tickPriceDecimal = toDecimal(tickPrice, assetDecimals);
 
-  // Record the Bid
-  const entity: ConvertibleDepositAuctioneer_Bid = {
-    id,
-    auctioneerDepositPeriod_id: auctioneerDepositPeriod.id,
-    depositor_id: depositor.id,
-    position_id: position.id,
-    chainId: event.chainId,
-    txHash: event.transaction.hash,
+  // Record the Bid event
+  await context.db.insert(schema.convertibleDepositAuctioneerBid).values({
+    chainId,
     block: BigInt(event.block.number),
+    logIndex: event.log.logIndex,
+    txHash: event.transaction.hash,
     timestamp: BigInt(event.block.timestamp),
-    depositAmount: event.params.depositAmount,
+    auctioneer: auctioneerAddress.toLowerCase() as Address,
+    depositAsset: depositAssetAddress.toLowerCase() as Address,
+    depositPeriod,
+    depositor: bidderAddress.toLowerCase() as Address,
+    positionId: BigInt(positionId),
+    depositAmount: BigInt(depositAmount),
     depositAmountDecimal,
-    convertedAmount: event.params.convertedAmount,
+    convertedAmount: BigInt(convertedAmount),
     convertedAmountDecimal,
     tickCapacity,
     tickCapacityDecimal,
     tickPrice,
     tickPriceDecimal,
-  };
-  context.ConvertibleDepositAuctioneer_Bid.set(entity);
+  });
 
-  // Update the AuctioneerDepositPeriod with the new tick data
-  const updatedAuctioneerDepositPeriod = {
-    ...auctioneerDepositPeriod,
-    currentTickCapacity: tickData.capacity,
-    currentTickCapacityDecimal: toOhmDecimal(tickData.capacity),
-    currentTickPrice: tickData.price,
-    currentTickPriceDecimal: toDecimal(tickPrice, assetDecimals),
-  };
-  context.AuctioneerDepositPeriod.set(updatedAuctioneerDepositPeriod);
-
-  // Create snapshot after bid (day state/tick changes)
-  await getOrCreateAuctioneerSnapshot(
-    context,
-    event.chainId,
-    event.block.number,
-    event.block.timestamp,
-    auctioneer,
-  );
-});
-
-ConvertibleDepositAuctioneer.DepositPeriodDisableQueued.handler(async ({ event, context }) => {
-  const id = getBlockId(event.chainId, event.block.number, event.logIndex);
-  const auctioneer = await getOrCreateAuctioneer(context, event.chainId, event.srcAddress as Hex);
-  const auctioneerDepositPeriod = await getOrCreateAuctioneerDepositPeriod(
-    context,
-    event.chainId,
-    auctioneer,
-    event.params.depositAsset as Hex,
-    Number(event.params.depositPeriod),
-  );
-
-  // Record the DepositPeriodDisableQueued event
-  const entity: ConvertibleDepositAuctioneer_DepositPeriodDisableQueued = {
-    id,
-    auctioneerDepositPeriod_id: auctioneerDepositPeriod.id,
-    chainId: event.chainId,
-    txHash: event.transaction.hash,
-    block: BigInt(event.block.number),
-    timestamp: BigInt(event.block.timestamp),
-  };
-  context.ConvertibleDepositAuctioneer_DepositPeriodDisableQueued.set(entity);
-});
-
-ConvertibleDepositAuctioneer.DepositPeriodDisabled.handler(async ({ event, context }) => {
-  const id = getBlockId(event.chainId, event.block.number, event.logIndex);
-  const auctioneer = await getOrCreateAuctioneer(context, event.chainId, event.srcAddress as Hex);
-  const auctioneerDepositPeriod = await getOrCreateAuctioneerDepositPeriod(
-    context,
-    event.chainId,
-    auctioneer,
-    event.params.depositAsset as Hex,
-    Number(event.params.depositPeriod),
-  );
-
-  // Record the DepositPeriodDisabled event
-  const entity: ConvertibleDepositAuctioneer_DepositPeriodDisabled = {
-    id,
-    auctioneerDepositPeriod_id: auctioneerDepositPeriod.id,
-    chainId: event.chainId,
-    txHash: event.transaction.hash,
-    block: BigInt(event.block.number),
-    timestamp: BigInt(event.block.timestamp),
-  };
-  context.ConvertibleDepositAuctioneer_DepositPeriodDisabled.set(entity);
-
-  // Update the AuctioneerDepositPeriod with the new status
-  const updatedAuctioneerDepositPeriod = {
-    ...auctioneerDepositPeriod,
-    enabled: false,
-  };
-  context.AuctioneerDepositPeriod.set(updatedAuctioneerDepositPeriod);
-
-  // Create snapshot with fresh state
+  // Refresh auction state and create snapshots for auctioneer and all deposit periods
   await refreshAuctionState(
     context,
-    event.chainId,
-    event.block.number,
-    event.block.timestamp,
-    auctioneer,
+    chainId,
+    BigInt(event.block.number),
+    BigInt(event.block.timestamp),
+    auctioneerAddress,
   );
 });
 
-ConvertibleDepositAuctioneer.DepositPeriodEnableQueued.handler(async ({ event, context }) => {
-  const id = getBlockId(event.chainId, event.block.number, event.logIndex);
-  const auctioneer = await getOrCreateAuctioneer(context, event.chainId, event.srcAddress as Hex);
-  const auctioneerDepositPeriod = await getOrCreateAuctioneerDepositPeriod(
-    context,
-    event.chainId,
-    auctioneer,
-    event.params.depositAsset as Hex,
-    Number(event.params.depositPeriod),
-  );
+ponder.on("ConvertibleDepositAuctioneer:AuctionParametersUpdated", async ({ event, context }) => {
+  const chainId = Number(context.chain.id);
+  const auctioneerAddress = event.log.address as Address;
+  const depositAssetAddress = event.args.depositAsset as Address;
 
-  // Record the DepositPeriodEnableQueued event
-  const entity: ConvertibleDepositAuctioneer_DepositPeriodEnableQueued = {
-    id,
-    auctioneerDepositPeriod_id: auctioneerDepositPeriod.id,
-    chainId: event.chainId,
-    txHash: event.transaction.hash,
-    block: BigInt(event.block.number),
-    timestamp: BigInt(event.block.timestamp),
-  };
-  context.ConvertibleDepositAuctioneer_DepositPeriodEnableQueued.set(entity);
-});
-
-ConvertibleDepositAuctioneer.DepositPeriodEnabled.handler(async ({ event, context }) => {
-  const id = getBlockId(event.chainId, event.block.number, event.logIndex);
-  const auctioneer = await getOrCreateAuctioneer(context, event.chainId, event.srcAddress as Hex);
-  const auctioneerDepositPeriod = await getOrCreateAuctioneerDepositPeriod(
-    context,
-    event.chainId,
-    auctioneer,
-    event.params.depositAsset as Hex,
-    Number(event.params.depositPeriod),
-  );
-
-  // Record the DepositPeriodEnabled event
-  const entity: ConvertibleDepositAuctioneer_DepositPeriodEnabled = {
-    id,
-    auctioneerDepositPeriod_id: auctioneerDepositPeriod.id,
-    chainId: event.chainId,
-    txHash: event.transaction.hash,
-    block: BigInt(event.block.number),
-    timestamp: BigInt(event.block.timestamp),
-  };
-  context.ConvertibleDepositAuctioneer_DepositPeriodEnabled.set(entity);
-
-  // Update the AuctioneerDepositPeriod with the new status
-  const updatedAuctioneerDepositPeriod = {
-    ...auctioneerDepositPeriod,
-    enabled: true,
-  };
-  context.AuctioneerDepositPeriod.set(updatedAuctioneerDepositPeriod);
-
-  // Create snapshot with fresh state
-  await refreshAuctionState(
-    context,
-    event.chainId,
-    event.block.number,
-    event.block.timestamp,
-    auctioneer,
-  );
-});
-
-ConvertibleDepositAuctioneer.Disabled.handler(async ({ event, context }) => {
-  const id = getBlockId(event.chainId, event.block.number, event.logIndex);
-  const auctioneer = await getOrCreateAuctioneer(context, event.chainId, event.srcAddress as Hex);
-
-  // Record the Disabled event
-  const entity: ConvertibleDepositAuctioneer_Disabled = {
-    id,
-    auctioneer_id: auctioneer.id,
-    chainId: event.chainId,
-    txHash: event.transaction.hash,
-    block: BigInt(event.block.number),
-    timestamp: BigInt(event.block.timestamp),
-  };
-  context.ConvertibleDepositAuctioneer_Disabled.set(entity);
-
-  // Update auctioneer status
-  const updatedAuctioneer = {
-    ...auctioneer,
-    enabled: false,
-  };
-  context.Auctioneer.set(updatedAuctioneer);
-
-  // Create snapshot with fresh state
-  await refreshAuctionState(
-    context,
-    event.chainId,
-    event.block.number,
-    event.block.timestamp,
-    updatedAuctioneer,
-  );
-});
-
-ConvertibleDepositAuctioneer.Enabled.handler(async ({ event, context }) => {
-  const id = getBlockId(event.chainId, event.block.number, event.logIndex);
-  const auctioneer = await getOrCreateAuctioneer(context, event.chainId, event.srcAddress as Hex);
-
-  // Record the Enabled event
-  const entity: ConvertibleDepositAuctioneer_Enabled = {
-    id,
-    auctioneer_id: auctioneer.id,
-    chainId: event.chainId,
-    txHash: event.transaction.hash,
-    block: BigInt(event.block.number),
-    timestamp: BigInt(event.block.timestamp),
-  };
-
-  context.ConvertibleDepositAuctioneer_Enabled.set(entity);
-
-  // Update auctioneer status
-  const updatedAuctioneer = {
-    ...auctioneer,
-    enabled: true,
-  };
-  context.Auctioneer.set(updatedAuctioneer);
-
-  // Create snapshot with fresh state
-  await refreshAuctionState(
-    context,
-    event.chainId,
-    event.block.number,
-    event.block.timestamp,
-    updatedAuctioneer,
-  );
-});
-
-ConvertibleDepositAuctioneer.TickStepUpdated.handler(async ({ event, context }) => {
-  const id = getBlockId(event.chainId, event.block.number, event.logIndex);
-  const auctioneer = await getOrCreateAuctioneer(context, event.chainId, event.srcAddress as Hex);
+  // Get or create entities
+  await getOrCreateAuctioneer(context, chainId, auctioneerAddress);
+  await getOrCreateDepositAsset(context, chainId, depositAssetAddress);
+  const assetDecimals = await getAssetDecimals(context, chainId, depositAssetAddress);
 
   // Calculate decimals
-  const tickStepDecimal = toBpsDecimal(event.params.newTickStep);
+  const target = event.args.newTarget;
+  const targetDecimal = toOhmDecimal(BigInt(target));
+  const tickSize = event.args.newTickSize;
+  const tickSizeDecimal = toOhmDecimal(BigInt(tickSize));
+  const minPrice = event.args.newMinPrice;
+  const minPriceDecimal = toDecimal(BigInt(minPrice), assetDecimals);
 
-  // Record the TickStepUpdated event
-  const entity: ConvertibleDepositAuctioneer_TickStepUpdated = {
-    id,
-    auctioneer_id: auctioneer.id,
-    chainId: event.chainId,
-    txHash: event.transaction.hash,
+  // Record the AuctionParametersUpdated event
+  await context.db.insert(schema.convertibleDepositAuctioneerAuctionParametersUpdated).values({
+    chainId,
     block: BigInt(event.block.number),
+    logIndex: event.log.logIndex,
+    txHash: event.transaction.hash,
     timestamp: BigInt(event.block.timestamp),
-    newTickStep: event.params.newTickStep,
-    newTickStepDecimal: tickStepDecimal,
-  };
-  context.ConvertibleDepositAuctioneer_TickStepUpdated.set(entity);
+    auctioneer: auctioneerAddress.toLowerCase() as Address,
+    depositAsset: depositAssetAddress.toLowerCase() as Address,
+    target: BigInt(target),
+    targetDecimal,
+    tickSize: BigInt(tickSize),
+    tickSizeDecimal,
+    minPrice: BigInt(minPrice),
+    minPriceDecimal,
+  });
+});
 
-  // Update auctioneer with new tick step
-  const updatedAuctioneer = {
-    ...auctioneer,
-    tickStep: event.params.newTickStep,
-    tickStepDecimal,
-  };
-  context.Auctioneer.set(updatedAuctioneer);
+ponder.on("ConvertibleDepositAuctioneer:AuctionResult", async ({ event, context }) => {
+  const chainId = Number(context.chain.id);
+  const auctioneerAddress = event.log.address as Address;
+  const depositAssetAddress = event.args.depositAsset as Address;
+
+  // Get or create entities
+  await getOrCreateAuctioneer(context, chainId, auctioneerAddress);
+  await getOrCreateDepositAsset(context, chainId, depositAssetAddress);
+
+  // Calculate decimals
+  const ohmConvertible = event.args.ohmConvertible;
+  const ohmConvertibleDecimal = toOhmDecimal(BigInt(ohmConvertible));
+  const target = event.args.target;
+  const targetDecimal = toOhmDecimal(BigInt(target));
+
+  // Record the AuctionResult event
+  await context.db.insert(schema.convertibleDepositAuctioneerAuctionResult).values({
+    chainId,
+    block: BigInt(event.block.number),
+    logIndex: event.log.logIndex,
+    txHash: event.transaction.hash,
+    timestamp: BigInt(event.block.timestamp),
+    auctioneer: auctioneerAddress.toLowerCase() as Address,
+    depositAsset: depositAssetAddress.toLowerCase() as Address,
+    ohmConvertible: BigInt(ohmConvertible),
+    ohmConvertibleDecimal,
+    target: BigInt(target),
+    targetDecimal,
+    periodIndex: Number(event.args.periodIndex),
+  });
+
+  // Refresh auction state after auction result (day state changes)
+  await refreshAuctionState(
+    context,
+    chainId,
+    BigInt(event.block.number),
+    BigInt(event.block.timestamp),
+    auctioneerAddress,
+  );
 });

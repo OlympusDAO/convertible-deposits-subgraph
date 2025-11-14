@@ -1,608 +1,447 @@
-import type {
-  Auctioneer,
-  AuctioneerDepositPeriod,
-  AuctioneerDepositPeriodSnapshot,
-  AuctioneerSnapshot,
-  DepositAsset,
-  DepositFacility,
-  DepositFacilityAssetSnapshot,
-  DepositFacilitySnapshot,
-  LatestSnapshot,
-} from "generated";
-import type { HandlerContext } from "generated/src/Types";
-import type { Hex } from "viem";
+// Snapshot entity helpers
+// In Ponder, we query snapshots directly by timestamp instead of using LatestSnapshot
+
+import type { Context } from "ponder:registry";
+import schema from "ponder:schema";
+import { and, desc, eq, lte } from "ponder";
+import type { Address } from "viem";
 import {
-  fetchAuctioneerCurrentTick,
-  fetchAuctioneerDayState,
-  fetchAuctioneerParameters,
+  fetchAuctioneerCurrentTickBatch,
+  fetchAuctioneerDayStateAndParameters,
 } from "../contracts/auctioneer";
 import { fetchFacilityClaimableYield } from "../contracts/depositFacility";
 import { toDecimal, toOhmDecimal } from "../utils/decimal";
-import {
-  getAuctioneerDepositPeriodSnapshotId,
-  getAuctioneerSnapshotId,
-  getDepositFacilityAssetSnapshotId,
-  getDepositFacilitySnapshotId,
-  getLatestSnapshotId,
-} from "../utils/snapshot";
-import { getAsset, getDepositAsset, getDepositAssetDecimals, getDepositAssetPeriod } from "./asset";
-import { getAuctioneer } from "./auctioneer";
+import { getAssetDecimals } from "./asset";
+import { getOrCreateAuctioneer } from "./auctioneer";
+import { getOrCreateDepositFacilityAsset } from "./depositFacility";
 
 /**
- * Helper function to fetch claimable yield from contract
+ * Get the most recent deposit facility asset snapshot for a given facility/asset before or at a specific block
  */
-async function fetchClaimableYield(
-  context: HandlerContext,
+async function getLatestDepositFacilityAssetSnapshot(
+  context: Context,
   chainId: number,
-  facility: DepositFacility,
-  depositAsset: DepositAsset,
-): Promise<bigint> {
-  const asset = await getAsset(context, depositAsset.asset_id);
-  return await context.effect(fetchFacilityClaimableYield, {
-    chainId,
-    facilityAddress: facility.address,
-    assetAddress: asset.address,
-  });
-}
+  facilityAddress: Address,
+  depositAssetAddress: Address,
+  beforeBlock: bigint,
+): Promise<typeof schema.depositFacilityAssetSnapshot.$inferSelect | null> {
+  const results = await context.db.sql
+    .select()
+    .from(schema.depositFacilityAssetSnapshot)
+    .where(
+      and(
+        eq(schema.depositFacilityAssetSnapshot.chainId, chainId),
+        eq(schema.depositFacilityAssetSnapshot.facility, facilityAddress.toLowerCase() as Address),
+        eq(
+          schema.depositFacilityAssetSnapshot.depositAsset,
+          depositAssetAddress.toLowerCase() as Address,
+        ),
+        lte(schema.depositFacilityAssetSnapshot.block, beforeBlock),
+      ),
+    )
+    .orderBy(desc(schema.depositFacilityAssetSnapshot.block))
+    .limit(1);
 
-/**
- * Get or create the LatestSnapshot entity for a chain
- */
-export async function getOrCreateLatestSnapshot(
-  context: HandlerContext,
-  chainId: number,
-): Promise<LatestSnapshot> {
-  const id = getLatestSnapshotId(chainId);
-  const existing = await context.LatestSnapshot.get(id);
-
-  if (existing) {
-    return existing as LatestSnapshot;
+  if (results.length === 0) {
+    return null;
   }
 
-  const created: LatestSnapshot = {
-    id,
-    chainId,
-    auctioneerSnapshotIds: [],
-    depositFacilitySnapshotIds: [],
-    depositFacilityAssetSnapshotIds: [],
-  };
-
-  context.LatestSnapshot.set(created);
-  return created;
+  return results[0] as typeof schema.depositFacilityAssetSnapshot.$inferSelect;
 }
 
 /**
  * Create an AuctioneerSnapshot for the given auctioneer
  */
 export async function getOrCreateAuctioneerSnapshot(
-  context: HandlerContext,
+  context: Context,
   chainId: number,
-  blockNumber: number | bigint,
-  timestamp: number | bigint,
-  auctioneer: Auctioneer,
-): Promise<AuctioneerSnapshot> {
-  const snapshotId = getAuctioneerSnapshotId(chainId, blockNumber, auctioneer.address as Hex);
-
+  blockNumber: bigint,
+  timestamp: bigint,
+  auctioneerAddress: Address,
+): Promise<typeof schema.auctioneerSnapshot.$inferSelect> {
   // Check if snapshot already exists
-  const existingSnapshot = await context.AuctioneerSnapshot.get(snapshotId);
-  if (existingSnapshot) {
-    return existingSnapshot as AuctioneerSnapshot;
+  const existing = await context.db.find(schema.auctioneerSnapshot, {
+    chainId,
+    block: blockNumber,
+    auctioneer: auctioneerAddress.toLowerCase() as Address,
+  });
+
+  if (existing) {
+    return existing;
   }
 
-  // Fetch day state and auction parameters from contract
-  const [dayState, auctionParameters] = await Promise.all([
-    context.effect(fetchAuctioneerDayState, {
-      chainId,
-      address: auctioneer.address,
-    }),
-    context.effect(fetchAuctioneerParameters, {
-      chainId,
-      address: auctioneer.address,
-    }),
-  ]);
+  // Get or create auctioneer entity
+  const auctioneer = await getOrCreateAuctioneer(context, chainId, auctioneerAddress);
 
-  // Get enabled deposit periods from database
-  // Note: Since auctioneer_id is not indexed, we need to get all periods for the chain and filter
-  const allAuctioneerDepositPeriods =
-    await context.AuctioneerDepositPeriod.getWhere.chainId.eq(chainId);
-  const auctioneerDepositPeriods = allAuctioneerDepositPeriods.filter(
-    (period) => period.auctioneer_id === auctioneer.id,
+  // Fetch day state and auction parameters from contract in a single multicall
+  const { dayState, parameters: auctionParameters } = await fetchAuctioneerDayStateAndParameters(
+    context.client,
+    auctioneerAddress,
   );
 
-  // Get asset decimals for price conversion
-  const assetDecimals = await getDepositAssetDecimals(context, auctioneer.depositAsset_id);
+  // Get asset decimals
+  const assetDecimals = await getAssetDecimals(context, chainId, auctioneer.depositAsset);
 
-  // Create the main auctioneer snapshot with fresh contract data
-  const snapshot: AuctioneerSnapshot = {
-    id: snapshotId,
+  // Create the main auctioneer snapshot
+  await context.db.insert(schema.auctioneerSnapshot).values({
     chainId,
-    block: BigInt(blockNumber),
-    timestamp: BigInt(timestamp),
-    auctioneer_id: auctioneer.id,
+    block: blockNumber,
+    timestamp,
+    auctioneer: auctioneerAddress.toLowerCase() as Address,
     dayInitTimestamp: dayState.dayInitTimestamp,
     ohmSold: dayState.convertible,
     ohmSoldDecimal: toOhmDecimal(dayState.convertible),
-    isAuctionActive: auctioneer.enabled, // Use enabled status as proxy for active
+    isAuctionActive: auctioneer.enabled,
     target: auctionParameters.target,
     targetDecimal: toOhmDecimal(auctionParameters.target),
     tickSize: auctionParameters.tickSize,
     tickSizeDecimal: toOhmDecimal(auctionParameters.tickSize),
     minPrice: auctionParameters.minPrice,
     minPriceDecimal: toDecimal(auctionParameters.minPrice, assetDecimals),
-  };
-  context.AuctioneerSnapshot.set(snapshot);
+  });
 
-  // Create separate snapshots for each enabled deposit period
-  for (const auctioneerDepositPeriod of auctioneerDepositPeriods) {
-    // Skip if the deposit period is for a different auctioneer
-    if (auctioneerDepositPeriod.auctioneer_id !== auctioneer.id) continue;
+  // Return the created snapshot
+  const snapshot = await context.db.find(schema.auctioneerSnapshot, {
+    chainId,
+    block: blockNumber,
+    auctioneer: auctioneerAddress.toLowerCase() as Address,
+  });
 
+  if (!snapshot) {
+    throw new Error(`Failed to create auctioneer snapshot`);
+  }
+
+  return snapshot;
+}
+
+/**
+ * Get or create an AuctioneerDepositPeriodSnapshot for a specific period
+ */
+export async function getOrCreateAuctioneerDepositPeriodSnapshot(
+  context: Context,
+  chainId: number,
+  blockNumber: bigint,
+  timestamp: bigint,
+  auctioneerAddress: Address,
+  depositAssetAddress: Address,
+  depositPeriod: number,
+  tickPrice: bigint,
+  tickPriceDecimal: string,
+  tickCapacity: bigint,
+  tickCapacityDecimal: string,
+): Promise<typeof schema.auctioneerDepositPeriodSnapshot.$inferSelect> {
+  // Check if snapshot already exists
+  const existing = await context.db.find(schema.auctioneerDepositPeriodSnapshot, {
+    chainId,
+    block: blockNumber,
+    auctioneer: auctioneerAddress.toLowerCase() as Address,
+    depositAsset: depositAssetAddress.toLowerCase() as Address,
+    depositPeriod,
+  });
+
+  if (existing) {
+    return existing;
+  }
+
+  // Create the period snapshot
+  await context.db.insert(schema.auctioneerDepositPeriodSnapshot).values({
+    chainId,
+    block: blockNumber,
+    timestamp,
+    auctioneer: auctioneerAddress.toLowerCase() as Address,
+    depositAsset: depositAssetAddress.toLowerCase() as Address,
+    depositPeriod,
+    currentTickPrice: tickPrice,
+    currentTickPriceDecimal: tickPriceDecimal,
+    currentTickCapacity: tickCapacity,
+    currentTickCapacityDecimal: tickCapacityDecimal,
+  });
+
+  const snapshot = await context.db.find(schema.auctioneerDepositPeriodSnapshot, {
+    chainId,
+    block: blockNumber,
+    auctioneer: auctioneerAddress.toLowerCase() as Address,
+    depositAsset: depositAssetAddress.toLowerCase() as Address,
+    depositPeriod,
+  });
+
+  if (!snapshot) {
+    throw new Error(`Failed to create auctioneer deposit period snapshot`);
+  }
+
+  return snapshot;
+}
+
+/**
+ * Refresh auction state from contract and create snapshots for auctioneer and all deposit periods
+ */
+export async function refreshAuctionState(
+  context: Context,
+  chainId: number,
+  blockNumber: bigint,
+  timestamp: bigint,
+  auctioneerAddress: Address,
+): Promise<void> {
+  // Create the main auctioneer snapshot
+  await getOrCreateAuctioneerSnapshot(context, chainId, blockNumber, timestamp, auctioneerAddress);
+
+  // Get or create auctioneer (fetch once, use for all periods)
+  const auctioneer = await getOrCreateAuctioneer(context, chainId, auctioneerAddress);
+  const assetDecimals = await getAssetDecimals(context, chainId, auctioneer.depositAsset);
+
+  // Get all deposit periods for this auctioneer (enabled or not)
+  const depositPeriods = await context.db.sql
+    .select()
+    .from(schema.auctioneerDepositPeriod)
+    .where(
+      and(
+        eq(schema.auctioneerDepositPeriod.chainId, chainId),
+        eq(schema.auctioneerDepositPeriod.auctioneer, auctioneerAddress.toLowerCase() as Address),
+      ),
+    );
+
+  // Batch fetch current tick data for all periods in a single multicall
+  // This is much more efficient than individual calls, especially when there are many periods
+  const depositPeriodNumbers = depositPeriods.map((p) => p.depositPeriod);
+  const tickDataMap = await fetchAuctioneerCurrentTickBatch(
+    context.client,
+    auctioneerAddress,
+    depositPeriodNumbers,
+  );
+
+  // Create period snapshots for all deposit periods
+  for (const depositPeriod of depositPeriods) {
+    const tickData = tickDataMap.get(depositPeriod.depositPeriod);
+    if (!tickData) {
+      throw new Error(
+        `Tick data not found for period ${depositPeriod.depositPeriod} in batch results`,
+      );
+    }
+
+    // Calculate decimals
+    const tickPriceDecimal = toDecimal(tickData.price, assetDecimals);
+    const tickCapacityDecimal = toOhmDecimal(tickData.capacity);
+
+    // Create period snapshot
     await getOrCreateAuctioneerDepositPeriodSnapshot(
       context,
       chainId,
       blockNumber,
       timestamp,
-      snapshot,
-      auctioneerDepositPeriod,
+      auctioneerAddress,
+      depositPeriod.depositAsset,
+      depositPeriod.depositPeriod,
+      tickData.price,
+      tickPriceDecimal,
+      tickData.capacity,
+      tickCapacityDecimal,
     );
   }
-
-  // Update LatestSnapshot with this snapshot
-  await updateLatestSnapshotAuctioneers(context, chainId, auctioneer.address as Hex, snapshotId);
-
-  return snapshot;
-}
-
-export async function getOrCreateAuctioneerDepositPeriodSnapshot(
-  context: HandlerContext,
-  chainId: number,
-  blockNumber: number | bigint,
-  timestamp: number | bigint,
-  auctioneerSnapshot: AuctioneerSnapshot,
-  auctioneerDepositPeriod: AuctioneerDepositPeriod,
-): Promise<AuctioneerDepositPeriodSnapshot> {
-  // Get asset details
-  const depositAssetPeriod = await getDepositAssetPeriod(
-    context,
-    auctioneerDepositPeriod.depositAssetPeriod_id,
-  );
-  const depositAsset = await getDepositAsset(context, depositAssetPeriod.depositAsset_id);
-  const asset = await getAsset(context, depositAsset.asset_id);
-
-  // Get the auctioneer to get the address
-  const auctioneer = await getAuctioneer(context, auctioneerDepositPeriod.auctioneer_id);
-
-  const snapshotId = getAuctioneerDepositPeriodSnapshotId(
-    chainId,
-    blockNumber,
-    auctioneer.address as Hex,
-    asset.address as Hex,
-    depositAssetPeriod.periodMonths,
-  );
-
-  // Check if snapshot already exists
-  const existingSnapshot = await context.AuctioneerDepositPeriodSnapshot.get(snapshotId);
-  if (existingSnapshot) {
-    return existingSnapshot as AuctioneerDepositPeriodSnapshot;
-  }
-
-  // Fetch current tick for this specific period
-  const currentTick = await context.effect(fetchAuctioneerCurrentTick, {
-    chainId,
-    address: auctioneer.address,
-    depositPeriod: depositAssetPeriod.periodMonths,
-  });
-
-  const periodSnapshot: AuctioneerDepositPeriodSnapshot = {
-    id: snapshotId,
-    chainId,
-    block: BigInt(blockNumber),
-    timestamp: BigInt(timestamp),
-    auctioneerSnapshot_id: auctioneerSnapshot.id,
-    auctioneerDepositPeriod_id: auctioneerDepositPeriod.id,
-    currentTickPrice: currentTick.price,
-    currentTickPriceDecimal: toDecimal(currentTick.price, asset.decimals),
-    currentTickCapacity: currentTick.capacity,
-    currentTickCapacityDecimal: toOhmDecimal(currentTick.capacity),
-  };
-  context.AuctioneerDepositPeriodSnapshot.set(periodSnapshot);
-
-  return periodSnapshot;
-}
-
-/**
- * Update the LatestSnapshot to include the new auctioneer snapshot
- */
-export async function updateLatestSnapshotAuctioneers(
-  context: HandlerContext,
-  chainId: number,
-  auctioneerAddress: Hex,
-  snapshotId: string,
-): Promise<void> {
-  const latestSnapshot = await getOrCreateLatestSnapshot(context, chainId);
-
-  // Remove any existing snapshot for this auctioneer
-  const filteredIds = latestSnapshot.auctioneerSnapshotIds.filter((id) => {
-    // Extract chainId and auctioneer address from snapshot ID (format: chainId_blockNumber_auctioneerAddress)
-    const parts = id.split("_");
-    const existingAuctioneerAddress = parts[2];
-
-    // We want to return IDs that are for different auctioneers
-    return existingAuctioneerAddress.toLowerCase() !== auctioneerAddress.toLowerCase();
-  });
-
-  // Add the new snapshot ID
-  const updatedSnapshot: LatestSnapshot = {
-    ...latestSnapshot,
-    auctioneerSnapshotIds: [...filteredIds, snapshotId],
-  };
-
-  context.LatestSnapshot.set(updatedSnapshot);
-}
-
-/**
- * Refresh auction state from contract and create snapshot
- */
-export async function refreshAuctionState(
-  context: HandlerContext,
-  chainId: number,
-  blockNumber: number | bigint,
-  timestamp: number | bigint,
-  auctioneer: Auctioneer,
-): Promise<AuctioneerSnapshot> {
-  // Create snapshot with fresh contract data
-  const snapshot = await getOrCreateAuctioneerSnapshot(
-    context,
-    chainId,
-    blockNumber,
-    timestamp,
-    auctioneer,
-  );
-
-  return snapshot;
-}
-
-/**
- * Get or create a DepositFacilitySnapshot for the given facility
- */
-export async function getOrCreateDepositFacilitySnapshot(
-  context: HandlerContext,
-  chainId: number,
-  blockNumber: number | bigint,
-  timestamp: number | bigint,
-  facility: DepositFacility,
-): Promise<DepositFacilitySnapshot> {
-  const snapshotId = getDepositFacilitySnapshotId(chainId, blockNumber, facility.address as Hex);
-
-  // Check if snapshot already exists
-  const existingSnapshot = await context.DepositFacilitySnapshot.get(snapshotId);
-  if (existingSnapshot) {
-    return existingSnapshot as DepositFacilitySnapshot;
-  }
-
-  // Create new snapshot
-  const snapshot: DepositFacilitySnapshot = {
-    id: snapshotId,
-    chainId,
-    block: BigInt(blockNumber),
-    timestamp: BigInt(timestamp),
-    facility_id: facility.id,
-  };
-  context.DepositFacilitySnapshot.set(snapshot);
-
-  // Create snapshot for each enabled deposit asset
-  const allDepositFacilityAssets = await context.DepositFacilityAsset.getWhere.chainId.eq(chainId);
-  const depositFacilityAssets = allDepositFacilityAssets.filter(
-    (depositFacilityAsset) => depositFacilityAsset.facility_id === facility.id,
-  );
-  for (const depositFacilityAsset of depositFacilityAssets) {
-    const depositAsset = await getDepositAsset(context, depositFacilityAsset.depositAsset_id);
-    await getOrCreateDepositFacilityAssetSnapshot(
-      context,
-      chainId,
-      blockNumber,
-      timestamp,
-      snapshot,
-      facility,
-      depositAsset,
-    );
-  }
-
-  // Update LatestSnapshot
-  await updateLatestSnapshotFacilities(context, chainId, facility.address as Hex, snapshotId);
-
-  return snapshot;
 }
 
 /**
  * Get or create a DepositFacilityAssetSnapshot for the given facility and asset
+ * @param claimableYield - Optional pre-fetched claimable yield. If not provided, will be fetched from contract.
  */
 export async function getOrCreateDepositFacilityAssetSnapshot(
-  context: HandlerContext,
+  context: Context,
   chainId: number,
-  blockNumber: number | bigint,
-  timestamp: number | bigint,
-  facilitySnapshot: DepositFacilitySnapshot,
-  facility: DepositFacility,
-  depositAsset: DepositAsset,
-): Promise<DepositFacilityAssetSnapshot> {
-  const asset = await getAsset(context, depositAsset.asset_id);
-  const snapshotId = getDepositFacilityAssetSnapshotId(
-    chainId,
-    blockNumber,
-    facility.address as Hex,
-    asset.address as Hex,
-  );
-
+  blockNumber: bigint,
+  timestamp: bigint,
+  facilityAddress: Address,
+  depositAssetAddress: Address,
+  claimableYield?: bigint,
+): Promise<typeof schema.depositFacilityAssetSnapshot.$inferSelect> {
   // Check if snapshot already exists
-  const existingSnapshot = await context.DepositFacilityAssetSnapshot.get(snapshotId);
-  if (existingSnapshot) {
-    return existingSnapshot as DepositFacilityAssetSnapshot;
-  }
-
-  // Get the latest snapshot for this facility/asset combo from LatestSnapshot
-  const latestSnapshot = await getOrCreateLatestSnapshot(context, chainId);
-  const latestSnapshotId = latestSnapshot.depositFacilityAssetSnapshotIds.find((id) => {
-    // Extract facility and asset from snapshot ID (format: chainId_blockNumber_facilityAddress_assetAddress)
-    const parts = id.split("_");
-    const snapshotFacilityAddress = parts[2];
-    const snapshotAssetAddress = parts[3];
-    return (
-      snapshotFacilityAddress.toLowerCase() === facility.address.toLowerCase() &&
-      snapshotAssetAddress.toLowerCase() === asset.address.toLowerCase()
-    );
+  const existing = await context.db.find(schema.depositFacilityAssetSnapshot, {
+    chainId,
+    block: blockNumber,
+    facility: facilityAddress.toLowerCase() as Address,
+    depositAsset: depositAssetAddress.toLowerCase() as Address,
   });
 
-  let previousSnapshot: DepositFacilityAssetSnapshot | null = null;
-  if (latestSnapshotId) {
-    const snapshot = await context.DepositFacilityAssetSnapshot.get(latestSnapshotId);
-    previousSnapshot = snapshot || null;
+  if (existing) {
+    return existing;
   }
+
+  // Get the latest previous snapshot for this facility/asset combo
+  const previousSnapshot = await getLatestDepositFacilityAssetSnapshot(
+    context,
+    chainId,
+    facilityAddress,
+    depositAssetAddress,
+    blockNumber,
+  );
 
   // Copy values from previous snapshot or initialize to 0
   const totalDeposited = previousSnapshot ? previousSnapshot.totalDeposited : BigInt(0);
   const pendingRedemption = previousSnapshot ? previousSnapshot.pendingRedemption : BigInt(0);
   const borrowedAmount = previousSnapshot ? previousSnapshot.borrowedAmount : BigInt(0);
 
-  // Fetch claimable yield from contract
-  const claimableYield = await fetchClaimableYield(context, chainId, facility, depositAsset);
+  // Get or create facility asset (required for snapshot)
+  await getOrCreateDepositFacilityAsset(context, chainId, facilityAddress, depositAssetAddress);
 
-  const assetDecimals = await getDepositAssetDecimals(context, depositAsset.id);
+  // Get asset decimals
+  const assetDecimals = await getAssetDecimals(context, chainId, depositAssetAddress);
+
+  // Fetch claimable yield from contract if not provided
+  const finalClaimableYield =
+    claimableYield ??
+    (await fetchFacilityClaimableYield(context.client, facilityAddress, depositAssetAddress));
 
   // Create new snapshot
-  const snapshot: DepositFacilityAssetSnapshot = {
-    id: snapshotId,
+  const newSnapshot = {
     chainId,
-    block: BigInt(blockNumber),
-    timestamp: BigInt(timestamp),
-    facilitySnapshot_id: facilitySnapshot.id,
-    facility_id: facility.id,
-    depositAsset_id: depositAsset.id,
+    block: blockNumber,
+    timestamp,
+    facility: facilityAddress.toLowerCase() as Address,
+    depositAsset: depositAssetAddress.toLowerCase() as Address,
     totalDeposited,
     totalDepositedDecimal: toDecimal(totalDeposited, assetDecimals),
     pendingRedemption,
     pendingRedemptionDecimal: toDecimal(pendingRedemption, assetDecimals),
     borrowedAmount,
     borrowedAmountDecimal: toDecimal(borrowedAmount, assetDecimals),
-    claimableYield,
-    claimableYieldDecimal: toDecimal(claimableYield, assetDecimals),
-  };
-  context.DepositFacilityAssetSnapshot.set(snapshot);
-
-  // Update LatestSnapshot to include this new facility asset snapshot
-  await updateLatestSnapshotFacilityAssets(
-    context,
-    chainId,
-    facility.address as Hex,
-    asset.address as Hex,
-    snapshotId,
-  );
-
-  return snapshot;
-}
-
-/**
- * Update the LatestSnapshot to include the new facility snapshot
- */
-async function updateLatestSnapshotFacilities(
-  context: HandlerContext,
-  chainId: number,
-  facilityAddress: Hex,
-  snapshotId: string,
-): Promise<void> {
-  const latestSnapshot = await getOrCreateLatestSnapshot(context, chainId);
-
-  // Remove any existing snapshot for this facility
-  const filteredIds = latestSnapshot.depositFacilitySnapshotIds.filter((id) => {
-    // Extract chainId and facility address from snapshot ID (format: chainId_blockNumber_facilityAddress)
-    const parts = id.split("_");
-    const existingFacilityAddress = parts[2];
-
-    // We want to return IDs that are for different facilities
-    return existingFacilityAddress.toLowerCase() !== facilityAddress.toLowerCase();
-  });
-
-  // Add the new snapshot ID
-  const updatedSnapshot: LatestSnapshot = {
-    ...latestSnapshot,
-    depositFacilitySnapshotIds: [...filteredIds, snapshotId],
+    claimableYield: finalClaimableYield,
+    claimableYieldDecimal: toDecimal(finalClaimableYield, assetDecimals),
   };
 
-  context.LatestSnapshot.set(updatedSnapshot);
-}
+  await context.db.insert(schema.depositFacilityAssetSnapshot).values(newSnapshot);
 
-/**
- * Update the LatestSnapshot to include the new facility asset snapshot
- */
-async function updateLatestSnapshotFacilityAssets(
-  context: HandlerContext,
-  chainId: number,
-  facilityAddress: Hex,
-  assetAddress: Hex,
-  snapshotId: string,
-): Promise<void> {
-  const latestSnapshot = await getOrCreateLatestSnapshot(context, chainId);
-
-  // Remove any existing snapshot for this facility/asset combo
-  const filteredIds = latestSnapshot.depositFacilityAssetSnapshotIds.filter((id) => {
-    // Extract chainId, facility address, and asset address from snapshot ID (format: chainId_blockNumber_facilityAddress_assetAddress)
-    const parts = id.split("_");
-    const existingFacilityAddress = parts[2];
-    const existingAssetAddress = parts[3];
-
-    // We want to return IDs that are for different facility/asset combos
-    return (
-      existingFacilityAddress.toLowerCase() !== facilityAddress.toLowerCase() ||
-      existingAssetAddress.toLowerCase() !== assetAddress.toLowerCase()
-    );
-  });
-
-  // Add the new snapshot ID
-  const updatedSnapshot: LatestSnapshot = {
-    ...latestSnapshot,
-    depositFacilityAssetSnapshotIds: [...filteredIds, snapshotId],
-  };
-
-  context.LatestSnapshot.set(updatedSnapshot);
+  return newSnapshot;
 }
 
 /**
  * Update facility asset deposited amount (positive delta for deposit, negative for withdrawal)
  */
-export async function updateFacilityAssetDeposited(
-  context: HandlerContext,
+export async function updateFacilityAssetSnapshotDeposited(
+  context: Context,
   chainId: number,
-  blockNumber: number | bigint,
-  timestamp: number | bigint,
-  facility: DepositFacility,
-  depositAsset: DepositAsset,
+  blockNumber: bigint,
+  timestamp: bigint,
+  facilityAddress: Address,
+  depositAssetAddress: Address,
   delta: bigint,
 ): Promise<void> {
-  // Get or create facility snapshot
-  const facilitySnapshot = await getOrCreateDepositFacilitySnapshot(
-    context,
-    chainId,
-    blockNumber,
-    timestamp,
-    facility,
-  );
-
   // Get or create facility asset snapshot
   const assetSnapshot = await getOrCreateDepositFacilityAssetSnapshot(
     context,
     chainId,
     blockNumber,
     timestamp,
-    facilitySnapshot,
-    facility,
-    depositAsset,
+    facilityAddress,
+    depositAssetAddress,
   );
+
+  // Get asset decimals
+  const assetDecimals = await getAssetDecimals(context, chainId, depositAssetAddress);
 
   // Update totalDeposited
   const updatedTotalDeposited = assetSnapshot.totalDeposited + delta;
-  const assetDecimals = await getDepositAssetDecimals(context, depositAsset.id);
 
   // Re-fetch claimable yield from contract
-  const claimableYield = await fetchClaimableYield(context, chainId, facility, depositAsset);
+  const claimableYield = await fetchFacilityClaimableYield(
+    context.client,
+    facilityAddress,
+    depositAssetAddress,
+  );
 
-  // Update and save snapshot
-  const updatedSnapshot: DepositFacilityAssetSnapshot = {
-    ...assetSnapshot,
-    totalDeposited: updatedTotalDeposited,
-    totalDepositedDecimal: toDecimal(updatedTotalDeposited, assetDecimals),
-    claimableYield,
-    claimableYieldDecimal: toDecimal(claimableYield, assetDecimals),
-  };
-  context.DepositFacilityAssetSnapshot.set(updatedSnapshot);
+  // Update snapshot
+  await context.db
+    .update(schema.depositFacilityAssetSnapshot, {
+      chainId,
+      block: blockNumber,
+      facility: facilityAddress.toLowerCase() as Address,
+      depositAsset: depositAssetAddress.toLowerCase() as Address,
+    })
+    .set({
+      totalDeposited: updatedTotalDeposited,
+      totalDepositedDecimal: toDecimal(updatedTotalDeposited, assetDecimals),
+      claimableYield,
+      claimableYieldDecimal: toDecimal(claimableYield, assetDecimals),
+    });
 }
 
 /**
  * Update facility asset pending redemption (positive for new redemption, negative for redeemed/cancelled)
  */
-export async function updateFacilityAssetPendingRedemption(
-  context: HandlerContext,
+export async function updateFacilityAssetSnapshotPendingRedemption(
+  context: Context,
   chainId: number,
-  blockNumber: number | bigint,
-  timestamp: number | bigint,
-  facility: DepositFacility,
-  depositAsset: DepositAsset,
+  blockNumber: bigint,
+  timestamp: bigint,
+  facilityAddress: Address,
+  depositAssetAddress: Address,
   delta: bigint,
 ): Promise<void> {
-  // Get or create facility snapshot
-  const facilitySnapshot = await getOrCreateDepositFacilitySnapshot(
-    context,
-    chainId,
-    blockNumber,
-    timestamp,
-    facility,
-  );
-
   // Get or create facility asset snapshot
   const assetSnapshot = await getOrCreateDepositFacilityAssetSnapshot(
     context,
     chainId,
     blockNumber,
     timestamp,
-    facilitySnapshot,
-    facility,
-    depositAsset,
+    facilityAddress,
+    depositAssetAddress,
   );
+
+  // Get asset decimals
+  const assetDecimals = await getAssetDecimals(context, chainId, depositAssetAddress);
 
   // Update pendingRedemption
   const updatedPendingRedemption = assetSnapshot.pendingRedemption + delta;
-  const assetDecimals = await getDepositAssetDecimals(context, depositAsset.id);
 
-  // Update and save snapshot
-  const updatedSnapshot: DepositFacilityAssetSnapshot = {
-    ...assetSnapshot,
-    pendingRedemption: updatedPendingRedemption,
-    pendingRedemptionDecimal: toDecimal(updatedPendingRedemption, assetDecimals),
-  };
-  context.DepositFacilityAssetSnapshot.set(updatedSnapshot);
+  // Update snapshot
+  await context.db
+    .update(schema.depositFacilityAssetSnapshot, {
+      chainId,
+      block: blockNumber,
+      facility: facilityAddress.toLowerCase() as Address,
+      depositAsset: depositAssetAddress.toLowerCase() as Address,
+    })
+    .set({
+      pendingRedemption: updatedPendingRedemption,
+      pendingRedemptionDecimal: toDecimal(updatedPendingRedemption, assetDecimals),
+    });
 }
 
 /**
  * Update facility asset borrowed amount (positive for new loan, negative for repaid)
  */
-export async function updateFacilityAssetBorrowedAmount(
-  context: HandlerContext,
+export async function updateFacilityAssetSnapshotBorrowedAmount(
+  context: Context,
   chainId: number,
-  blockNumber: number | bigint,
-  timestamp: number | bigint,
-  facility: DepositFacility,
-  depositAsset: DepositAsset,
+  blockNumber: bigint,
+  timestamp: bigint,
+  facilityAddress: Address,
+  depositAssetAddress: Address,
   delta: bigint,
 ): Promise<void> {
-  // Get or create facility snapshot
-  const facilitySnapshot = await getOrCreateDepositFacilitySnapshot(
-    context,
-    chainId,
-    blockNumber,
-    timestamp,
-    facility,
-  );
-
   // Get or create facility asset snapshot
   const assetSnapshot = await getOrCreateDepositFacilityAssetSnapshot(
     context,
     chainId,
     blockNumber,
     timestamp,
-    facilitySnapshot,
-    facility,
-    depositAsset,
+    facilityAddress,
+    depositAssetAddress,
   );
+
+  // Get asset decimals
+  const assetDecimals = await getAssetDecimals(context, chainId, depositAssetAddress);
 
   // Update borrowedAmount
   const updatedBorrowedAmount = assetSnapshot.borrowedAmount + delta;
-  const assetDecimals = await getDepositAssetDecimals(context, depositAsset.id);
 
-  // Update and save snapshot
-  const updatedSnapshot: DepositFacilityAssetSnapshot = {
-    ...assetSnapshot,
-    borrowedAmount: updatedBorrowedAmount,
-    borrowedAmountDecimal: toDecimal(updatedBorrowedAmount, assetDecimals),
-  };
-
-  context.DepositFacilityAssetSnapshot.set(updatedSnapshot);
+  // Update snapshot
+  await context.db
+    .update(schema.depositFacilityAssetSnapshot, {
+      chainId,
+      block: blockNumber,
+      facility: facilityAddress.toLowerCase() as Address,
+      depositAsset: depositAssetAddress.toLowerCase() as Address,
+    })
+    .set({
+      borrowedAmount: updatedBorrowedAmount,
+      borrowedAmountDecimal: toDecimal(updatedBorrowedAmount, assetDecimals),
+    });
 }
