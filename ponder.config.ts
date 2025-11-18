@@ -80,7 +80,7 @@ export default createConfig({
       chain: {
         mainnet: {
           address: [
-            "0xb4f620c39F3BA4a1E7aD264fEd6239B0C618DB50", // Commit SHA: 06cd3728b58af36639dea8a6f0a3c4d79f557b65
+            "0xA61b846D5D8b757e3d541E0e4F80390E28f0B6Ff", // Commit SHA: 958ed6e1242d8aa6c4fa17edf6738a98a3f9102c
           ],
           startBlock: START_BLOCK_MAINNET,
         },
