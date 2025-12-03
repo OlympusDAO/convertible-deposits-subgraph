@@ -1,11 +1,18 @@
-// Contract call functions for DepositPositionManager
-// In Ponder, we use direct contract calls instead of Effect API
-
 import type { Address } from "viem";
 import { DepositPositionManagerAbi } from "../../abis/DepositPositionManager";
-import type { PonderClient } from "../types";
+import type { Context } from "../types";
 
-const DEPOSIT_POSITION_MANAGER: Address = "0xb2c2Bab8023E7AEdc0fB13B10B24CA5Af5CdD16f";
+const getPositionManager = (chainId: number): Address => {
+  // TODO convert to lookup via keycode
+  switch (chainId) {
+    case 1:
+      return "0x02331A4c97a4841084dF54d7c0eC04DD3f1A9F1c";
+    case 11155111:
+      return "0xb2c2Bab8023E7AEdc0fB13B10B24CA5Af5CdD16f";
+    default:
+      throw new Error(`Unsupported chain ID: ${chainId}`);
+  }
+};
 
 export interface Position {
   operator: Address;
@@ -22,9 +29,9 @@ export interface Position {
 /**
  * Fetch a single position from the DepositPositionManager contract
  */
-export async function fetchPosition(client: PonderClient, positionId: bigint): Promise<Position> {
-  const result = await client.readContract({
-    address: DEPOSIT_POSITION_MANAGER,
+export async function fetchPosition(context: Context, positionId: bigint): Promise<Position> {
+  const result = await context.client.readContract({
+    address: getPositionManager(context.chain.id),
     abi: DepositPositionManagerAbi,
     functionName: "getPosition",
     args: [positionId],
@@ -47,11 +54,11 @@ export async function fetchPosition(client: PonderClient, positionId: bigint): P
  * Fetch all position IDs for a user
  */
 export async function fetchUserPositionIds(
-  client: PonderClient,
+  context: Context,
   userAddress: Address,
 ): Promise<bigint[]> {
-  const result = await client.readContract({
-    address: DEPOSIT_POSITION_MANAGER,
+  const result = await context.client.readContract({
+    address: getPositionManager(context.chain.id),
     abi: DepositPositionManagerAbi,
     functionName: "getUserPositionIds",
     args: [userAddress],
@@ -63,22 +70,19 @@ export async function fetchUserPositionIds(
 /**
  * Batch fetch multiple positions using multicall
  */
-export async function fetchPositions(
-  client: PonderClient,
-  positionIds: bigint[],
-): Promise<Position[]> {
+export async function fetchPositions(context: Context, positionIds: bigint[]): Promise<Position[]> {
   if (positionIds.length === 0) {
     return [];
   }
 
   const contracts = positionIds.map((positionId) => ({
-    address: DEPOSIT_POSITION_MANAGER,
+    address: getPositionManager(context.chain.id),
     abi: DepositPositionManagerAbi,
     functionName: "getPosition" as const,
     args: [positionId],
   }));
 
-  const results = await client.multicall({
+  const results = await context.client.multicall({
     contracts,
   });
 

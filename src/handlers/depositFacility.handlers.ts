@@ -418,8 +418,8 @@ ponder.on("ConvertibleDepositFacility:ConvertedDeposit", async ({ event, context
   });
 
   // Update positions of depositor for this asset period
-  const contractPositionIds = await fetchUserPositionIds(context.client, depositorAddress);
-  const contractPositions = await fetchPositions(context.client, contractPositionIds);
+  const contractPositionIds = await fetchUserPositionIds(context, depositorAddress);
+  const contractPositions = await fetchPositions(context, contractPositionIds);
 
   // Track total converted amount for snapshot update
   let totalDepositConverted = BigInt(0);

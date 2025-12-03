@@ -58,7 +58,7 @@ export async function getOrCreatePosition(
   );
 
   // Fetch position data from contract
-  const position = await fetchPosition(context.client, positionId);
+  const position = await fetchPosition(context, positionId);
 
   // Determine the conversion price (UINT256_MAX means not set)
   let conversionPrice: bigint | null = null;
@@ -146,7 +146,7 @@ export async function updatePositionFromContract(
   const _position = await getPosition(context, chainId, positionId);
 
   // Fetch updated position data from contract
-  const contractPosition = await fetchPosition(context.client, positionId);
+  const contractPosition = await fetchPosition(context, positionId);
 
   // Update the position with the latest remainingAmount from the contract
   const updatedPosition = {
