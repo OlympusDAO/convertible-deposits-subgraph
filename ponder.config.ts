@@ -7,6 +7,7 @@ import { EmissionManagerAbi } from "./abis/EmissionManager";
 import { getTransport } from "./src/utils/rpc";
 
 const START_BLOCK_SEPOLIA = 9180152;
+const END_BLOCK_SEPOLIA = 9578181;
 const START_BLOCK_MAINNET = 23747531;
 
 export default createConfig({
@@ -33,9 +34,9 @@ export default createConfig({
         sepolia: {
           address: [
             "0xc14156AF3bF6c11b1c40C8f51f64bA5496870126", // Commit SHA: dfae803d86eb902c328dd81bbe6162eb69c7cbd8
-            "0x247f1989aDc0F63D07b91Bf645De879b9de06fbB", // Commit SHA: bad6eee15e2c2c2bdfd128e5516f680e16633bef
           ],
           startBlock: START_BLOCK_SEPOLIA,
+          endBlock: END_BLOCK_SEPOLIA,
         },
       },
     },
@@ -51,9 +52,9 @@ export default createConfig({
         sepolia: {
           address: [
             "0x87568265eb6Ea27f37613d242D4192B6f6771269", // Commit SHA: dfae803d86eb902c328dd81bbe6162eb69c7cbd8
-            "0x0bE69702E83f06A027E6841B614f6946d1265441", // Commit SHA: bad6eee15e2c2c2bdfd128e5516f680e16633bef
           ],
           startBlock: START_BLOCK_SEPOLIA,
+          endBlock: END_BLOCK_SEPOLIA,
         },
       },
     },
@@ -69,9 +70,9 @@ export default createConfig({
         sepolia: {
           address: [
             "0x69b2Be653BAB628116b360818BE75a2d97b45C4a", // Commit SHA: dfae803d86eb902c328dd81bbe6162eb69c7cbd8
-            "0x93AcaDa86ad23C85e96869D46945fA6FFb7a4036", // Commit SHA: bad6eee15e2c2c2bdfd128e5516f680e16633bef
           ],
           startBlock: START_BLOCK_SEPOLIA,
+          endBlock: END_BLOCK_SEPOLIA,
         },
       },
     },
@@ -87,9 +88,9 @@ export default createConfig({
         sepolia: {
           address: [
             "0x9dC1920981Fcf74786C838Bf6f6c3683a8713576", // Commit SHA: dfae803d86eb902c328dd81bbe6162eb69c7cbd8
-            "0x84785E392BfD02F97A9b84F85d86DEc11933ef81", // Commit SHA: bad6eee15e2c2c2bdfd128e5516f680e16633bef
           ],
           startBlock: START_BLOCK_SEPOLIA,
+          endBlock: END_BLOCK_SEPOLIA,
         },
       },
     },
@@ -104,6 +105,7 @@ export default createConfig({
         sepolia: {
           interval: 3000, // ~1 hour at 12s block time
           startBlock: START_BLOCK_SEPOLIA,
+          endBlock: END_BLOCK_SEPOLIA,
         },
       },
     },
