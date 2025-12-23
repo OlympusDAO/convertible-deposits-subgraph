@@ -14,14 +14,14 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "hono": "^4.10.7",
-    "ponder": "^0.15.13",
-    "viem": "^2.41.2"
+    "hono": "^4.11.1",
+    "ponder": "^0.15.17",
+    "viem": "^2.43.3"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.3.8",
-    "@types/node": "^20.9.0",
-    "typescript": "^5.2.2"
+    "@biomejs/biome": "^2.3.10",
+    "@types/node": "^20.19.27",
+    "typescript": "^5.9.3"
   },
   "engines": {
     "node": ">=18.14"
