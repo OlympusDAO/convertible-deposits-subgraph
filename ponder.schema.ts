@@ -297,6 +297,65 @@ export const convertibleDepositPosition = onchainTable(
   }),
 );
 
+export const limitOrdersContract = onchainTable(
+  "limit_orders_contract",
+  (t) => ({
+    chainId: t.integer().notNull(),
+    address: t.hex().notNull(),
+    enabled: t.boolean().notNull(),
+    majorVersion: t.integer().notNull(),
+    minorVersion: t.integer().notNull(),
+  }),
+  (table) => ({
+    pk: primaryKey({ columns: [table.chainId, table.address] }),
+  }),
+);
+
+export const limitOrdersDepositPeriod = onchainTable(
+  "limit_orders_deposit_period",
+  (t) => ({
+    chainId: t.integer().notNull(),
+    contractAddress: t.hex().notNull(), // LimitOrders contract address (FK)
+    depositPeriod: t.integer().notNull(),
+    depositAsset: t.hex().notNull(), // Asset address (FK to depositAsset)
+    receiptTokenManager: t.hex().notNull(), // Part of receiptToken FK
+    receiptTokenId: t.bigint().notNull(), // Part of receiptToken FK
+    enabled: t.boolean().notNull(),
+  }),
+  (table) => ({
+    pk: primaryKey({
+      columns: [table.chainId, table.contractAddress, table.depositPeriod],
+    }),
+  }),
+);
+
+export const limitOrder = onchainTable(
+  "limit_order",
+  (t) => ({
+    chainId: t.integer().notNull(),
+    contractAddress: t.hex().notNull(), // LimitOrders contract address (FK)
+    orderId: t.bigint().notNull(),
+    owner: t.hex().notNull(), // Depositor address (FK)
+    depositPeriod: t.integer().notNull(),
+    active: t.boolean().notNull(),
+    depositBudget: t.bigint().notNull(),
+    depositBudgetDecimal: t.text().notNull(), // BigDecimal as text
+    incentiveBudget: t.bigint().notNull(),
+    incentiveBudgetDecimal: t.text().notNull(), // BigDecimal as text
+    maxPrice: t.bigint().notNull(),
+    maxPriceDecimal: t.text().notNull(), // BigDecimal as text
+    minFillSize: t.bigint().notNull(),
+    minFillSizeDecimal: t.text().notNull(), // BigDecimal as text
+    createdAtBlock: t.bigint().notNull(),
+    createdAtTimestamp: t.bigint().notNull(),
+  }),
+  (table) => ({
+    pk: primaryKey({
+      columns: [table.chainId, table.contractAddress, table.orderId],
+    }),
+  }),
+);
+
 // ============================================================================
 // Event Entities
 // ============================================================================
@@ -1291,6 +1350,196 @@ export const emissionManagerVestingPeriodChanged = onchainTable(
   }),
 );
 
+// LimitOrders Events
+export const limitOrdersEnabled = onchainTable(
+  "limit_orders_enabled",
+  (t) => ({
+    chainId: t.integer().notNull(),
+    block: t.bigint().notNull(),
+    logIndex: t.integer().notNull(),
+    txHash: t.hex().notNull(),
+    timestamp: t.bigint().notNull(),
+    contractAddress: t.hex().notNull(), // LimitOrders contract address (FK)
+  }),
+  (table) => ({
+    pk: primaryKey({ columns: [table.chainId, table.block, table.logIndex] }),
+  }),
+);
+
+export const limitOrdersDisabled = onchainTable(
+  "limit_orders_disabled",
+  (t) => ({
+    chainId: t.integer().notNull(),
+    block: t.bigint().notNull(),
+    logIndex: t.integer().notNull(),
+    txHash: t.hex().notNull(),
+    timestamp: t.bigint().notNull(),
+    contractAddress: t.hex().notNull(), // LimitOrders contract address (FK)
+  }),
+  (table) => ({
+    pk: primaryKey({ columns: [table.chainId, table.block, table.logIndex] }),
+  }),
+);
+
+export const limitOrderCreated = onchainTable(
+  "limit_order_created",
+  (t) => ({
+    chainId: t.integer().notNull(),
+    block: t.bigint().notNull(),
+    logIndex: t.integer().notNull(),
+    txHash: t.hex().notNull(),
+    timestamp: t.bigint().notNull(),
+    contractAddress: t.hex().notNull(), // LimitOrders contract address (FK)
+    orderId: t.bigint().notNull(),
+    owner: t.hex().notNull(), // Depositor address (FK)
+    depositPeriod: t.integer().notNull(),
+    depositBudget: t.bigint().notNull(),
+    depositBudgetDecimal: t.text().notNull(), // BigDecimal as text
+    incentiveBudget: t.bigint().notNull(),
+    incentiveBudgetDecimal: t.text().notNull(), // BigDecimal as text
+    maxPrice: t.bigint().notNull(),
+    maxPriceDecimal: t.text().notNull(), // BigDecimal as text
+    minFillSize: t.bigint().notNull(),
+    minFillSizeDecimal: t.text().notNull(), // BigDecimal as text
+  }),
+  (table) => ({
+    pk: primaryKey({ columns: [table.chainId, table.block, table.logIndex] }),
+  }),
+);
+
+export const limitOrderFilled = onchainTable(
+  "limit_order_filled",
+  (t) => ({
+    chainId: t.integer().notNull(),
+    block: t.bigint().notNull(),
+    logIndex: t.integer().notNull(),
+    txHash: t.hex().notNull(),
+    timestamp: t.bigint().notNull(),
+    contractAddress: t.hex().notNull(), // LimitOrders contract address (FK)
+    orderId: t.bigint().notNull(),
+    filler: t.hex().notNull(), // Filler address
+    fillAmount: t.bigint().notNull(),
+    fillAmountDecimal: t.text().notNull(), // BigDecimal as text
+    incentivePaid: t.bigint().notNull(),
+    incentivePaidDecimal: t.text().notNull(), // BigDecimal as text
+    ohmOut: t.bigint().notNull(),
+    ohmOutDecimal: t.text().notNull(), // BigDecimal as text
+    positionId: t.bigint().notNull(),
+  }),
+  (table) => ({
+    pk: primaryKey({ columns: [table.chainId, table.block, table.logIndex] }),
+  }),
+);
+
+export const limitOrderChanged = onchainTable(
+  "limit_order_changed",
+  (t) => ({
+    chainId: t.integer().notNull(),
+    block: t.bigint().notNull(),
+    logIndex: t.integer().notNull(),
+    txHash: t.hex().notNull(),
+    timestamp: t.bigint().notNull(),
+    contractAddress: t.hex().notNull(), // LimitOrders contract address (FK)
+    orderId: t.bigint().notNull(),
+    depositBudget: t.bigint().notNull(),
+    depositBudgetDecimal: t.text().notNull(), // BigDecimal as text
+    incentiveBudget: t.bigint().notNull(),
+    incentiveBudgetDecimal: t.text().notNull(), // BigDecimal as text
+    maxPrice: t.bigint().notNull(),
+    maxPriceDecimal: t.text().notNull(), // BigDecimal as text
+    minFillSize: t.bigint().notNull(),
+    minFillSizeDecimal: t.text().notNull(), // BigDecimal as text
+  }),
+  (table) => ({
+    pk: primaryKey({ columns: [table.chainId, table.block, table.logIndex] }),
+  }),
+);
+
+export const limitOrderCancelled = onchainTable(
+  "limit_order_cancelled",
+  (t) => ({
+    chainId: t.integer().notNull(),
+    block: t.bigint().notNull(),
+    logIndex: t.integer().notNull(),
+    txHash: t.hex().notNull(),
+    timestamp: t.bigint().notNull(),
+    contractAddress: t.hex().notNull(), // LimitOrders contract address (FK)
+    orderId: t.bigint().notNull(),
+    usdsReturned: t.bigint().notNull(),
+    usdsReturnedDecimal: t.text().notNull(), // BigDecimal as text
+  }),
+  (table) => ({
+    pk: primaryKey({ columns: [table.chainId, table.block, table.logIndex] }),
+  }),
+);
+
+export const limitOrdersDepositPeriodAdded = onchainTable(
+  "limit_orders_deposit_period_added",
+  (t) => ({
+    chainId: t.integer().notNull(),
+    block: t.bigint().notNull(),
+    logIndex: t.integer().notNull(),
+    txHash: t.hex().notNull(),
+    timestamp: t.bigint().notNull(),
+    contractAddress: t.hex().notNull(), // LimitOrders contract address (FK)
+    depositPeriod: t.integer().notNull(),
+    receiptToken: t.hex().notNull(), // Wrapped ERC20 receipt token address
+  }),
+  (table) => ({
+    pk: primaryKey({ columns: [table.chainId, table.block, table.logIndex] }),
+  }),
+);
+
+export const limitOrdersDepositPeriodRemoved = onchainTable(
+  "limit_orders_deposit_period_removed",
+  (t) => ({
+    chainId: t.integer().notNull(),
+    block: t.bigint().notNull(),
+    logIndex: t.integer().notNull(),
+    txHash: t.hex().notNull(),
+    timestamp: t.bigint().notNull(),
+    contractAddress: t.hex().notNull(), // LimitOrders contract address (FK)
+    depositPeriod: t.integer().notNull(),
+  }),
+  (table) => ({
+    pk: primaryKey({ columns: [table.chainId, table.block, table.logIndex] }),
+  }),
+);
+
+export const limitOrdersYieldRecipientUpdated = onchainTable(
+  "limit_orders_yield_recipient_updated",
+  (t) => ({
+    chainId: t.integer().notNull(),
+    block: t.bigint().notNull(),
+    logIndex: t.integer().notNull(),
+    txHash: t.hex().notNull(),
+    timestamp: t.bigint().notNull(),
+    contractAddress: t.hex().notNull(), // LimitOrders contract address (FK)
+    newRecipient: t.hex().notNull(),
+  }),
+  (table) => ({
+    pk: primaryKey({ columns: [table.chainId, table.block, table.logIndex] }),
+  }),
+);
+
+export const limitOrdersYieldSwept = onchainTable(
+  "limit_orders_yield_swept",
+  (t) => ({
+    chainId: t.integer().notNull(),
+    block: t.bigint().notNull(),
+    logIndex: t.integer().notNull(),
+    txHash: t.hex().notNull(),
+    timestamp: t.bigint().notNull(),
+    contractAddress: t.hex().notNull(), // LimitOrders contract address (FK)
+    recipient: t.hex().notNull(),
+    sUsdsAmount: t.bigint().notNull(),
+    sUsdsAmountDecimal: t.text().notNull(), // BigDecimal as text
+  }),
+  (table) => ({
+    pk: primaryKey({ columns: [table.chainId, table.block, table.logIndex] }),
+  }),
+);
+
 // Snapshot entities for interval-based state tracking
 export const auctioneerSnapshot = onchainTable(
   "auctioneer_snapshot",
@@ -1367,6 +1616,43 @@ export const depositFacilityAssetSnapshot = onchainTable(
   }),
   (table) => ({
     pk: primaryKey({ columns: [table.chainId, table.block, table.facility, table.depositAsset] }),
+  }),
+);
+
+export const limitOrderSnapshot = onchainTable(
+  "limit_order_snapshot",
+  (t) => ({
+    chainId: t.integer().notNull(),
+    block: t.bigint().notNull(),
+    timestamp: t.bigint().notNull(),
+    contractAddress: t.hex().notNull(), // LimitOrders contract address (FK)
+    orderId: t.bigint().notNull(),
+    owner: t.hex().notNull(), // Depositor address (FK)
+    depositPeriod: t.integer().notNull(),
+    active: t.boolean().notNull(),
+    completed: t.boolean().notNull(),
+    depositBudget: t.bigint().notNull(),
+    depositBudgetDecimal: t.text().notNull(), // BigDecimal as text
+    incentiveBudget: t.bigint().notNull(),
+    incentiveBudgetDecimal: t.text().notNull(), // BigDecimal as text
+    depositSpent: t.bigint().notNull(), // Cumulative, from contract state
+    depositSpentDecimal: t.text().notNull(), // BigDecimal as text
+    incentiveSpent: t.bigint().notNull(), // Cumulative, from contract state
+    incentiveSpentDecimal: t.text().notNull(), // BigDecimal as text
+    maxPrice: t.bigint().notNull(),
+    maxPriceDecimal: t.text().notNull(), // BigDecimal as text
+    minFillSize: t.bigint().notNull(),
+    minFillSizeDecimal: t.text().notNull(), // BigDecimal as text
+    // Contract-level totals (for this order's contract)
+    totalUsdsOwed: t.bigint().notNull(), // Total USDS owed across all orders
+    totalUsdsOwedDecimal: t.text().notNull(), // BigDecimal as text
+    totalUsdsDeposited: t.bigint().notNull(), // Total USDS deposited (sUSDS balance converted to USDS terms)
+    totalUsdsDepositedDecimal: t.text().notNull(), // BigDecimal as text
+  }),
+  (table) => ({
+    pk: primaryKey({
+      columns: [table.chainId, table.block, table.contractAddress, table.orderId],
+    }),
   }),
 );
 
@@ -3115,3 +3401,171 @@ export const convertibleDepositFacilityConvertedDepositRelations = relations(
     }),
   }),
 );
+
+// LimitOrders Relations
+export const limitOrdersContractRelations = relations(limitOrdersContract, ({ many }) => ({
+  depositPeriods: many(limitOrdersDepositPeriod),
+  orders: many(limitOrder),
+  snapshots: many(limitOrderSnapshot),
+  enabledEvents: many(limitOrdersEnabled),
+  disabledEvents: many(limitOrdersDisabled),
+  orderCreatedEvents: many(limitOrderCreated),
+  orderFilledEvents: many(limitOrderFilled),
+  orderChangedEvents: many(limitOrderChanged),
+  orderCancelledEvents: many(limitOrderCancelled),
+  depositPeriodAddedEvents: many(limitOrdersDepositPeriodAdded),
+  depositPeriodRemovedEvents: many(limitOrdersDepositPeriodRemoved),
+  yieldRecipientUpdatedEvents: many(limitOrdersYieldRecipientUpdated),
+  yieldSweptEvents: many(limitOrdersYieldSwept),
+}));
+
+export const limitOrdersDepositPeriodRelations = relations(limitOrdersDepositPeriod, ({ one }) => ({
+  rContract: one(limitOrdersContract, {
+    fields: [limitOrdersDepositPeriod.chainId, limitOrdersDepositPeriod.contractAddress],
+    references: [limitOrdersContract.chainId, limitOrdersContract.address],
+  }),
+  rAssetPeriod: one(depositAssetPeriod, {
+    fields: [
+      limitOrdersDepositPeriod.chainId,
+      limitOrdersDepositPeriod.depositAsset,
+      limitOrdersDepositPeriod.depositPeriod,
+    ],
+    references: [
+      depositAssetPeriod.chainId,
+      depositAssetPeriod.depositAsset,
+      depositAssetPeriod.depositPeriod,
+    ],
+  }),
+  rReceiptToken: one(receiptToken, {
+    fields: [
+      limitOrdersDepositPeriod.chainId,
+      limitOrdersDepositPeriod.receiptTokenManager,
+      limitOrdersDepositPeriod.receiptTokenId,
+    ],
+    references: [
+      receiptToken.chainId,
+      receiptToken.receiptTokenManager,
+      receiptToken.receiptTokenId,
+    ],
+  }),
+}));
+
+export const limitOrderRelations = relations(limitOrder, ({ one, many }) => ({
+  rContract: one(limitOrdersContract, {
+    fields: [limitOrder.chainId, limitOrder.contractAddress],
+    references: [limitOrdersContract.chainId, limitOrdersContract.address],
+  }),
+  rDepositor: one(depositor, {
+    fields: [limitOrder.chainId, limitOrder.owner],
+    references: [depositor.chainId, depositor.address],
+  }),
+  snapshots: many(limitOrderSnapshot),
+}));
+
+export const limitOrderSnapshotRelations = relations(limitOrderSnapshot, ({ one }) => ({
+  rOrder: one(limitOrder, {
+    fields: [
+      limitOrderSnapshot.chainId,
+      limitOrderSnapshot.contractAddress,
+      limitOrderSnapshot.orderId,
+    ],
+    references: [limitOrder.chainId, limitOrder.contractAddress, limitOrder.orderId],
+  }),
+  rContract: one(limitOrdersContract, {
+    fields: [limitOrderSnapshot.chainId, limitOrderSnapshot.contractAddress],
+    references: [limitOrdersContract.chainId, limitOrdersContract.address],
+  }),
+}));
+
+// LimitOrders Event Relations
+export const limitOrdersEnabledRelations = relations(limitOrdersEnabled, ({ one }) => ({
+  rContract: one(limitOrdersContract, {
+    fields: [limitOrdersEnabled.chainId, limitOrdersEnabled.contractAddress],
+    references: [limitOrdersContract.chainId, limitOrdersContract.address],
+  }),
+}));
+
+export const limitOrdersDisabledRelations = relations(limitOrdersDisabled, ({ one }) => ({
+  rContract: one(limitOrdersContract, {
+    fields: [limitOrdersDisabled.chainId, limitOrdersDisabled.contractAddress],
+    references: [limitOrdersContract.chainId, limitOrdersContract.address],
+  }),
+}));
+
+export const limitOrderCreatedRelations = relations(limitOrderCreated, ({ one }) => ({
+  rContract: one(limitOrdersContract, {
+    fields: [limitOrderCreated.chainId, limitOrderCreated.contractAddress],
+    references: [limitOrdersContract.chainId, limitOrdersContract.address],
+  }),
+  rDepositor: one(depositor, {
+    fields: [limitOrderCreated.chainId, limitOrderCreated.owner],
+    references: [depositor.chainId, depositor.address],
+  }),
+}));
+
+export const limitOrderFilledRelations = relations(limitOrderFilled, ({ one }) => ({
+  rContract: one(limitOrdersContract, {
+    fields: [limitOrderFilled.chainId, limitOrderFilled.contractAddress],
+    references: [limitOrdersContract.chainId, limitOrdersContract.address],
+  }),
+}));
+
+export const limitOrderChangedRelations = relations(limitOrderChanged, ({ one }) => ({
+  rContract: one(limitOrdersContract, {
+    fields: [limitOrderChanged.chainId, limitOrderChanged.contractAddress],
+    references: [limitOrdersContract.chainId, limitOrdersContract.address],
+  }),
+}));
+
+export const limitOrderCancelledRelations = relations(limitOrderCancelled, ({ one }) => ({
+  rContract: one(limitOrdersContract, {
+    fields: [limitOrderCancelled.chainId, limitOrderCancelled.contractAddress],
+    references: [limitOrdersContract.chainId, limitOrdersContract.address],
+  }),
+}));
+
+export const limitOrdersDepositPeriodAddedRelations = relations(
+  limitOrdersDepositPeriodAdded,
+  ({ one }) => ({
+    rContract: one(limitOrdersContract, {
+      fields: [
+        limitOrdersDepositPeriodAdded.chainId,
+        limitOrdersDepositPeriodAdded.contractAddress,
+      ],
+      references: [limitOrdersContract.chainId, limitOrdersContract.address],
+    }),
+  }),
+);
+
+export const limitOrdersDepositPeriodRemovedRelations = relations(
+  limitOrdersDepositPeriodRemoved,
+  ({ one }) => ({
+    rContract: one(limitOrdersContract, {
+      fields: [
+        limitOrdersDepositPeriodRemoved.chainId,
+        limitOrdersDepositPeriodRemoved.contractAddress,
+      ],
+      references: [limitOrdersContract.chainId, limitOrdersContract.address],
+    }),
+  }),
+);
+
+export const limitOrdersYieldRecipientUpdatedRelations = relations(
+  limitOrdersYieldRecipientUpdated,
+  ({ one }) => ({
+    rContract: one(limitOrdersContract, {
+      fields: [
+        limitOrdersYieldRecipientUpdated.chainId,
+        limitOrdersYieldRecipientUpdated.contractAddress,
+      ],
+      references: [limitOrdersContract.chainId, limitOrdersContract.address],
+    }),
+  }),
+);
+
+export const limitOrdersYieldSweptRelations = relations(limitOrdersYieldSwept, ({ one }) => ({
+  rContract: one(limitOrdersContract, {
+    fields: [limitOrdersYieldSwept.chainId, limitOrdersYieldSwept.contractAddress],
+    references: [limitOrdersContract.chainId, limitOrdersContract.address],
+  }),
+}));
