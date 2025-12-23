@@ -10,7 +10,9 @@ const START_BLOCK_SEPOLIA = 9180152;
 const END_BLOCK_SEPOLIA = 9578181;
 const START_BLOCK_LIMIT_ORDERS_SEPOLIA = 9898826;
 const START_BLOCK_MAINNET = 23747531;
-const START_BLOCK_LIMIT_ORDERS_MAINNET = 0;
+const _START_BLOCK_LIMIT_ORDERS_MAINNET = 0;
+
+// TODO add mainnet address for limit orders
 
 export default createConfig({
   chains: {
