@@ -297,8 +297,8 @@ export const convertibleDepositPosition = onchainTable(
   }),
 );
 
-export const limitOrders = onchainTable(
-  "limit_orders",
+export const limitOrdersContract = onchainTable(
+  "limit_orders_contract",
   (t) => ({
     chainId: t.integer().notNull(),
     address: t.hex().notNull(),
@@ -1627,8 +1627,8 @@ export const limitOrderSnapshot = onchainTable(
   }),
 );
 
-export const limitOrdersSnapshot = onchainTable(
-  "limit_orders_snapshot",
+export const limitOrdersContractSnapshot = onchainTable(
+  "limit_orders_contract_snapshot",
   (t) => ({
     chainId: t.integer().notNull(),
     block: t.bigint().notNull(),
@@ -3394,12 +3394,16 @@ export const convertibleDepositFacilityConvertedDepositRelations = relations(
 );
 
 // LimitOrders Relations
-export const limitOrdersRelations = relations(limitOrders, ({ many }) => ({
+export const limitOrdersContractRelations = relations(limitOrdersContract, ({ many }) => ({
   depositPeriods: many(limitOrdersDepositPeriod),
   orders: many(limitOrder),
-  snapshots: many(limitOrdersSnapshot),
+  snapshots: many(limitOrderSnapshot),
+  contractSnapshots: many(limitOrdersContractSnapshot),
   enabledEvents: many(limitOrdersEnabled),
   disabledEvents: many(limitOrdersDisabled),
+  orderCreatedEvents: many(limitOrderCreated),
+  orderFilledEvents: many(limitOrderFilled),
+  orderCancelledEvents: many(limitOrderCancelled),
   depositPeriodAddedEvents: many(limitOrdersDepositPeriodAdded),
   depositPeriodRemovedEvents: many(limitOrdersDepositPeriodRemoved),
   yieldRecipientUpdatedEvents: many(limitOrdersYieldRecipientUpdated),
@@ -3407,9 +3411,9 @@ export const limitOrdersRelations = relations(limitOrders, ({ many }) => ({
 }));
 
 export const limitOrdersDepositPeriodRelations = relations(limitOrdersDepositPeriod, ({ one }) => ({
-  rContract: one(limitOrders, {
+  rContract: one(limitOrdersContract, {
     fields: [limitOrdersDepositPeriod.chainId, limitOrdersDepositPeriod.contractAddress],
-    references: [limitOrders.chainId, limitOrders.address],
+    references: [limitOrdersContract.chainId, limitOrdersContract.address],
   }),
   rAssetPeriod: one(depositAssetPeriod, {
     fields: [
@@ -3438,18 +3442,15 @@ export const limitOrdersDepositPeriodRelations = relations(limitOrdersDepositPer
 }));
 
 export const limitOrderRelations = relations(limitOrder, ({ one, many }) => ({
-  rContract: one(limitOrders, {
+  rContract: one(limitOrdersContract, {
     fields: [limitOrder.chainId, limitOrder.contractAddress],
-    references: [limitOrders.chainId, limitOrders.address],
+    references: [limitOrdersContract.chainId, limitOrdersContract.address],
   }),
   rDepositor: one(depositor, {
     fields: [limitOrder.chainId, limitOrder.owner],
     references: [depositor.chainId, depositor.address],
   }),
   snapshots: many(limitOrderSnapshot),
-  createdEvents: many(limitOrderCreated),
-  filledEvents: many(limitOrderFilled),
-  cancelledEvents: many(limitOrderCancelled),
 }));
 
 export const limitOrderSnapshotRelations = relations(limitOrderSnapshot, ({ one }) => ({
@@ -3461,38 +3462,41 @@ export const limitOrderSnapshotRelations = relations(limitOrderSnapshot, ({ one 
     ],
     references: [limitOrder.chainId, limitOrder.contractAddress, limitOrder.orderId],
   }),
-}));
-
-export const limitOrdersSnapshotRelations = relations(limitOrdersSnapshot, ({ one }) => ({
-  rContract: one(limitOrders, {
-    fields: [limitOrdersSnapshot.chainId, limitOrdersSnapshot.contractAddress],
-    references: [limitOrders.chainId, limitOrders.address],
+  rContract: one(limitOrdersContract, {
+    fields: [limitOrderSnapshot.chainId, limitOrderSnapshot.contractAddress],
+    references: [limitOrdersContract.chainId, limitOrdersContract.address],
   }),
 }));
 
+export const limitOrdersContractSnapshotRelations = relations(
+  limitOrdersContractSnapshot,
+  ({ one }) => ({
+    rContract: one(limitOrdersContract, {
+      fields: [limitOrdersContractSnapshot.chainId, limitOrdersContractSnapshot.contractAddress],
+      references: [limitOrdersContract.chainId, limitOrdersContract.address],
+    }),
+  }),
+);
+
 // LimitOrders Event Relations
 export const limitOrdersEnabledRelations = relations(limitOrdersEnabled, ({ one }) => ({
-  rContract: one(limitOrders, {
+  rContract: one(limitOrdersContract, {
     fields: [limitOrdersEnabled.chainId, limitOrdersEnabled.contractAddress],
-    references: [limitOrders.chainId, limitOrders.address],
+    references: [limitOrdersContract.chainId, limitOrdersContract.address],
   }),
 }));
 
 export const limitOrdersDisabledRelations = relations(limitOrdersDisabled, ({ one }) => ({
-  rContract: one(limitOrders, {
+  rContract: one(limitOrdersContract, {
     fields: [limitOrdersDisabled.chainId, limitOrdersDisabled.contractAddress],
-    references: [limitOrders.chainId, limitOrders.address],
+    references: [limitOrdersContract.chainId, limitOrdersContract.address],
   }),
 }));
 
 export const limitOrderCreatedRelations = relations(limitOrderCreated, ({ one }) => ({
-  rOrder: one(limitOrder, {
-    fields: [
-      limitOrderCreated.chainId,
-      limitOrderCreated.contractAddress,
-      limitOrderCreated.orderId,
-    ],
-    references: [limitOrder.chainId, limitOrder.contractAddress, limitOrder.orderId],
+  rContract: one(limitOrdersContract, {
+    fields: [limitOrderCreated.chainId, limitOrderCreated.contractAddress],
+    references: [limitOrdersContract.chainId, limitOrdersContract.address],
   }),
   rDepositor: one(depositor, {
     fields: [limitOrderCreated.chainId, limitOrderCreated.owner],
@@ -3501,32 +3505,28 @@ export const limitOrderCreatedRelations = relations(limitOrderCreated, ({ one })
 }));
 
 export const limitOrderFilledRelations = relations(limitOrderFilled, ({ one }) => ({
-  rOrder: one(limitOrder, {
-    fields: [limitOrderFilled.chainId, limitOrderFilled.contractAddress, limitOrderFilled.orderId],
-    references: [limitOrder.chainId, limitOrder.contractAddress, limitOrder.orderId],
+  rContract: one(limitOrdersContract, {
+    fields: [limitOrderFilled.chainId, limitOrderFilled.contractAddress],
+    references: [limitOrdersContract.chainId, limitOrdersContract.address],
   }),
 }));
 
 export const limitOrderCancelledRelations = relations(limitOrderCancelled, ({ one }) => ({
-  rOrder: one(limitOrder, {
-    fields: [
-      limitOrderCancelled.chainId,
-      limitOrderCancelled.contractAddress,
-      limitOrderCancelled.orderId,
-    ],
-    references: [limitOrder.chainId, limitOrder.contractAddress, limitOrder.orderId],
+  rContract: one(limitOrdersContract, {
+    fields: [limitOrderCancelled.chainId, limitOrderCancelled.contractAddress],
+    references: [limitOrdersContract.chainId, limitOrdersContract.address],
   }),
 }));
 
 export const limitOrdersDepositPeriodAddedRelations = relations(
   limitOrdersDepositPeriodAdded,
   ({ one }) => ({
-    rContract: one(limitOrders, {
+    rContract: one(limitOrdersContract, {
       fields: [
         limitOrdersDepositPeriodAdded.chainId,
         limitOrdersDepositPeriodAdded.contractAddress,
       ],
-      references: [limitOrders.chainId, limitOrders.address],
+      references: [limitOrdersContract.chainId, limitOrdersContract.address],
     }),
   }),
 );
@@ -3534,12 +3534,12 @@ export const limitOrdersDepositPeriodAddedRelations = relations(
 export const limitOrdersDepositPeriodRemovedRelations = relations(
   limitOrdersDepositPeriodRemoved,
   ({ one }) => ({
-    rContract: one(limitOrders, {
+    rContract: one(limitOrdersContract, {
       fields: [
         limitOrdersDepositPeriodRemoved.chainId,
         limitOrdersDepositPeriodRemoved.contractAddress,
       ],
-      references: [limitOrders.chainId, limitOrders.address],
+      references: [limitOrdersContract.chainId, limitOrdersContract.address],
     }),
   }),
 );
@@ -3547,19 +3547,19 @@ export const limitOrdersDepositPeriodRemovedRelations = relations(
 export const limitOrdersYieldRecipientUpdatedRelations = relations(
   limitOrdersYieldRecipientUpdated,
   ({ one }) => ({
-    rContract: one(limitOrders, {
+    rContract: one(limitOrdersContract, {
       fields: [
         limitOrdersYieldRecipientUpdated.chainId,
         limitOrdersYieldRecipientUpdated.contractAddress,
       ],
-      references: [limitOrders.chainId, limitOrders.address],
+      references: [limitOrdersContract.chainId, limitOrdersContract.address],
     }),
   }),
 );
 
 export const limitOrdersYieldSweptRelations = relations(limitOrdersYieldSwept, ({ one }) => ({
-  rContract: one(limitOrders, {
+  rContract: one(limitOrdersContract, {
     fields: [limitOrdersYieldSwept.chainId, limitOrdersYieldSwept.contractAddress],
-    references: [limitOrders.chainId, limitOrders.address],
+    references: [limitOrdersContract.chainId, limitOrdersContract.address],
   }),
 }));
