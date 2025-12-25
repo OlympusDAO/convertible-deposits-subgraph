@@ -319,13 +319,6 @@ export async function createLimitOrderSnapshot(
   const depositAsset = await fetchLimitOrdersUSDS(context.client, contractAddress);
   const assetDecimals = await getAssetDecimals(context, chainId, depositAsset);
 
-  // Fetch contract-level totals (always current)
-  const totalUsdsOwed = await fetchLimitOrdersTotalUsdsOwed(context.client, contractAddress);
-  const totalUsdsDeposited = await fetchLimitOrdersTotalUsdsDeposited(
-    context.client,
-    contractAddress,
-  );
-
   const depositSpent = previousSnapshot.depositSpent + (updates.depositSpentDelta ?? BigInt(0));
   const incentiveSpent =
     previousSnapshot.incentiveSpent + (updates.incentiveSpentDelta ?? BigInt(0));
@@ -343,12 +336,9 @@ export async function createLimitOrderSnapshot(
     depositSpentDecimal,
     incentiveSpent,
     incentiveSpentDecimal: toDecimal(incentiveSpent, assetDecimals),
-    totalUsdsOwed,
-    totalUsdsOwedDecimal: toDecimal(totalUsdsOwed, assetDecimals),
-    totalUsdsDeposited,
-    totalUsdsDepositedDecimal: toDecimal(totalUsdsDeposited, assetDecimals),
   };
 
+  // If there is an existing snapshot, it needs to be updated
   await context.db.insert(schema.limitOrderSnapshot).values(snapshotValues);
 
   const snapshot = await context.db.find(schema.limitOrderSnapshot, {
@@ -360,6 +350,91 @@ export async function createLimitOrderSnapshot(
 
   if (!snapshot) {
     throw new Error(`Failed to create limit order snapshot`);
+  }
+
+  return snapshot;
+}
+
+/**
+ * Get the most recent limit orders contract snapshot for a given contract before or at a specific block
+ */
+export async function getLatestLimitOrdersContractSnapshot(
+  context: Context,
+  chainId: number,
+  contractAddress: Address,
+  beforeBlock: bigint,
+): Promise<typeof schema.limitOrdersContractSnapshot.$inferSelect | null> {
+  const results = await context.db.sql
+    .select()
+    .from(schema.limitOrdersContractSnapshot)
+    .where(
+      and(
+        eq(schema.limitOrdersContractSnapshot.chainId, chainId),
+        eq(
+          schema.limitOrdersContractSnapshot.contractAddress,
+          contractAddress.toLowerCase() as Address,
+        ),
+        lte(schema.limitOrdersContractSnapshot.block, beforeBlock),
+      ),
+    )
+    .orderBy(desc(schema.limitOrdersContractSnapshot.block))
+    .limit(1);
+
+  if (results.length === 0) {
+    return null;
+  }
+
+  return results[0] as typeof schema.limitOrdersContractSnapshot.$inferSelect;
+}
+
+/**
+ * Create a limit orders contract snapshot
+ */
+export async function createLimitOrdersContractSnapshot(
+  context: Context,
+  chainId: number,
+  blockNumber: bigint,
+  timestamp: bigint,
+  logIndex: number,
+  contractAddress: Address,
+  enabled: boolean,
+): Promise<typeof schema.limitOrdersContractSnapshot.$inferSelect> {
+  // Get or create the contract first
+  await getOrCreateLimitOrdersContract(context, chainId, contractAddress);
+
+  // Get depositAsset and decimals
+  const depositAsset = await fetchLimitOrdersUSDS(context.client, contractAddress);
+  const assetDecimals = await getAssetDecimals(context, chainId, depositAsset);
+
+  // Fetch contract-level totals
+  const totalUsdsOwed = await fetchLimitOrdersTotalUsdsOwed(context.client, contractAddress);
+  const totalUsdsDeposited = await fetchLimitOrdersTotalUsdsDeposited(
+    context.client,
+    contractAddress,
+  );
+
+  // Insert contract snapshot
+  await context.db.insert(schema.limitOrdersContractSnapshot).values({
+    chainId,
+    block: blockNumber,
+    timestamp,
+    logIndex,
+    contractAddress: contractAddress.toLowerCase() as Address,
+    enabled,
+    totalUsdsOwed,
+    totalUsdsOwedDecimal: toDecimal(totalUsdsOwed, assetDecimals),
+    totalUsdsDeposited,
+    totalUsdsDepositedDecimal: toDecimal(totalUsdsDeposited, assetDecimals),
+  });
+
+  const snapshot = await context.db.find(schema.limitOrdersContractSnapshot, {
+    chainId,
+    block: blockNumber,
+    contractAddress: contractAddress.toLowerCase() as Address,
+  });
+
+  if (!snapshot) {
+    throw new Error(`Failed to create limit orders contract snapshot`);
   }
 
   return snapshot;

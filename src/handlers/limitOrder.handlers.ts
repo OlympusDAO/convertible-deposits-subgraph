@@ -3,15 +3,12 @@
 import { ponder } from "ponder:registry";
 import schema from "ponder:schema";
 import type { Address } from "viem";
-import {
-  fetchLimitOrdersTotalUsdsDeposited,
-  fetchLimitOrdersTotalUsdsOwed,
-  fetchLimitOrdersUSDS,
-} from "../contracts/limitOrder";
+import { fetchLimitOrdersUSDS } from "../contracts/limitOrder";
 import { getAssetDecimals, getOrCreateDepositAssetPeriod } from "../entities/asset";
 import { getOrCreateDepositor } from "../entities/depositor";
 import {
   createLimitOrderSnapshot,
+  createLimitOrdersContractSnapshot,
   getLatestLimitOrderSnapshot,
   getOrCreateLimitOrdersContract,
   getOrCreateLimitOrdersDepositPeriod,
@@ -40,6 +37,17 @@ ponder.on("ConvertibleDepositAuctioneerLimitOrders:Enabled", async ({ event, con
 
   // Update contract status
   await updateLimitOrdersContract(context, chainId, contractAddress, { enabled: true });
+
+  // Create contract snapshot
+  await createLimitOrdersContractSnapshot(
+    context,
+    chainId,
+    BigInt(event.block.number),
+    BigInt(event.block.timestamp),
+    event.log.logIndex,
+    contractAddress,
+    true,
+  );
 });
 
 ponder.on("ConvertibleDepositAuctioneerLimitOrders:Disabled", async ({ event, context }) => {
@@ -61,6 +69,17 @@ ponder.on("ConvertibleDepositAuctioneerLimitOrders:Disabled", async ({ event, co
 
   // Update contract status
   await updateLimitOrdersContract(context, chainId, contractAddress, { enabled: false });
+
+  // Create contract snapshot
+  await createLimitOrdersContractSnapshot(
+    context,
+    chainId,
+    BigInt(event.block.number),
+    BigInt(event.block.timestamp),
+    event.log.logIndex,
+    contractAddress,
+    false,
+  );
 });
 
 ponder.on("ConvertibleDepositAuctioneerLimitOrders:OrderCreated", async ({ event, context }) => {
@@ -71,7 +90,7 @@ ponder.on("ConvertibleDepositAuctioneerLimitOrders:OrderCreated", async ({ event
   const depositPeriod = Number(event.args.depositPeriod);
 
   // Get or create entities
-  await getOrCreateLimitOrdersContract(context, chainId, contractAddress);
+  const contract = await getOrCreateLimitOrdersContract(context, chainId, contractAddress);
   await getOrCreateDepositor(context, chainId, ownerAddress);
 
   // Get depositAsset from contract (USDS)
@@ -137,13 +156,6 @@ ponder.on("ConvertibleDepositAuctioneerLimitOrders:OrderCreated", async ({ event
     createdAtTimestamp: timestamp,
   });
 
-  // Fetch contract-level totals for snapshot
-  const totalUsdsOwed = await fetchLimitOrdersTotalUsdsOwed(context.client, contractAddress);
-  const totalUsdsDeposited = await fetchLimitOrdersTotalUsdsDeposited(
-    context.client,
-    contractAddress,
-  );
-
   // Create snapshot explicitly with initial state (depositSpent=0, incentiveSpent=0 for new order)
   await context.db.insert(schema.limitOrderSnapshot).values({
     chainId,
@@ -167,11 +179,18 @@ ponder.on("ConvertibleDepositAuctioneerLimitOrders:OrderCreated", async ({ event
     maxPriceDecimal,
     minFillSize,
     minFillSizeDecimal,
-    totalUsdsOwed,
-    totalUsdsOwedDecimal: toDecimal(totalUsdsOwed, assetDecimals),
-    totalUsdsDeposited,
-    totalUsdsDepositedDecimal: toDecimal(totalUsdsDeposited, assetDecimals),
   });
+
+  // Create contract snapshot
+  await createLimitOrdersContractSnapshot(
+    context,
+    chainId,
+    blockNumber,
+    timestamp,
+    event.log.logIndex,
+    contractAddress,
+    contract.enabled,
+  );
 });
 
 ponder.on("ConvertibleDepositAuctioneerLimitOrders:OrderFilled", async ({ event, context }) => {
@@ -180,7 +199,7 @@ ponder.on("ConvertibleDepositAuctioneerLimitOrders:OrderFilled", async ({ event,
   const orderId = BigInt(event.args.orderId);
 
   // Get or create contract
-  await getOrCreateLimitOrdersContract(context, chainId, contractAddress);
+  const contract = await getOrCreateLimitOrdersContract(context, chainId, contractAddress);
 
   // Get depositAsset from contract
   const depositAsset = await fetchLimitOrdersUSDS(context.client, contractAddress);
@@ -238,6 +257,17 @@ ponder.on("ConvertibleDepositAuctioneerLimitOrders:OrderFilled", async ({ event,
       incentiveSpentDelta: incentivePaid, // Add current incentive to previous spent
     },
   );
+
+  // Create contract snapshot
+  await createLimitOrdersContractSnapshot(
+    context,
+    chainId,
+    blockNumber,
+    timestamp,
+    event.log.logIndex,
+    contractAddress,
+    contract.enabled,
+  );
 });
 
 ponder.on("ConvertibleDepositAuctioneerLimitOrders:OrderCancelled", async ({ event, context }) => {
@@ -246,7 +276,7 @@ ponder.on("ConvertibleDepositAuctioneerLimitOrders:OrderCancelled", async ({ eve
   const orderId = BigInt(event.args.orderId);
 
   // Get or create contract
-  await getOrCreateLimitOrdersContract(context, chainId, contractAddress);
+  const contract = await getOrCreateLimitOrdersContract(context, chainId, contractAddress);
 
   // Get depositAsset from contract
   const depositAsset = await fetchLimitOrdersUSDS(context.client, contractAddress);
@@ -299,6 +329,17 @@ ponder.on("ConvertibleDepositAuctioneerLimitOrders:OrderCancelled", async ({ eve
       active: false, // Mark as inactive on cancellation
       // All other fields copied from previous snapshot (including cumulative spent amounts)
     },
+  );
+
+  // Create contract snapshot
+  await createLimitOrdersContractSnapshot(
+    context,
+    chainId,
+    blockNumber,
+    timestamp,
+    event.log.logIndex,
+    contractAddress,
+    contract.enabled,
   );
 });
 
@@ -412,7 +453,7 @@ ponder.on("ConvertibleDepositAuctioneerLimitOrders:YieldSwept", async ({ event, 
   const contractAddress = event.log.address as Address;
 
   // Get or create contract
-  await getOrCreateLimitOrdersContract(context, chainId, contractAddress);
+  const contract = await getOrCreateLimitOrdersContract(context, chainId, contractAddress);
 
   // Get asset decimals (sUSDS uses 18 decimals)
   const assetDecimals = 18;
@@ -429,4 +470,15 @@ ponder.on("ConvertibleDepositAuctioneerLimitOrders:YieldSwept", async ({ event, 
     sUsdsAmount: BigInt(event.args.sUsdsAmount),
     sUsdsAmountDecimal: toDecimal(BigInt(event.args.sUsdsAmount), assetDecimals),
   });
+
+  // Create contract snapshot
+  await createLimitOrdersContractSnapshot(
+    context,
+    chainId,
+    BigInt(event.block.number),
+    BigInt(event.block.timestamp),
+    event.log.logIndex,
+    contractAddress,
+    contract.enabled,
+  );
 });

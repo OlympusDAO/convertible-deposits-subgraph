@@ -1619,7 +1619,22 @@ export const limitOrderSnapshot = onchainTable(
     maxPriceDecimal: t.text().notNull(), // BigDecimal as text
     minFillSize: t.bigint().notNull(),
     minFillSizeDecimal: t.text().notNull(), // BigDecimal as text
-    // Contract-level totals (for this order's contract)
+  }),
+  (table) => ({
+    pk: primaryKey({
+      columns: [table.chainId, table.block, table.contractAddress, table.orderId],
+    }),
+  }),
+);
+
+export const limitOrdersContractSnapshot = onchainTable(
+  "limit_orders_contract_snapshot",
+  (t) => ({
+    chainId: t.integer().notNull(),
+    block: t.bigint().notNull(),
+    timestamp: t.bigint().notNull(),
+    contractAddress: t.hex().notNull(), // LimitOrders contract address (FK)
+    enabled: t.boolean().notNull(),
     totalUsdsOwed: t.bigint().notNull(), // Total USDS owed across all orders
     totalUsdsOwedDecimal: t.text().notNull(), // BigDecimal as text
     totalUsdsDeposited: t.bigint().notNull(), // Total USDS deposited (sUSDS balance converted to USDS terms)
@@ -1627,7 +1642,7 @@ export const limitOrderSnapshot = onchainTable(
   }),
   (table) => ({
     pk: primaryKey({
-      columns: [table.chainId, table.block, table.contractAddress, table.orderId],
+      columns: [table.chainId, table.block, table.contractAddress],
     }),
   }),
 );
@@ -3383,6 +3398,7 @@ export const limitOrdersContractRelations = relations(limitOrdersContract, ({ ma
   depositPeriods: many(limitOrdersDepositPeriod),
   orders: many(limitOrder),
   snapshots: many(limitOrderSnapshot),
+  contractSnapshots: many(limitOrdersContractSnapshot),
   enabledEvents: many(limitOrdersEnabled),
   disabledEvents: many(limitOrdersDisabled),
   orderCreatedEvents: many(limitOrderCreated),
@@ -3451,6 +3467,16 @@ export const limitOrderSnapshotRelations = relations(limitOrderSnapshot, ({ one 
     references: [limitOrdersContract.chainId, limitOrdersContract.address],
   }),
 }));
+
+export const limitOrdersContractSnapshotRelations = relations(
+  limitOrdersContractSnapshot,
+  ({ one }) => ({
+    rContract: one(limitOrdersContract, {
+      fields: [limitOrdersContractSnapshot.chainId, limitOrdersContractSnapshot.contractAddress],
+      references: [limitOrdersContract.chainId, limitOrdersContract.address],
+    }),
+  }),
+);
 
 // LimitOrders Event Relations
 export const limitOrdersEnabledRelations = relations(limitOrdersEnabled, ({ one }) => ({
