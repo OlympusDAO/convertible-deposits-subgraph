@@ -353,7 +353,7 @@ export async function getLatestLimitOrderSnapshot(
 
 /**
  * Create a limit order snapshot by copying the previous snapshot and applying updates
- * This ensures cumulative tracking across changeOrder events by preserving previous spent amounts
+ * This ensures cumulative tracking across order events by preserving previous spent amounts
  */
 export async function createLimitOrderSnapshot(
   context: Context,
@@ -367,10 +367,6 @@ export async function createLimitOrderSnapshot(
   updates: {
     depositSpentDelta?: bigint;
     incentiveSpentDelta?: bigint;
-    depositBudgetDelta?: bigint;
-    incentiveBudgetDelta?: bigint;
-    maxPrice?: bigint;
-    minFillSize?: bigint;
     active?: boolean;
   },
 ): Promise<typeof schema.limitOrderSnapshot.$inferSelect> {
@@ -388,16 +384,11 @@ export async function createLimitOrderSnapshot(
     contractAddress,
   );
 
-  const depositBudget = previousSnapshot.depositBudget + (updates.depositBudgetDelta ?? BigInt(0));
-  const incentiveBudget =
-    previousSnapshot.incentiveBudget + (updates.incentiveBudgetDelta ?? BigInt(0));
   const depositSpent = previousSnapshot.depositSpent + (updates.depositSpentDelta ?? BigInt(0));
   const incentiveSpent =
     previousSnapshot.incentiveSpent + (updates.incentiveSpentDelta ?? BigInt(0));
   const depositSpentDecimal = toDecimal(depositSpent, assetDecimals);
-  const maxPrice = updates.maxPrice ?? previousSnapshot.maxPrice;
-  const minFillSize = updates.minFillSize ?? previousSnapshot.minFillSize;
-  const isCompleted = depositSpent >= depositBudget;
+  const isCompleted = depositSpent >= previousSnapshot.depositBudget;
 
   // Copy the previous snapshot and update the values
   const snapshotValues = {
@@ -406,18 +397,10 @@ export async function createLimitOrderSnapshot(
     timestamp,
     logIndex,
     completed: isCompleted,
-    depositBudget,
-    depositBudgetDecimal: toDecimal(depositBudget, assetDecimals),
-    incentiveBudget,
-    incentiveBudgetDecimal: toDecimal(incentiveBudget, assetDecimals),
     depositSpent,
     depositSpentDecimal,
     incentiveSpent,
     incentiveSpentDecimal: toDecimal(incentiveSpent, assetDecimals),
-    maxPrice,
-    maxPriceDecimal: toDecimal(maxPrice, assetDecimals),
-    minFillSize,
-    minFillSizeDecimal: toDecimal(minFillSize, assetDecimals),
     totalUsdsOwed,
     totalUsdsOwedDecimal: toDecimal(totalUsdsOwed, assetDecimals),
     totalUsdsDeposited,

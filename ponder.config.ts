@@ -8,7 +8,7 @@ import { getTransport } from "./src/utils/rpc";
 
 const START_BLOCK_SEPOLIA = 9180152;
 const END_BLOCK_SEPOLIA = 9578181;
-const START_BLOCK_LIMIT_ORDERS_SEPOLIA = 9898826;
+const START_BLOCK_LIMIT_ORDERS_SEPOLIA = 9905623;
 const START_BLOCK_MAINNET = 23747531;
 const _START_BLOCK_LIMIT_ORDERS_MAINNET = 0;
 
@@ -30,7 +30,7 @@ export default createConfig({
       abi: ConvertibleDepositAuctioneerLimitOrdersAbi,
       chain: {
         sepolia: {
-          address: ["0xf20e36ad2eba6c4ca7f27acccb557df91a25a6e7"],
+          address: ["0xeF64baB08c3431BbC527B063354b95D1C5b549B0"],
           startBlock: START_BLOCK_LIMIT_ORDERS_SEPOLIA,
         },
       },

@@ -8,6 +8,11 @@ export const ConvertibleDepositAuctioneerLimitOrdersAbi = [
         internalType: "address",
       },
       {
+        name: "depositManager_",
+        type: "address",
+        internalType: "address",
+      },
+      {
         name: "cdAuctioneer_",
         type: "address",
         internalType: "address",
@@ -60,6 +65,19 @@ export const ConvertibleDepositAuctioneerLimitOrdersAbi = [
   },
   {
     type: "function",
+    name: "DEPOSIT_MANAGER",
+    inputs: [],
+    outputs: [
+      {
+        name: "",
+        type: "address",
+        internalType: "address",
+      },
+    ],
+    stateMutability: "view",
+  },
+  {
+    type: "function",
     name: "POSITION_NFT",
     inputs: [],
     outputs: [
@@ -96,6 +114,24 @@ export const ConvertibleDepositAuctioneerLimitOrdersAbi = [
       },
     ],
     stateMutability: "view",
+  },
+  {
+    type: "function",
+    name: "VERSION",
+    inputs: [],
+    outputs: [
+      {
+        name: "major",
+        type: "uint8",
+        internalType: "uint8",
+      },
+      {
+        name: "minor",
+        type: "uint8",
+        internalType: "uint8",
+      },
+    ],
+    stateMutability: "pure",
   },
   {
     type: "function",
@@ -184,39 +220,6 @@ export const ConvertibleDepositAuctioneerLimitOrdersAbi = [
     inputs: [
       {
         name: "orderId_",
-        type: "uint256",
-        internalType: "uint256",
-      },
-    ],
-    outputs: [],
-    stateMutability: "nonpayable",
-  },
-  {
-    type: "function",
-    name: "changeOrder",
-    inputs: [
-      {
-        name: "orderId_",
-        type: "uint256",
-        internalType: "uint256",
-      },
-      {
-        name: "newDepositBudget_",
-        type: "uint256",
-        internalType: "uint256",
-      },
-      {
-        name: "newIncentiveBudget_",
-        type: "uint256",
-        internalType: "uint256",
-      },
-      {
-        name: "newMaxPrice_",
-        type: "uint256",
-        internalType: "uint256",
-      },
-      {
-        name: "newMinFillSize_",
         type: "uint256",
         internalType: "uint256",
       },
@@ -821,43 +824,6 @@ export const ConvertibleDepositAuctioneerLimitOrdersAbi = [
       },
       {
         name: "usdsReturned",
-        type: "uint256",
-        indexed: false,
-        internalType: "uint256",
-      },
-    ],
-    anonymous: false,
-  },
-  {
-    type: "event",
-    name: "OrderChanged",
-    inputs: [
-      {
-        name: "orderId",
-        type: "uint256",
-        indexed: true,
-        internalType: "uint256",
-      },
-      {
-        name: "depositBudget",
-        type: "uint256",
-        indexed: false,
-        internalType: "uint256",
-      },
-      {
-        name: "incentiveBudget",
-        type: "uint256",
-        indexed: false,
-        internalType: "uint256",
-      },
-      {
-        name: "maxPrice",
-        type: "uint256",
-        indexed: false,
-        internalType: "uint256",
-      },
-      {
-        name: "minFillSize",
         type: "uint256",
         indexed: false,
         internalType: "uint256",

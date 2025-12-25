@@ -1431,30 +1431,6 @@ export const limitOrderFilled = onchainTable(
   }),
 );
 
-export const limitOrderChanged = onchainTable(
-  "limit_order_changed",
-  (t) => ({
-    chainId: t.integer().notNull(),
-    block: t.bigint().notNull(),
-    logIndex: t.integer().notNull(),
-    txHash: t.hex().notNull(),
-    timestamp: t.bigint().notNull(),
-    contractAddress: t.hex().notNull(), // LimitOrders contract address (FK)
-    orderId: t.bigint().notNull(),
-    depositBudget: t.bigint().notNull(),
-    depositBudgetDecimal: t.text().notNull(), // BigDecimal as text
-    incentiveBudget: t.bigint().notNull(),
-    incentiveBudgetDecimal: t.text().notNull(), // BigDecimal as text
-    maxPrice: t.bigint().notNull(),
-    maxPriceDecimal: t.text().notNull(), // BigDecimal as text
-    minFillSize: t.bigint().notNull(),
-    minFillSizeDecimal: t.text().notNull(), // BigDecimal as text
-  }),
-  (table) => ({
-    pk: primaryKey({ columns: [table.chainId, table.block, table.logIndex] }),
-  }),
-);
-
 export const limitOrderCancelled = onchainTable(
   "limit_order_cancelled",
   (t) => ({
@@ -3411,7 +3387,6 @@ export const limitOrdersContractRelations = relations(limitOrdersContract, ({ ma
   disabledEvents: many(limitOrdersDisabled),
   orderCreatedEvents: many(limitOrderCreated),
   orderFilledEvents: many(limitOrderFilled),
-  orderChangedEvents: many(limitOrderChanged),
   orderCancelledEvents: many(limitOrderCancelled),
   depositPeriodAddedEvents: many(limitOrdersDepositPeriodAdded),
   depositPeriodRemovedEvents: many(limitOrdersDepositPeriodRemoved),
@@ -3506,13 +3481,6 @@ export const limitOrderCreatedRelations = relations(limitOrderCreated, ({ one })
 export const limitOrderFilledRelations = relations(limitOrderFilled, ({ one }) => ({
   rContract: one(limitOrdersContract, {
     fields: [limitOrderFilled.chainId, limitOrderFilled.contractAddress],
-    references: [limitOrdersContract.chainId, limitOrdersContract.address],
-  }),
-}));
-
-export const limitOrderChangedRelations = relations(limitOrderChanged, ({ one }) => ({
-  rContract: one(limitOrdersContract, {
-    fields: [limitOrderChanged.chainId, limitOrderChanged.contractAddress],
     references: [limitOrdersContract.chainId, limitOrdersContract.address],
   }),
 }));
