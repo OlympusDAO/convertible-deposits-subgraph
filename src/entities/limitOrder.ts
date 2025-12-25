@@ -60,26 +60,6 @@ export async function getOrCreateLimitOrdersContract(
 }
 
 /**
- * Get a LimitOrdersContract record
- */
-export async function getLimitOrdersContract(
-  context: Context,
-  chainId: number,
-  address: Address,
-): Promise<typeof schema.limitOrdersContract.$inferSelect> {
-  const result = await context.db.find(schema.limitOrdersContract, {
-    chainId,
-    address: address.toLowerCase() as Address,
-  });
-
-  if (!result) {
-    throw new Error(`LimitOrdersContract not found: ${chainId}:${address}`);
-  }
-
-  return result;
-}
-
-/**
  * Update an existing LimitOrdersContract
  */
 export async function updateLimitOrdersContract(
@@ -186,44 +166,6 @@ export async function updateLimitOrdersDepositPeriod(
       depositPeriod,
     })
     .set(updates);
-}
-
-/**
- * Find receiptToken by querying existing receiptToken entities matching depositPeriod
- * This is a helper to map wrapped ERC20 address to receiptTokenManager/receiptTokenId
- */
-export async function findReceiptTokenByDepositPeriod(
-  context: Context,
-  chainId: number,
-  depositAsset: Address,
-  depositPeriod: number,
-): Promise<{
-  receiptTokenManager: Address;
-  receiptTokenId: bigint;
-  depositAsset: Address;
-} | null> {
-  const results = await context.db.sql
-    .select()
-    .from(schema.receiptToken)
-    .where(
-      and(
-        eq(schema.receiptToken.chainId, chainId),
-        eq(schema.receiptToken.depositAsset, depositAsset.toLowerCase() as Address),
-        eq(schema.receiptToken.depositPeriod, depositPeriod),
-      ),
-    )
-    .limit(1);
-
-  if (results.length === 0) {
-    return null;
-  }
-
-  const receiptToken = results[0] as typeof schema.receiptToken.$inferSelect;
-  return {
-    receiptTokenManager: receiptToken.receiptTokenManager,
-    receiptTokenId: receiptToken.receiptTokenId,
-    depositAsset: receiptToken.depositAsset,
-  };
 }
 
 /**
