@@ -26,9 +26,9 @@ export async function getOrCreateLimitOrdersContract(
   context: Context,
   chainId: number,
   address: Address,
-): Promise<typeof schema.limitOrdersContract.$inferSelect> {
+): Promise<typeof schema.limitOrders.$inferSelect> {
   // Check if contract exists
-  const existing = await context.db.find(schema.limitOrdersContract, {
+  const existing = await context.db.find(schema.limitOrders, {
     chainId,
     address: address.toLowerCase() as Address,
   });
@@ -54,7 +54,7 @@ export async function getOrCreateLimitOrdersContract(
     minorVersion,
   };
 
-  await context.db.insert(schema.limitOrdersContract).values(newContract);
+  await context.db.insert(schema.limitOrders).values(newContract);
 
   return newContract;
 }
@@ -66,10 +66,10 @@ export async function updateLimitOrdersContract(
   context: Context,
   chainId: number,
   address: Address,
-  updates: Partial<Omit<typeof schema.limitOrdersContract.$inferSelect, "chainId" | "address">>,
+  updates: Partial<Omit<typeof schema.limitOrders.$inferSelect, "chainId" | "address">>,
 ): Promise<void> {
   await context.db
-    .update(schema.limitOrdersContract, {
+    .update(schema.limitOrders, {
       chainId,
       address: address.toLowerCase() as Address,
     })
@@ -363,28 +363,25 @@ export async function getLatestLimitOrdersContractSnapshot(
   chainId: number,
   contractAddress: Address,
   beforeBlock: bigint,
-): Promise<typeof schema.limitOrdersContractSnapshot.$inferSelect | null> {
+): Promise<typeof schema.limitOrdersSnapshot.$inferSelect | null> {
   const results = await context.db.sql
     .select()
-    .from(schema.limitOrdersContractSnapshot)
+    .from(schema.limitOrdersSnapshot)
     .where(
       and(
-        eq(schema.limitOrdersContractSnapshot.chainId, chainId),
-        eq(
-          schema.limitOrdersContractSnapshot.contractAddress,
-          contractAddress.toLowerCase() as Address,
-        ),
-        lte(schema.limitOrdersContractSnapshot.block, beforeBlock),
+        eq(schema.limitOrdersSnapshot.chainId, chainId),
+        eq(schema.limitOrdersSnapshot.contractAddress, contractAddress.toLowerCase() as Address),
+        lte(schema.limitOrdersSnapshot.block, beforeBlock),
       ),
     )
-    .orderBy(desc(schema.limitOrdersContractSnapshot.block))
+    .orderBy(desc(schema.limitOrdersSnapshot.block))
     .limit(1);
 
   if (results.length === 0) {
     return null;
   }
 
-  return results[0] as typeof schema.limitOrdersContractSnapshot.$inferSelect;
+  return results[0] as typeof schema.limitOrdersSnapshot.$inferSelect;
 }
 
 /**
@@ -398,7 +395,7 @@ export async function createLimitOrdersContractSnapshot(
   logIndex: number,
   contractAddress: Address,
   enabled: boolean,
-): Promise<typeof schema.limitOrdersContractSnapshot.$inferSelect> {
+): Promise<typeof schema.limitOrdersSnapshot.$inferSelect> {
   // Get or create the contract first
   await getOrCreateLimitOrdersContract(context, chainId, contractAddress);
 
@@ -414,7 +411,7 @@ export async function createLimitOrdersContractSnapshot(
   );
 
   // Insert contract snapshot
-  await context.db.insert(schema.limitOrdersContractSnapshot).values({
+  await context.db.insert(schema.limitOrdersSnapshot).values({
     chainId,
     block: blockNumber,
     timestamp,
@@ -427,7 +424,7 @@ export async function createLimitOrdersContractSnapshot(
     totalUsdsDepositedDecimal: toDecimal(totalUsdsDeposited, assetDecimals),
   });
 
-  const snapshot = await context.db.find(schema.limitOrdersContractSnapshot, {
+  const snapshot = await context.db.find(schema.limitOrdersSnapshot, {
     chainId,
     block: blockNumber,
     contractAddress: contractAddress.toLowerCase() as Address,
