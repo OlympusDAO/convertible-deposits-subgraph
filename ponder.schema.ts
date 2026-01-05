@@ -648,8 +648,13 @@ export const convertibleDepositAuctioneerBid = onchainTable(
   }),
 );
 
-export const convertibleDepositFacilityConvertedDeposits = onchainTable(
-  "convertible_deposit_facility_converted_deposits",
+/**
+ * Event entity for the ConvertedDeposit event of the ConvertibleDepositFacility contract.
+ *
+ * The event can span multiple positions. Per-position records are created as child entities in `convertibleDepositFacilityConvertedDeposit`.
+ */
+export const convertibleDepositFacilityConvertedDepositEvent = onchainTable(
+  "convertible_deposit_facility_converted_deposit_event",
   (t) => ({
     chainId: t.integer().notNull(),
     block: t.bigint().notNull(),
@@ -2405,7 +2410,7 @@ export const depositFacilityAssetPeriodRelations = relations(
     }),
     createdDepositEvents: many(convertibleDepositFacilityCreatedDeposit),
     reclaimedEvents: many(convertibleDepositFacilityReclaimed),
-    convertedDepositsEvents: many(convertibleDepositFacilityConvertedDeposits),
+    convertedDepositsEvents: many(convertibleDepositFacilityConvertedDepositEvent),
   }),
 );
 
@@ -2937,28 +2942,28 @@ export const convertibleDepositAuctioneerBidRelations = relations(
 );
 
 export const convertibleDepositFacilityConvertedDepositsRelations = relations(
-  convertibleDepositFacilityConvertedDeposits,
+  convertibleDepositFacilityConvertedDepositEvent,
   ({ one, many }) => ({
     rFacility: one(depositFacility, {
       fields: [
-        convertibleDepositFacilityConvertedDeposits.chainId,
-        convertibleDepositFacilityConvertedDeposits.facility,
+        convertibleDepositFacilityConvertedDepositEvent.chainId,
+        convertibleDepositFacilityConvertedDepositEvent.facility,
       ],
       references: [depositFacility.chainId, depositFacility.address],
     }),
     rDepositAsset: one(depositAsset, {
       fields: [
-        convertibleDepositFacilityConvertedDeposits.chainId,
-        convertibleDepositFacilityConvertedDeposits.depositAsset,
+        convertibleDepositFacilityConvertedDepositEvent.chainId,
+        convertibleDepositFacilityConvertedDepositEvent.depositAsset,
       ],
       references: [depositAsset.chainId, depositAsset.asset],
     }),
     facilityAssetPeriod: one(depositFacilityAssetPeriod, {
       fields: [
-        convertibleDepositFacilityConvertedDeposits.chainId,
-        convertibleDepositFacilityConvertedDeposits.facility,
-        convertibleDepositFacilityConvertedDeposits.depositAsset,
-        convertibleDepositFacilityConvertedDeposits.depositPeriod,
+        convertibleDepositFacilityConvertedDepositEvent.chainId,
+        convertibleDepositFacilityConvertedDepositEvent.facility,
+        convertibleDepositFacilityConvertedDepositEvent.depositAsset,
+        convertibleDepositFacilityConvertedDepositEvent.depositPeriod,
       ],
       references: [
         depositFacilityAssetPeriod.chainId,
@@ -3101,16 +3106,16 @@ export const convertibleDepositFacilityConvertedDepositRelations = relations(
       ],
       references: [convertibleDepositPosition.chainId, convertibleDepositPosition.positionId],
     }),
-    rParentEvent: one(convertibleDepositFacilityConvertedDeposits, {
+    rParentEvent: one(convertibleDepositFacilityConvertedDepositEvent, {
       fields: [
         convertibleDepositFacilityConvertedDeposit.parentEventChainId,
         convertibleDepositFacilityConvertedDeposit.parentEventBlock,
         convertibleDepositFacilityConvertedDeposit.parentEventLogIndex,
       ],
       references: [
-        convertibleDepositFacilityConvertedDeposits.chainId,
-        convertibleDepositFacilityConvertedDeposits.block,
-        convertibleDepositFacilityConvertedDeposits.logIndex,
+        convertibleDepositFacilityConvertedDepositEvent.chainId,
+        convertibleDepositFacilityConvertedDepositEvent.block,
+        convertibleDepositFacilityConvertedDepositEvent.logIndex,
       ],
     }),
   }),

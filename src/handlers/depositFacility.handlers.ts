@@ -402,7 +402,7 @@ ponder.on("ConvertibleDepositFacility:ConvertedDeposit", async ({ event, context
   const assetDecimals = await getAssetDecimals(context, chainId, assetAddress);
 
   // Create record for the parent event
-  await context.db.insert(schema.convertibleDepositFacilityConvertedDeposits).values({
+  await context.db.insert(schema.convertibleDepositFacilityConvertedDepositEvent).values({
     chainId,
     block: BigInt(event.block.number),
     logIndex: event.log.logIndex,
