@@ -1,6 +1,6 @@
 import { createConfig } from "ponder";
-
 import { ConvertibleDepositAuctioneerAbi } from "./abis/ConvertibleDepositAuctioneer";
+import { ConvertibleDepositAuctioneerLimitOrdersAbi } from "./abis/ConvertibleDepositAuctioneerLimitOrders";
 import { ConvertibleDepositFacilityAbi } from "./abis/ConvertibleDepositFacility";
 import { DepositRedemptionVaultAbi } from "./abis/DepositRedemptionVault";
 import { EmissionManagerAbi } from "./abis/EmissionManager";
@@ -8,7 +8,9 @@ import { getTransport } from "./src/utils/rpc";
 
 const START_BLOCK_SEPOLIA = 9180152;
 const END_BLOCK_SEPOLIA = 9578181;
+const START_BLOCK_LIMIT_ORDERS_SEPOLIA = 9905623;
 const START_BLOCK_MAINNET = 23747531;
+const START_BLOCK_LIMIT_ORDERS_MAINNET = 24184550;
 
 export default createConfig({
   chains: {
@@ -22,6 +24,19 @@ export default createConfig({
     },
   },
   contracts: {
+    ConvertibleDepositAuctioneerLimitOrders: {
+      abi: ConvertibleDepositAuctioneerLimitOrdersAbi,
+      chain: {
+        mainnet: {
+          address: ["0x7d8f82A0D5B67d5FDd1B77A899FF517818FaFc2e"],
+          startBlock: START_BLOCK_LIMIT_ORDERS_MAINNET,
+        },
+        sepolia: {
+          address: ["0xeF64baB08c3431BbC527B063354b95D1C5b549B0"],
+          startBlock: START_BLOCK_LIMIT_ORDERS_SEPOLIA,
+        },
+      },
+    },
     ConvertibleDepositAuctioneer: {
       abi: ConvertibleDepositAuctioneerAbi,
       chain: {
