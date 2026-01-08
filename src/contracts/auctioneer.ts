@@ -236,9 +236,18 @@ export async function fetchAuctioneerCurrentTickBatch(
     if (!result) {
       throw new Error(`No result returned for period ${period} at index ${i}`);
     }
+
+    // If the period is not enabled, we return zero values
     if (result.status === "failure") {
-      throw new Error(`Failed to fetch current tick for period ${period}: ${result.error}`);
+      console.info(`Period ${period} is not enabled, returning zero values`);
+      tickDataMap.set(period, {
+        price: 0n,
+        capacity: 0n,
+        lastUpdate: 0,
+      });
+      continue;
     }
+
     const tickResult = result.result as unknown as {
       price: bigint;
       capacity: bigint;
