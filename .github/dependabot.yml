@@ -1,0 +1,22 @@
+version: 2
+updates:
+  # Enable version updates for dependencies
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    # Allow automatic updates for minor/patch versions
+    open-pull-requests-limit: 10
+    labels:
+      - "dependencies"
+      - "dependabot"
+    # Group all dev dependencies updates together
+    groups:
+      dev-dependencies:
+        patterns:
+          - "@types/*"
+          - "typescript"
+          - "@biomejs/*"
+        exclude-patterns:
+          - "*"
