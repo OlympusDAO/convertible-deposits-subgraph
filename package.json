@@ -16,7 +16,7 @@
   "dependencies": {
     "hono": "^4.11.4",
     "ponder": "^0.15.17",
-    "viem": "^2.44.2"
+    "viem": "^2.45.2"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.3.11",
