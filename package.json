@@ -14,7 +14,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "hono": "^4.11.4",
+    "hono": "^4.12.3",
     "ponder": "^0.15.17",
     "viem": "^2.44.2"
   },
