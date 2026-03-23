@@ -19,7 +19,7 @@
     "viem": "^2.44.2"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.3.11",
+    "@biomejs/biome": "^2.4.8",
     "@types/node": "^20.19.27",
     "typescript": "^5.9.3"
   },
