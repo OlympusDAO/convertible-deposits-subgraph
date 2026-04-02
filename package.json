@@ -11,7 +11,8 @@
     "codegen": "ponder codegen",
     "lint": "biome check --write .",
     "lint:check": "biome check .",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "preinstall": "npx only-allow pnpm"
   },
   "dependencies": {
     "hono": "^4.11.1",
@@ -24,6 +25,10 @@
     "typescript": "^5.9.3"
   },
   "engines": {
-    "node": ">=18.14"
-  }
+    "node": ">=18.14",
+    "pnpm": "10.33.0",
+    "npm": "use-pnpm",
+    "yarn": "use-pnpm"
+  },
+  "packageManager": "pnpm@10.33.0"
 }
