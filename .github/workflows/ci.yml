@@ -23,7 +23,10 @@ jobs:
           cache: 'pnpm'
 
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile --ignore-dep-scripts
+        run: pnpm install
+
+      - name: Run security audit
+        run: pnpm audit --audit-level=moderate
 
       - name: Run codegen
         run: pnpm codegen
