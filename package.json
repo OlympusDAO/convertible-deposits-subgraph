@@ -12,7 +12,7 @@
     "lint": "biome check --write .",
     "lint:check": "biome check .",
     "typecheck": "tsc --noEmit",
-    "preinstall": "npx only-allow pnpm"
+    "preinstall": "npx only-allow@1.2.2 pnpm"
   },
   "dependencies": {
     "hono": "^4.11.4",
