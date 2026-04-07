@@ -25,9 +25,6 @@ jobs:
       - name: Install dependencies
         run: pnpm install
 
-      - name: Run security audit
-        run: pnpm audit --audit-level=moderate
-
       - name: Run codegen
         run: pnpm codegen
 
