@@ -15,7 +15,7 @@
     "preinstall": "npx only-allow@1.2.2 pnpm"
   },
   "dependencies": {
-    "hono": "^4.11.4",
+    "hono": "^4.12.12",
     "ponder": "^0.15.17",
     "viem": "^2.44.2"
   },
