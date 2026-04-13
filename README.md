@@ -107,7 +107,7 @@ Snapshots are created:
 
 ### Prerequisites
 
-- [Node.js v18.14+](https://nodejs.org/)
+- [Node.js v24+](https://nodejs.org/)
 - [pnpm v8+](https://pnpm.io/installation)
 - PostgreSQL (optional, for local development)
 
@@ -402,4 +402,3 @@ The `refreshAuctionState()` function creates:
 ## License
 
 This project is part of the Olympus Protocol ecosystem.
-
