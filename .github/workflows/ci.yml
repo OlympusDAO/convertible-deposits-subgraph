@@ -12,10 +12,7 @@ jobs:
 
     steps:
       - name: Setup project
-        uses: ./.github/actions/setup-node-deps
-        with:
-          node-version-file: .nvmrc
-          install-args: --frozen-lockfile
+        uses: ./.github/actions/bootstrap
 
       - name: Run codegen
         run: pnpm codegen

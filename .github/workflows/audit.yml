@@ -13,10 +13,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Setup project
-        uses: ./.github/actions/setup-node-deps
-        with:
-          node-version-file: .nvmrc
-          install-args: --frozen-lockfile
+        uses: ./.github/actions/bootstrap
 
       - name: Audit pnpm dependencies (fail on moderate+)
         uses: JamesRobertWiseman/pnpm-audit@a6a8cc297d146014c029926e49d43571e776f85e # v3.2.0
