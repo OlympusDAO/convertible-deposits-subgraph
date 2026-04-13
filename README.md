@@ -111,6 +111,10 @@ Snapshots are created:
 - [pnpm v8+](https://pnpm.io/installation)
 - PostgreSQL (optional, for local development)
 
+### Ponder Version Note
+
+The `ponder` dependency is intentionally kept on the 0.15.x line (`^0.15.17`) for now. Version `0.16` introduces a breaking migration that enforces a maximum table/schema name length of 45 characters, but this indexer currently includes several table names longer than that, so upgrading would require a schema migration first.
+
 ### Installation
 
 ```bash
