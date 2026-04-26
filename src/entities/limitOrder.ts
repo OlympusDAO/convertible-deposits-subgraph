@@ -3,7 +3,7 @@
 
 import type { Context } from "ponder:registry";
 import schema from "ponder:schema";
-import { and, desc, eq, lte } from "ponder";
+import { and, desc, eq, lt, or } from "ponder";
 import type { Address } from "viem";
 import { fetchDepositManager, fetchReceiptTokenData } from "../contracts/depositFacility";
 import {
@@ -271,6 +271,7 @@ export async function getLatestLimitOrderSnapshot(
   contractAddress: Address,
   orderId: bigint,
   beforeBlock: bigint,
+  beforeLogIndex: number,
 ): Promise<typeof schema.limitOrderSnapshot.$inferSelect | null> {
   const results = await context.db.sql
     .select()
@@ -280,10 +281,16 @@ export async function getLatestLimitOrderSnapshot(
         eq(schema.limitOrderSnapshot.chainId, chainId),
         eq(schema.limitOrderSnapshot.contractAddress, contractAddress.toLowerCase() as Address),
         eq(schema.limitOrderSnapshot.orderId, orderId),
-        lte(schema.limitOrderSnapshot.block, beforeBlock),
+        or(
+          lt(schema.limitOrderSnapshot.block, beforeBlock),
+          and(
+            eq(schema.limitOrderSnapshot.block, beforeBlock),
+            lt(schema.limitOrderSnapshot.logIndex, beforeLogIndex),
+          ),
+        ),
       ),
     )
-    .orderBy(desc(schema.limitOrderSnapshot.block))
+    .orderBy(desc(schema.limitOrderSnapshot.block), desc(schema.limitOrderSnapshot.logIndex))
     .limit(1);
 
   if (results.length === 0) {
@@ -329,8 +336,9 @@ export async function createLimitOrderSnapshot(
   const snapshotValues = {
     ...previousSnapshot,
     block: blockNumber,
-    timestamp,
     logIndex,
+    timestamp,
+    active: updates.active ?? previousSnapshot.active,
     completed: isCompleted,
     depositSpent,
     depositSpentDecimal,
@@ -344,6 +352,7 @@ export async function createLimitOrderSnapshot(
   const snapshot = await context.db.find(schema.limitOrderSnapshot, {
     chainId,
     block: blockNumber,
+    logIndex,
     contractAddress: contractAddress.toLowerCase() as Address,
     orderId,
   });
@@ -363,6 +372,7 @@ export async function getLatestLimitOrdersContractSnapshot(
   chainId: number,
   contractAddress: Address,
   beforeBlock: bigint,
+  beforeLogIndex: number,
 ): Promise<typeof schema.limitOrdersContractSnapshot.$inferSelect | null> {
   const results = await context.db.sql
     .select()
@@ -374,10 +384,19 @@ export async function getLatestLimitOrdersContractSnapshot(
           schema.limitOrdersContractSnapshot.contractAddress,
           contractAddress.toLowerCase() as Address,
         ),
-        lte(schema.limitOrdersContractSnapshot.block, beforeBlock),
+        or(
+          lt(schema.limitOrdersContractSnapshot.block, beforeBlock),
+          and(
+            eq(schema.limitOrdersContractSnapshot.block, beforeBlock),
+            lt(schema.limitOrdersContractSnapshot.logIndex, beforeLogIndex),
+          ),
+        ),
       ),
     )
-    .orderBy(desc(schema.limitOrdersContractSnapshot.block))
+    .orderBy(
+      desc(schema.limitOrdersContractSnapshot.block),
+      desc(schema.limitOrdersContractSnapshot.logIndex),
+    )
     .limit(1);
 
   if (results.length === 0) {
@@ -430,6 +449,7 @@ export async function createLimitOrdersContractSnapshot(
   const snapshot = await context.db.find(schema.limitOrdersContractSnapshot, {
     chainId,
     block: blockNumber,
+    logIndex,
     contractAddress: contractAddress.toLowerCase() as Address,
   });
 

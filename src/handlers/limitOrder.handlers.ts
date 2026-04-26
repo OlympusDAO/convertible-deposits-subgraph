@@ -160,6 +160,7 @@ ponder.on("ConvertibleDepositAuctioneerLimitOrders:OrderCreated", async ({ event
   await context.db.insert(schema.limitOrderSnapshot).values({
     chainId,
     block: blockNumber,
+    logIndex: event.log.logIndex,
     timestamp,
     contractAddress: contractAddressLower,
     orderId,
@@ -237,6 +238,7 @@ ponder.on("ConvertibleDepositAuctioneerLimitOrders:OrderFilled", async ({ event,
     contractAddress,
     orderId,
     blockNumber,
+    event.log.logIndex,
   );
   if (previousSnapshot === null) {
     throw new Error(`Previous snapshot not found for order ${orderId}`);
@@ -310,6 +312,7 @@ ponder.on("ConvertibleDepositAuctioneerLimitOrders:OrderCancelled", async ({ eve
     contractAddress,
     orderId,
     blockNumber,
+    event.log.logIndex,
   );
   if (previousSnapshot === null) {
     throw new Error(`Previous snapshot not found for order ${orderId}`);

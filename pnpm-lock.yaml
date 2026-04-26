@@ -10,9 +10,10 @@ overrides:
   ajv: '>=8.18.0'
   brace-expansion: '>=2.0.3'
   esbuild: '>=0.25.0'
-  hono: '>=4.12.7'
+  hono: ^4.12.14
   kysely: '>=0.28.14'
   minimatch: '>=9.0.7'
+  postcss: ^8.5.10
   vite: ^6.4.2
   rollup: '>=4.59.0'
   '@hono/node-server@<1.19.10': '>=1.19.10'
@@ -38,11 +39,11 @@ importers:
   .:
     dependencies:
       hono:
-        specifier: '>=4.12.7'
-        version: 4.12.12
+        specifier: ^4.12.14
+        version: 4.12.15
       ponder:
         specifier: ^0.15.17
-        version: 0.15.18(@opentelemetry/api@1.9.0)(@types/node@24.12.2)(hono@4.12.12)(lightningcss@1.32.0)(typescript@5.9.3)(viem@2.47.16(typescript@5.9.3))
+        version: 0.15.18(@opentelemetry/api@1.9.0)(@types/node@24.12.2)(hono@4.12.15)(lightningcss@1.32.0)(typescript@5.9.3)(viem@2.47.16(typescript@5.9.3))
       viem:
         specifier: ^2.47.16
         version: 2.47.16(typescript@5.9.3)
@@ -916,8 +917,8 @@ packages:
     resolution: {integrity: sha512-cvVIBILwuoSyD54U4cF/UXDh5yAobhNV/tPygI4lZhgOIJQE/WLWC4waBRb4I6bDVYb3OVx3lfHbaQOEoUD5sg==}
     engines: {node: ^12.22.0 || ^14.16.0 || ^16.0.0 || >=17.0.0}
 
-  hono@4.12.12:
-    resolution: {integrity: sha512-p1JfQMKaceuCbpJKAPKVqyqviZdS0eUxH9v82oWo1kb9xjQ5wA6iP3FNVAPDFlz5/p7d45lO+BpSk1tuSZMF4Q==}
+  hono@4.12.15:
+    resolution: {integrity: sha512-qM0jDhFEaCBb4TxoW7f53Qrpv9RBiayUHo0S52JudprkhvpjIrGoU1mnnr29Fvd1U335ZFPZQY1wlkqgfGXyLg==}
     engines: {node: '>=16.9.0'}
 
   http-terminator@3.2.0:
@@ -1189,8 +1190,8 @@ packages:
       typescript:
         optional: true
 
-  postcss@8.5.8:
-    resolution: {integrity: sha512-OW/rX8O/jXnm82Ey1k44pObPtdblfiuWnrd8X7GJ7emImCOstunGbXUpp7HdBrFQX6rJzn3sPT397Wp5aCwCHg==}
+  postcss@8.5.12:
+    resolution: {integrity: sha512-W62t/Se6rA0Az3DfCL0AqJwXuKwBeYg6nOaIgzP+xZ7N5BFCI7DYi1qs6ygUYT6rvfi6t9k65UMLJC+PHZpDAA==}
     engines: {node: ^10 || ^12 || >=14}
 
   postgres-array@2.0.0:
@@ -1696,9 +1697,9 @@ snapshots:
       '@repeaterjs/repeater': 3.0.6
       tslib: 2.8.1
 
-  '@hono/node-server@1.19.13(hono@4.12.12)':
+  '@hono/node-server@1.19.13(hono@4.12.15)':
     dependencies:
-      hono: 4.12.12
+      hono: 4.12.15
 
   '@isaacs/cliui@8.0.2':
     dependencies:
@@ -2094,7 +2095,7 @@ snapshots:
 
   graphql@16.8.2: {}
 
-  hono@4.12.12: {}
+  hono@4.12.15: {}
 
   http-terminator@3.2.0:
     dependencies:
@@ -2315,7 +2316,7 @@ snapshots:
       sonic-boom: 3.8.1
       thread-stream: 2.7.0
 
-  ponder@0.15.18(@opentelemetry/api@1.9.0)(@types/node@24.12.2)(hono@4.12.12)(lightningcss@1.32.0)(typescript@5.9.3)(viem@2.47.16(typescript@5.9.3)):
+  ponder@0.15.18(@opentelemetry/api@1.9.0)(@types/node@24.12.2)(hono@4.12.15)(lightningcss@1.32.0)(typescript@5.9.3)(viem@2.47.16(typescript@5.9.3)):
     dependencies:
       '@babel/code-frame': 7.27.1
       '@commander-js/extra-typings': 12.1.0(commander@12.1.0)
@@ -2323,7 +2324,7 @@ snapshots:
       '@escape.tech/graphql-armor-max-aliases': 2.6.2
       '@escape.tech/graphql-armor-max-depth': 2.4.2
       '@escape.tech/graphql-armor-max-tokens': 2.5.1
-      '@hono/node-server': 1.19.13(hono@4.12.12)
+      '@hono/node-server': 1.19.13(hono@4.12.15)
       '@ponder/utils': 0.2.17(typescript@5.9.3)(viem@2.47.16(typescript@5.9.3))
       abitype: 0.10.3(typescript@5.9.3)
       ansi-escapes: 7.2.0
@@ -2336,7 +2337,7 @@ snapshots:
       glob: 10.5.0
       graphql: 16.8.2
       graphql-yoga: 5.17.1(graphql@16.8.2)
-      hono: 4.12.12
+      hono: 4.12.15
       http-terminator: 3.2.0
       kysely: 0.28.15
       pg: 8.16.3
@@ -2401,7 +2402,7 @@ snapshots:
       - yaml
       - zod
 
-  postcss@8.5.8:
+  postcss@8.5.12:
     dependencies:
       nanoid: 3.3.11
       picocolors: 1.1.1
@@ -2632,7 +2633,7 @@ snapshots:
       esbuild: 0.27.5
       fdir: 6.5.0(picomatch@4.0.4)
       picomatch: 4.0.4
-      postcss: 8.5.8
+      postcss: 8.5.12
       rollup: 4.60.1
       tinyglobby: 0.2.15
     optionalDependencies:
