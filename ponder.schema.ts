@@ -1605,6 +1605,7 @@ export const limitOrderSnapshot = onchainTable(
   (t) => ({
     chainId: t.integer().notNull(),
     block: t.bigint().notNull(),
+    logIndex: t.integer().notNull(),
     timestamp: t.bigint().notNull(),
     contractAddress: t.hex().notNull(), // LimitOrders contract address (FK)
     orderId: t.bigint().notNull(),
@@ -1627,7 +1628,7 @@ export const limitOrderSnapshot = onchainTable(
   }),
   (table) => ({
     pk: primaryKey({
-      columns: [table.chainId, table.block, table.contractAddress, table.orderId],
+      columns: [table.chainId, table.block, table.logIndex, table.contractAddress, table.orderId],
     }),
   }),
 );
@@ -1637,6 +1638,7 @@ export const limitOrdersContractSnapshot = onchainTable(
   (t) => ({
     chainId: t.integer().notNull(),
     block: t.bigint().notNull(),
+    logIndex: t.integer().notNull(),
     timestamp: t.bigint().notNull(),
     contractAddress: t.hex().notNull(), // LimitOrders contract address (FK)
     enabled: t.boolean().notNull(),
@@ -1647,7 +1649,7 @@ export const limitOrdersContractSnapshot = onchainTable(
   }),
   (table) => ({
     pk: primaryKey({
-      columns: [table.chainId, table.block, table.contractAddress],
+      columns: [table.chainId, table.block, table.logIndex, table.contractAddress],
     }),
   }),
 );
