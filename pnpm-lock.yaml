@@ -10,10 +10,10 @@ overrides:
   ajv: '>=8.18.0'
   brace-expansion: '>=2.0.3'
   esbuild: '>=0.25.0'
-  hono: '>=4.12.14'
+  hono: ^4.12.14
   kysely: '>=0.28.14'
   minimatch: '>=9.0.7'
-  postcss: '>=8.5.10'
+  postcss: ^8.5.10
   vite: ^6.4.2
   rollup: '>=4.59.0'
   '@hono/node-server@<1.19.10': '>=1.19.10'
@@ -39,7 +39,7 @@ importers:
   .:
     dependencies:
       hono:
-        specifier: '>=4.12.14'
+        specifier: ^4.12.14
         version: 4.12.15
       ponder:
         specifier: ^0.15.17
