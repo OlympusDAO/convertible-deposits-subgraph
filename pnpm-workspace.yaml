@@ -7,3 +7,16 @@ preferFrozenLockfile: true
 engineStrict: true
 strictDepBuilds: true
 blockExoticSubdeps: true
+overrides:
+  "@hono/node-server": "^1.19.10"
+  "ajv": "^8.18.0"
+  "brace-expansion": "^2.0.3"
+  "drizzle-orm": "^0.45.2"
+  "esbuild": "^0.25.0"
+  "fast-uri": "^3.1.2"
+  "hono": "^4.12.18"
+  "kysely": "0.28.17"
+  "minimatch": "^9.0.7"
+  "postcss": "^8.5.10"
+  "rollup": "^4.59.0"
+  "vite": "^6.4.2"
