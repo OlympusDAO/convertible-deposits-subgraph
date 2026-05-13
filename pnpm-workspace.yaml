@@ -7,6 +7,8 @@ preferFrozenLockfile: true
 engineStrict: true
 strictDepBuilds: true
 blockExoticSubdeps: true
+onlyBuiltDependencies:
+  - "esbuild@0.25.12"
 overrides:
   "@hono/node-server": "^1.19.10"
   "ajv": "^8.18.0"
