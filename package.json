@@ -11,7 +11,8 @@
     "codegen": "ponder codegen",
     "lint": "biome check --write .",
     "lint:check": "biome check .",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "preinstall": "node -e \"if (!process.env.npm_config_user_agent?.startsWith('pnpm/')) { console.error('This project requires pnpm.'); process.exit(1) }\""
   },
   "dependencies": {
     "hono": "^4.12.27",
@@ -25,9 +26,7 @@
   },
   "engines": {
     "node": ">=24",
-    "pnpm": ">=11.15.1",
-    "npm": "use-pnpm",
-    "yarn": "use-pnpm"
+    "pnpm": ">=11.15.1"
   },
   "packageManager": "pnpm@11.15.1"
 }
