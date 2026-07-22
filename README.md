@@ -108,7 +108,7 @@ Snapshots are created:
 ### Prerequisites
 
 - [Node.js v24+](https://nodejs.org/)
-- [pnpm v8+](https://pnpm.io/installation)
+- [pnpm v11.15.1+](https://pnpm.io/installation)
 - PostgreSQL (optional, for local development)
 
 ### Ponder Version Note

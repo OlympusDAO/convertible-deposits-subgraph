@@ -11,11 +11,10 @@
     "codegen": "ponder codegen",
     "lint": "biome check --write .",
     "lint:check": "biome check .",
-    "typecheck": "tsc --noEmit",
-    "preinstall": "npx only-allow@1.2.2 pnpm"
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "hono": "^4.12.25",
+    "hono": "^4.12.27",
     "ponder": "^0.15.17",
     "viem": "^2.47.16"
   },
@@ -26,9 +25,7 @@
   },
   "engines": {
     "node": ">=24",
-    "pnpm": ">=10.33.0",
-    "npm": "use-pnpm",
-    "yarn": "use-pnpm"
+    "pnpm": ">=11.15.1"
   },
-  "packageManager": "pnpm@10.33.0"
+  "packageManager": "pnpm@11.15.1"
 }
